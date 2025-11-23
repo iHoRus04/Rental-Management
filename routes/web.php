@@ -13,6 +13,7 @@ use App\Http\Controllers\Landlord\PaymentController;
 use App\Http\Controllers\Landlord\RevenueController;
 use App\Http\Controllers\Landlord\MeterLogController;
 use App\Http\Controllers\Landlord\ReminderController;
+use App\Http\Controllers\Landlord\RenterRequestController;
 use App\Http\Controllers\Landlord\DashboardController;
 
 // ✅ Trang Home
@@ -63,10 +64,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::resource('payments', PaymentController::class);
             Route::resource('meter-logs', MeterLogController::class);
             Route::resource('reminders', ReminderController::class);
+            Route::resource('renter-requests', RenterRequestController::class);
             
             // Đánh dấu nhắc nhở đã gửi
             Route::post('reminders/{reminder}/mark-sent', [ReminderController::class, 'markAsSent'])->name('reminders.markAsSent');
             Route::get('reminders/pending-count', [ReminderController::class, 'getPendingCount'])->name('reminders.pendingCount');
+            
+            // Get pending renter requests count
+            Route::get('renter-requests/pending-count', [RenterRequestController::class, 'getPendingCount'])->name('renter-requests.pendingCount');
+            
+            // Update renter request status
+            Route::post('renter-requests/{request}/update-status/{status}', [RenterRequestController::class, 'updateStatus'])->name('renter-requests.update-status');
             
             // Tạo hóa đơn hàng tháng
             Route::post('bills/generate-monthly', [BillController::class, 'generateMonthly'])->name('bills.generateMonthly');
@@ -86,6 +94,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
-
 
 require __DIR__.'/auth.php';

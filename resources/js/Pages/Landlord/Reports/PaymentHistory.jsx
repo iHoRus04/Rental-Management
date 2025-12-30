@@ -89,7 +89,7 @@ export default function PaymentHistory() {
                 </div>
                 <div className="bg-white rounded-lg shadow p-6">
                     <p className="text-gray-600 text-sm">Tổng tiền</p>
-                    <p className="text-3xl font-bold text-green-600">{totalAmount.toLocaleString('vi-VN')} ₫</p>
+                    <p className="text-3xl font-bold text-green-600">{totalAmount.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</p>
                 </div>
             </div>
 
@@ -107,7 +107,7 @@ export default function PaymentHistory() {
                         <div key={method} className="bg-white rounded-lg shadow p-4">
                             <p className="text-gray-600 text-sm">{methodLabels[method]}</p>
                             <p className="text-2xl font-bold text-gray-900">{data.count} lần</p>
-                            <p className="text-lg text-green-600 font-medium">{data.total.toLocaleString('vi-VN')} ₫</p>
+                            <p className="text-lg text-green-600 font-medium">{data.total.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</p>
                         </div>
                     );
                 })}
@@ -141,7 +141,7 @@ export default function PaymentHistory() {
                                         <td className="px-6 py-4 text-gray-600">{payment.bill.room.name}</td>
                                         <td className="px-6 py-4 text-gray-600">{payment.bill.contract.renter.name}</td>
                                         <td className="px-6 py-4 text-right font-medium text-green-600">
-                                            {payment.amount.toLocaleString('vi-VN')} ₫
+                                            {payment.amount.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             {getMethodBadge(payment.payment_method)}

@@ -42,7 +42,7 @@ class BillService
             $bill = new Bill([
                 'contract_id' => $contract->id,
                 'room_id' => $contract->room_id,
-                'renter_id' => $contract->renter_id,
+                'renter_request_id' => $contract->renter_request_id,
                 'month' => $month,
                 'year' => $year,
                 'room_price' => $contract->monthly_rent,
@@ -54,7 +54,9 @@ class BillService
                 'other_costs' => 0,
                 'status' => 'pending',
                 'paid_amount' => 0,
-                'due_date' => Carbon::create($year, $month, 1)->addMonth()->toDateString(),
+                // Calculate due_date based on contract start_date + payment_date (days)
+                // If contract->payment_date is not set, fall back to first day of next month
+                'due_date' => $this->calculateDueDate($contract, $year, $month),
                 'paid_date' => null,
             ]);
 
@@ -115,6 +117,39 @@ class BillService
         $bill->save();
 
         return $bill;
+    }
+
+    /**
+     * Calculate due date for a bill based on contract start_date + payment_date (days offset)
+     */
+    private function calculateDueDate(Contract $contract, $year, $month)
+    {
+        // If payment_date is set (interpreted as days offset from start_date)
+        if ($contract->payment_date !== null) {
+            try {
+                $start = Carbon::parse($contract->start_date ?? Carbon::create($year, $month, 1));
+
+                // payment_date is stored as integer; treat it as number of days to add
+                $offsetDays = (int) $contract->payment_date;
+
+                // Build a date in the target month/year using the start day, then add offset
+                $base = Carbon::create($year, $month, min($start->day, Carbon::create($year, $month, 1)->endOfMonth()->day));
+                $due = $base->copy()->addDays($offsetDays);
+
+                // Clamp to end of month if overflow
+                $endOfMonth = Carbon::create($year, $month, 1)->endOfMonth();
+                if ($due->gt($endOfMonth)) {
+                    $due = $endOfMonth;
+                }
+
+                return $due->toDateString();
+            } catch (\Exception $e) {
+                // If anything goes wrong, fall back to next month's first day
+            }
+        }
+
+        // Default: first day of month + 1 month (same behavior as before)
+        return Carbon::create($year, $month, 1)->addMonth()->toDateString();
     }
 
     /**

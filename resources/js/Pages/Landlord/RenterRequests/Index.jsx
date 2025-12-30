@@ -1,134 +1,169 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 
 export default function RenterRequestsIndex({ auth, requests }) {
-    const getStatusBadgeClass = (status) => {
-        switch (status) {
-            case 'new':
-                return 'bg-blue-100 text-blue-800';
-            case 'contacted':
-                return 'bg-yellow-100 text-yellow-800';
-            case 'approved':
-                return 'bg-green-100 text-green-800';
-            case 'rejected':
-                return 'bg-red-100 text-red-800';
-            default:
-                return 'bg-gray-100 text-gray-800';
-        }
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const requestsArray = Array.isArray(requests) ? requests : [];
+
+    const getStatusConfig = (status) => {
+        const config = {
+            new: { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Mới', icon: '✨', border: 'border-blue-200' },
+            contacted: { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Đã liên hệ', icon: '📞', border: 'border-yellow-200' },
+            approved: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Đã duyệt', icon: '✅', border: 'border-emerald-200' },
+            rejected: { bg: 'bg-gray-50', text: 'text-gray-600', label: 'Đã từ chối', icon: '❌', border: 'border-gray-200' },
+        };
+        return config[status] || { bg: 'bg-gray-50', text: 'text-gray-700', label: status, icon: '❔', border: 'border-gray-200' };
     };
 
-    const getStatusText = (status) => {
-        switch (status) {
-            case 'new':
-                return 'Mới';
-            case 'contacted':
-                return 'Đã liên hệ';
-            case 'approved':
-                return 'Đã duyệt';
-            case 'rejected':
-                return 'Đã từ chối';
-            default:
-                return status;
-        }
-    };
+    const filteredRequests = requestsArray.filter(request => {
+        const matchesStatus = filterStatus === 'all' || request.status === filterStatus;
+        const matchesSearch = (request.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                              (request.phone || '').includes(searchTerm) ||
+                              (request.room?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesStatus && matchesSearch;
+    });
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Yêu cầu thuê phòng</h2>}
-        >
+        <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title="Yêu cầu thuê phòng" />
+            
+            <div className="max-w-[1200px] mx-auto">
+                {/* --- HEADER --- */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+                    <div>
+                        <p className="text-emerald-600 font-bold text-xs uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Hộp thư đến
+                        </p>
+                        <h1 className="text-3xl font-extrabold text-teal-900 tracking-tight">Yêu cầu thuê phòng</h1>
+                    </div>
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            {requests.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <p className="text-gray-500">Chưa có yêu cầu thuê phòng nào.</p>
-                                </div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-gray-200">
-                                        <thead className="bg-gray-50">
-                                            <tr>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Người gửi
-                                                </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Phòng
-                                                </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Nhà
-                                                </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Số điện thoại
-                                                </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Email
-                                                </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Trạng thái
-                                                </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Ngày gửi
-                                                </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Hành động
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                            {requests.map((request) => (
-                                                <tr key={request.id}>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm font-medium text-gray-900">{request.name}</div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-900">
-                                                            {request.room ? request.room.name : 'Không xác định'}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-900">
-                                                            {request.room?.house ? request.room.house.name : 'Không xác định'}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-900">{request.phone}</div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-900">
-                                                            {request.email || 'Không có'}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(request.status)}`}>
-                                                            {getStatusText(request.status)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {new Date(request.created_at).toLocaleDateString('vi-VN')}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                        <Link
-                                                            href={route('landlord.renter-requests.show', request.id)}
-                                                            className="text-blue-600 hover:text-blue-900"
-                                                        >
-                                                            Xem chi tiết
-                                                        </Link>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <div className="relative flex-grow sm:flex-grow-0">
+                            <input 
+                                type="text" 
+                                placeholder="Tìm kiếm..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full sm:w-64 pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
+                            />
+                            <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
+
+                        <select 
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            className="w-full sm:w-auto py-2.5 pl-4 pr-10 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm cursor-pointer"
+                        >
+                            <option value="all">Tất cả trạng thái</option>
+                            <option value="new">✨ Mới</option>
+                            <option value="contacted">📞 Đã liên hệ</option>
+                            <option value="approved">✅ Đã duyệt</option>
+                            <option value="rejected">❌ Đã từ chối</option>
+                        </select>
+
+                        <Link
+                            href={route('landlord.renter-requests.create')}
+                            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 whitespace-nowrap"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                            Tạo mới
+                        </Link>
                     </div>
                 </div>
+
+                {/* --- LIST VIEW (HORIZONTAL CARDS) --- */}
+                {filteredRequests.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[24px] border-2 border-dashed border-gray-200">
+                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                        </div>
+                        <p className="text-gray-500 font-medium">Không tìm thấy yêu cầu nào.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {filteredRequests.map((request) => {
+                            const status = getStatusConfig(request.status || 'new');
+                            
+                            return (
+                                <div 
+                                    key={request.id || Math.random()} 
+                                    className="group relative bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all duration-300 flex flex-col md:flex-row items-center gap-6"
+                                >
+                                    {/* Left Status Strip */}
+                                    <div className={`absolute left-0 top-3 bottom-3 w-1 rounded-r-full ${status.bg.replace('50', '500')}`}></div>
+
+                                    {/* 1. Identity Section */}
+                                    <div className="flex items-center gap-4 w-full md:w-auto md:min-w-[220px]">
+                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-lg font-bold text-gray-600 border border-white shadow-sm flex-shrink-0">
+                                            {request.name ? request.name.charAt(0).toUpperCase() : '?'}
+                                        </div>
+                                        <div className="flex-grow min-w-0">
+                                            <h3 className="font-bold text-gray-900 truncate" title={request.name}>{request.name || 'Không tên'}</h3>
+                                            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                {new Date(request.created_at).toLocaleDateString('vi-VN')}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Divider for mobile */}
+                                    <div className="w-full h-px bg-gray-100 md:hidden"></div>
+
+                                    {/* 2. Details Section (Middle) */}
+                                    <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-3 gap-x-6 md:border-l md:border-gray-100 md:pl-6">
+                                        {/* Contact Info */}
+                                        <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                                            </div>
+                                            <span className="truncate font-medium">{request.phone || '---'}</span>
+                                        </div>
+
+                                        <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                                            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-purple-500">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                            </div>
+                                            <span className="truncate" title={request.email}>{request.email || '---'}</span>
+                                        </div>
+
+                                        {/* Room Info */}
+                                        <div className="flex items-center gap-2.5 text-sm text-gray-600 sm:col-span-2 lg:col-span-1">
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                            </div>
+                                            <div className="flex flex-col leading-tight">
+                                                <span className="text-xs text-gray-400 font-bold uppercase">Quan tâm</span>
+                                                <span className="font-bold text-gray-900 truncate max-w-[150px]">{request.room?.name || '---'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 3. Status & Action Section (Right) */}
+                                    <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-3 w-full md:w-auto md:pl-6 md:border-l md:border-dashed md:border-gray-200">
+                                        <div className={`px-3 py-1 rounded-full text-xs font-bold border ${status.bg} ${status.text} ${status.border} flex items-center gap-1.5`}>
+                                            <span>{status.icon}</span> {status.label}
+                                        </div>
+
+                                        <Link
+                                            href={route('landlord.renter-requests.show', request.id || '#')}
+                                            className="px-4 py-2 bg-white text-gray-700 text-sm font-bold rounded-xl border border-gray-200 hover:border-emerald-500 hover:text-emerald-600 transition-all flex items-center gap-2 group-hover:bg-emerald-50/50"
+                                        >
+                                            Chi tiết
+                                            <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                        </Link>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
-        </AuthenticatedLayout>
+        </div>
     );
 }
+
+RenterRequestsIndex.layout = (page) => <AuthenticatedLayout children={page} />;

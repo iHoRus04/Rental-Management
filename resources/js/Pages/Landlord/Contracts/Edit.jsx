@@ -1,12 +1,20 @@
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { Link, useForm, usePage, Head } from '@inertiajs/react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function Edit() {
-    const { room, contract, renters } = usePage().props;
+    const { room, contract, renterRequests } = usePage().props;
+
+    // Format date to YYYY-MM-DD
+    const formatDateForInput = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toISOString().split('T')[0];
+    };
 
     const { data, setData, put, processing, errors } = useForm({
-        renter_id: contract.renter_id,
-        start_date: contract.start_date,
-        end_date: contract.end_date,
+        renter_request_id: contract.renter_request_id,
+        start_date: formatDateForInput(contract.start_date),
+        end_date: formatDateForInput(contract.end_date),
         monthly_rent: contract.monthly_rent,
         deposit: contract.deposit,
         payment_date: contract.payment_date,
@@ -20,183 +28,217 @@ export default function Edit() {
     };
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold">
-                        Chỉnh sửa hợp đồng
-                    </h1>
-                    <p className="text-gray-600">
-                        Phòng {room.name} - {room.house.name}
-                    </p>
+        <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
+            <Head title={`Sửa hợp đồng - ${room.name}`} />
+            
+            <div className="max-w-4xl mx-auto">
+                {/* --- HEADER --- */}
+                <div className="mb-8">
+                    <Link
+                        href={route('landlord.rooms.contracts.show', [room.id, contract.id])}
+                        className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-emerald-600 mb-4 transition-colors"
+                    >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                        Hủy bỏ và quay lại
+                    </Link>
+
+                    <div className="bg-white rounded-[24px] shadow-xl shadow-emerald-900/5 border border-gray-100 p-8 flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-extrabold text-teal-900 tracking-tight flex items-center gap-2">
+                                <span className="w-10 h-10 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                </span>
+                                Chỉnh sửa hợp đồng
+                            </h1>
+                            <p className="text-gray-500 mt-2 pl-[52px]">
+                                Đang cập nhật thông tin cho phòng <span className="font-bold text-gray-900">{room.name}</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
+                <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
+                    <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                        
+                        {/* Section 1: Thông tin chính */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Người thuê
-                            </label>
-                            <select
-                                value={data.renter_id}
-                                onChange={e => setData('renter_id', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
+                                <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-extrabold">1</span>
+                                Thông tin chung
+                            </h2>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Người thuê */}
+                                <div className="col-span-2 md:col-span-1">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Người thuê <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <select
+                                            value={data.renter_request_id}
+                                            onChange={e => setData('renter_request_id', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none bg-white appearance-none"
+                                        >
+                                            <option value="">Chọn người thuê</option>
+                                            {renterRequests.map(renterRequest => (
+                                                <option key={renterRequest.id} value={renterRequest.id}>
+                                                    {renterRequest.name} - {renterRequest.phone}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
+                                    </div>
+                                    {errors.renter_request_id && <p className="text-red-500 text-sm mt-1">{errors.renter_request_id}</p>}
+                                </div>
+
+                                {/* Trạng thái */}
+                                <div className="col-span-2 md:col-span-1">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Trạng thái <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <select
+                                            value={data.status}
+                                            onChange={e => setData('status', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none bg-white appearance-none"
+                                        >
+                                            <option value="active">🟢 Đang hiệu lực</option>
+                                            <option value="terminated">🔴 Đã chấm dứt</option>
+                                            <option value="expired">⚫ Hết hạn</option>
+                                        </select>
+                                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
+                                    </div>
+                                    {errors.status && <p className="text-red-500 text-sm mt-1">{errors.status}</p>}
+                                </div>
+
+                                {/* Thời hạn */}
+                                <div className="col-span-2 grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu</label>
+                                        <input
+                                            type="date"
+                                            value={data.start_date}
+                                            onChange={e => setData('start_date', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
+                                        />
+                                        {errors.start_date && <p className="text-red-500 text-sm mt-1">{errors.start_date}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc</label>
+                                        <input
+                                            type="date"
+                                            value={data.end_date}
+                                            onChange={e => setData('end_date', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
+                                        />
+                                        {errors.end_date && <p className="text-red-500 text-sm mt-1">{errors.end_date}</p>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Section 2: Tài chính */}
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
+                                <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-extrabold">2</span>
+                                Thông tin tài chính
+                            </h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Giá thuê (tháng)</label>
+                                    <div className="relative">
+                                        <input
+                                        
+                                            type="number" step="1"
+                                            value={data.monthly_rent}
+                                            onChange={e => setData('monthly_rent', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none pr-12"
+                                        />
+                                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400 font-medium">đ</div>
+                                    </div>
+                                    {errors.monthly_rent && <p className="text-red-500 text-sm mt-1">{errors.monthly_rent}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Tiền cọc</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number" step="1"
+                                            value={data.deposit}
+                                            onChange={e => setData('deposit', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none pr-12"
+                                        />
+                                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400 font-medium">đ</div>
+                                    </div>
+                                    {errors.deposit && <p className="text-red-500 text-sm mt-1">{errors.deposit}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Ngày thanh toán</label>
+                                    <div className="relative">
+                                        <select
+                                            value={data.payment_date}
+                                            onChange={e => setData('payment_date', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none bg-white appearance-none"
+                                        >
+                                            {[...Array(31)].map((_, i) => (
+                                                <option key={i + 1} value={i + 1}>Ngày {i + 1}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
+                                    </div>
+                                    {errors.payment_date && <p className="text-red-500 text-sm mt-1">{errors.payment_date}</p>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Section 3: Điều khoản */}
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-extrabold">3</span>
+                                Điều khoản hợp đồng
+                            </h2>
+                            <textarea
+                                value={data.terms}
+                                onChange={e => setData('terms', e.target.value)}
+                                rows={10}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-mono text-sm leading-relaxed"
+                                placeholder="Nhập các điều khoản hợp đồng tại đây..."
+                            />
+                            {errors.terms && <p className="text-red-500 text-sm mt-1">{errors.terms}</p>}
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-4">
+                            <Link
+                                href={route('landlord.rooms.contracts.show', [room.id, contract.id])}
+                                className="px-6 py-2.5 rounded-xl text-gray-700 font-bold hover:bg-gray-100 transition-colors"
                             >
-                                <option value="">Chọn người thuê</option>
-                                {renters.map(renter => (
-                                    <option key={renter.id} value={renter.id}>
-                                        {renter.name} - {renter.phone}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.renter_id && (
-                                <div className="text-red-600 text-sm mt-1">{errors.renter_id}</div>
-                            )}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Trạng thái
-                            </label>
-                            <select
-                                value={data.status}
-                                onChange={e => setData('status', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            >
-                                <option value="active">Đang hiệu lực</option>
-                                <option value="terminated">Đã chấm dứt</option>
-                                <option value="expired">Hết hạn</option>
-                            </select>
-                            {errors.status && (
-                                <div className="text-red-600 text-sm mt-1">{errors.status}</div>
-                            )}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Ngày bắt đầu
-                            </label>
-                            <input
-                                type="date"
-                                value={data.start_date}
-                                onChange={e => setData('start_date', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            />
-                            {errors.start_date && (
-                                <div className="text-red-600 text-sm mt-1">{errors.start_date}</div>
-                            )}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Ngày kết thúc
-                            </label>
-                            <input
-                                type="date"
-                                value={data.end_date}
-                                onChange={e => setData('end_date', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            />
-                            {errors.end_date && (
-                                <div className="text-red-600 text-sm mt-1">{errors.end_date}</div>
-                            )}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Giá thuê hàng tháng (VNĐ)
-                            </label>
-                            <input
-                                type="number"
-                                value={data.monthly_rent}
-                                onChange={e => setData('monthly_rent', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            />
-                            {errors.monthly_rent && (
-                                <div className="text-red-600 text-sm mt-1">{errors.monthly_rent}</div>
-                            )}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Tiền đặt cọc (VNĐ)
-                            </label>
-                            <input
-                                type="number"
-                                value={data.deposit}
-                                onChange={e => setData('deposit', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            />
-                            {errors.deposit && (
-                                <div className="text-red-600 text-sm mt-1">{errors.deposit}</div>
-                            )}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Ngày thanh toán hàng tháng
-                            </label>
-                            <select
-                                value={data.payment_date}
-                                onChange={e => setData('payment_date', e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            >
-                                {[...Array(31)].map((_, i) => (
-                                    <option key={i + 1} value={i + 1}>
-                                        Ngày {i + 1}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.payment_date && (
-                                <div className="text-red-600 text-sm mt-1">{errors.payment_date}</div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                            Điều khoản hợp đồng
-                        </label>
-                        <textarea
-                            value={data.terms}
-                            onChange={e => setData('terms', e.target.value)}
-                            rows={15}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono"
-                        />
-                        {errors.terms && (
-                            <div className="text-red-600 text-sm mt-1">{errors.terms}</div>
-                        )}
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                        <Link
-                            href={route('landlord.rooms.contracts.show', [room.id, contract.id])}
-                            className="text-gray-600 hover:underline"
-                        >
-                            ← Quay lại chi tiết hợp đồng
-                        </Link>
-
-                        <div className="flex gap-4">
+                                Hủy bỏ
+                            </Link>
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+                                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
-                                {processing ? 'Đang lưu...' : 'Cập nhật hợp đồng'}
+                                {processing && (
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                )}
+                                {processing ? 'Đang lưu...' : 'Cập nhật Hợp đồng'}
                             </button>
-
-                            <Link
-                                href={route('landlord.rooms.contracts.show', [room.id, contract.id])}
-                                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-                            >
-                                Hủy
-                            </Link>
                         </div>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     );
 }
+
+Edit.layout = (page) => <AuthenticatedLayout children={page} />;

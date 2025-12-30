@@ -193,19 +193,19 @@
         <div class="section-title">THÔNG TIN NGƯỜI THUÊ</div>
         <div class="info-row">
             <span class="info-label">Tên:</span>
-            <span class="info-value">{{ $bill->renter->name }}</span>
+            <span class="info-value">{{ $bill->renterRequest->name ?? 'N/A' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Số điện thoại:</span>
-            <span class="info-value">{{ $bill->renter->phone }}</span>
+            <span class="info-value">{{ $bill->renterRequest->phone ?? 'N/A' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Email:</span>
-            <span class="info-value">{{ $bill->renter->email ?? 'N/A' }}</span>
+            <span class="info-value">{{ $bill->renterRequest->email ?? 'N/A' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Địa chỉ:</span>
-            <span class="info-value">{{ $bill->renter->address ?? 'N/A' }}</span>
+            <span class="info-value">{{ $bill->renterRequest->address ?? 'N/A' }}</span>
         </div>
     </div>
 

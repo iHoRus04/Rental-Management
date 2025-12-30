@@ -47,7 +47,7 @@ export default function MonthlyRevenue() {
                             Năm
                         </label>
                         <input
-                            type="number"
+                            type="number" step="1"
                             value={selectedYear}
                             onChange={(e) => setSelectedYear(e.target.value)}
                             className="rounded-md border border-gray-300 px-3 py-2 w-32"
@@ -70,15 +70,15 @@ export default function MonthlyRevenue() {
                 </div>
                 <div className="bg-white rounded-lg shadow p-6">
                     <p className="text-gray-600 text-sm">Tổng tiền</p>
-                    <p className="text-3xl font-bold text-blue-600">{totalBillAmount.toLocaleString('vi-VN')} ₫</p>
+                    <p className="text-3xl font-bold text-blue-600">{totalBillAmount.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</p>
                 </div>
                 <div className="bg-white rounded-lg shadow p-6">
                     <p className="text-gray-600 text-sm">Đã thu</p>
-                    <p className="text-3xl font-bold text-green-600">{totalPaidAmount.toLocaleString('vi-VN')} ₫</p>
+                    <p className="text-3xl font-bold text-green-600">{totalPaidAmount.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</p>
                 </div>
                 <div className="bg-white rounded-lg shadow p-6">
                     <p className="text-gray-600 text-sm">Chưa thu</p>
-                    <p className="text-3xl font-bold text-red-600">{totalUnpaidAmount.toLocaleString('vi-VN')} ₫</p>
+                    <p className="text-3xl font-bold text-red-600">{totalUnpaidAmount.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</p>
                 </div>
             </div>
 
@@ -117,9 +117,9 @@ export default function MonthlyRevenue() {
                                 return (
                                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                         <td className="px-6 py-4 font-medium text-gray-900">{room.room.name}</td>
-                                        <td className="px-6 py-4 text-right text-gray-600">{room.total_amount.toLocaleString('vi-VN')} ₫</td>
-                                        <td className="px-6 py-4 text-right text-green-600 font-medium">{room.total_paid.toLocaleString('vi-VN')} ₫</td>
-                                        <td className="px-6 py-4 text-right text-red-600">{room.total_unpaid.toLocaleString('vi-VN')} ₫</td>
+                                        <td className="px-6 py-4 text-right text-gray-600">{room.total_amount.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</td>
+                                        <td className="px-6 py-4 text-right text-green-600 font-medium">{room.total_paid.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</td>
+                                        <td className="px-6 py-4 text-right text-red-600">{room.total_unpaid.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`px-3 py-1 rounded text-sm font-medium ${percentage === 100 ? 'bg-green-100 text-green-800' : percentage > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
                                                 {percentage.toFixed(0)}%

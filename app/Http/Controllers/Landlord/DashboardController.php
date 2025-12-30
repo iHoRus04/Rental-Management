@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\House;
 use App\Models\Room;
 use App\Models\Contract;
-use App\Models\Renter;
+use App\Models\RenterRequest;
 use App\Models\Bill;
 use App\Models\Payment;
 use Illuminate\Http\Request;
@@ -46,10 +46,10 @@ class DashboardController extends Controller
             $q->where('user_id', $user->id);
         })->where('status', 'active')->count();
 
-        // Total Renters
-        $totalRenters = Renter::whereHas('contracts.room.house', function ($q) use ($user) {
+        // Total Renters (now counting active RenterRequests with contracts)
+        $totalRenters = RenterRequest::whereHas('contracts.room.house', function ($q) use ($user) {
             $q->where('user_id', $user->id);
-        })->distinct()->count();
+        })->where('status', 'approved')->distinct()->count();
 
         // Monthly Revenue Stats
         $monthlyBills = Bill::whereHas('room.house', function ($q) use ($user) {
@@ -60,6 +60,31 @@ class DashboardController extends Controller
         ->get();
 
         $monthlyRevenue = $monthlyBills->sum('amount');
+
+        // Previous month revenue for comparison
+        $previousMonth = Carbon::now()->subMonth()->month;
+        $previousYear = Carbon::now()->subMonth()->year;
+        
+        $previousMonthRevenue = Bill::whereHas('room.house', function ($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })
+        ->where('month', $previousMonth)
+        ->where('year', $previousYear)
+        ->sum('amount');
+
+        // Revenue change percentage
+        $revenueChangePercent = 0;
+        $revenueChangeIsPositive = true;
+        
+        if ($previousMonthRevenue > 0) {
+            $revenueChangePercent = round((($monthlyRevenue - $previousMonthRevenue) / $previousMonthRevenue) * 100, 1);
+            $revenueChangeIsPositive = $revenueChangePercent >= 0;
+            $revenueChangePercent = abs($revenueChangePercent);
+        } elseif ($monthlyRevenue > 0) {
+            // If previous month was 0 but current month has revenue, show 100% increase
+            $revenueChangePercent = 100;
+            $revenueChangeIsPositive = true;
+        }
 
         // Collected Amount (from payments)
         $collectedAmount = Payment::whereHas('bill.room.house', function ($q) use ($user) {
@@ -77,14 +102,73 @@ class DashboardController extends Controller
         // Collection Rate
         $collectionRate = $monthlyRevenue > 0 ? round(($collectedAmount / $monthlyRevenue) * 100, 1) : 0;
 
-        // Unpaid Bills Count
+        // Unpaid Bills Count (all bills not fully paid: pending or partial)
         $unpaidBills = Bill::whereHas('room.house', function ($q) use ($user) {
             $q->where('user_id', $user->id);
         })
-        ->where('month', $currentMonth)
-        ->where('year', $currentYear)
-        ->where('status', 'unpaid')
+        ->whereIn('status', ['pending', 'partial'])
         ->count();
+
+        // New Renter Requests (status = 'new')
+        $newRenterRequests = RenterRequest::whereHas('room.house', function ($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })
+        ->where('status', 'new')
+        ->count();
+
+        // Revenue chart data for last 6 months
+        $revenueChart = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $date = Carbon::now()->subMonths($i);
+            $month = $date->month;
+            $year = $date->year;
+            
+            $revenue = Bill::whereHas('room.house', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->where('month', $month)
+            ->where('year', $year)
+            ->sum('amount');
+            
+            $collected = Payment::whereHas('bill.room.house', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->whereHas('bill', function ($q) use ($month, $year) {
+                $q->where('month', $month)->where('year', $year);
+            })
+            ->sum('amount');
+            
+            $revenueChart[] = [
+                'month' => $date->format('M'),
+                'monthFull' => $date->format('F'),
+                'revenue' => $revenue,
+                'collected' => $collected,
+            ];
+        }
+
+        // Recent Contracts with pagination
+        $contracts = Contract::with('room.house', 'renterRequest')
+        ->whereHas('room.house', function ($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })
+        ->where('status', 'active')
+        ->orderBy('created_at', 'desc')
+        ->paginate(6) // Load 6 items per page
+        ->through(function($contract) {
+            return [
+                'id' => $contract->id,
+                'room_id' => $contract->room_id,
+                'renter_request_id' => $contract->renter_request_id,
+                'start_date' => $contract->start_date,
+                'end_date' => $contract->end_date,
+                'monthly_rent' => $contract->monthly_rent,
+                'deposit' => $contract->deposit,
+                'payment_date' => $contract->payment_date,
+                'status' => $contract->status,
+                'room' => $contract->room,
+                'renterRequest' => $contract->renterRequest,
+            ];
+        });
 
         $stats = [
             'totalHouses' => $totalHouses,
@@ -93,15 +177,21 @@ class DashboardController extends Controller
             'vacantRooms' => $vacantRooms,
             'activeContracts' => $activeContracts,
             'totalRenters' => $totalRenters,
+            'newRenterRequests' => $newRenterRequests,
             'monthlyRevenue' => $monthlyRevenue,
+            'previousMonthRevenue' => $previousMonthRevenue,
+            'revenueChangePercent' => $revenueChangePercent,
+            'revenueChangeIsPositive' => $revenueChangeIsPositive,
             'collectedAmount' => $collectedAmount,
             'pendingAmount' => $pendingAmount,
             'collectionRate' => $collectionRate,
             'unpaidBills' => $unpaidBills,
+            'revenueChart' => $revenueChart,
         ];
 
         return Inertia::render('Landlord/Dashboard', [
             'stats' => $stats,
+            'contracts' => $contracts,
         ]);
     }
 }

@@ -15,7 +15,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Be Vietnam Pro', 'system-ui', '-apple-system', 'sans-serif'],
             },
         },
     },

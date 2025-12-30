@@ -57,7 +57,7 @@ export default function Show() {
                                             Đến: {new Date(contract.end_date).toLocaleDateString('vi-VN')}
                                         </p>
                                         <p className="text-sm">
-                                            Giá: {contract.monthly_rent.toLocaleString('vi-VN')} ₫/tháng
+                                            Giá: {contract.monthly_rent.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫/tháng
                                         </p>
                                         <span className={`inline-block mt-2 px-2 py-1 text-xs rounded ${
                                             contract.status === 'active' 

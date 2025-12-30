@@ -8,6 +8,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cookie;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -57,6 +59,22 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
+        // Remove any SSO tokens issued for this user
+        if ($user) {
+            $userKey = 'sso_user:'.$user->id;
+            $tokens = Cache::pull($userKey, []);
+            if (is_array($tokens)) {
+                foreach ($tokens as $t) {
+                    Cache::forget('sso:'.$t);
+                }
+            }
+        }
+
+        // Remove sso_token cookie on logout (in case it was set)
+        Cookie::queue(Cookie::forget('sso_token'));
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

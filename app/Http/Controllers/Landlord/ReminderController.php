@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Reminder;
 use App\Models\Contract;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -16,9 +17,12 @@ class ReminderController extends Controller
      */
     public function index(Request $request)
     {
+        // Tự động tạo các nhắc nhở mới
+        Artisan::call('reminders:generate');
+        
         $user = auth()->user();
         
-        $query = Reminder::with(['contract.renter', 'contract.room.house'])
+        $query = Reminder::with(['contract.renterRequest', 'contract.room.house', 'bill'])
             ->whereHas('contract.room.house', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             });
@@ -44,6 +48,13 @@ class ReminderController extends Controller
         $reminders = $query->orderBy('reminder_date', 'asc')
                            ->paginate(15);
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'reminders' => $reminders,
+                'filters' => $request->only(['type', 'status']),
+            ]);
+        }
+
         return Inertia::render('Landlord/Reminders/Index', [
             'reminders' => $reminders,
             'filters' => $request->only(['type', 'status']),
@@ -57,7 +68,7 @@ class ReminderController extends Controller
     {
         $user = auth()->user();
         
-        $contracts = Contract::with(['renter', 'room.house'])
+        $contracts = Contract::with(['renterRequest', 'room.house'])
             ->whereHas('room.house', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
@@ -76,7 +87,8 @@ class ReminderController extends Controller
     {
         $validated = $request->validate([
             'contract_id' => 'required|exists:contracts,id',
-            'type' => 'required|in:payment,contract_expiry',
+            'bill_id' => 'nullable|exists:bills,id',
+            'type' => 'required|in:payment,contract_expiry,bill_creation,bill_payment',
             'reminder_date' => 'required|date|after_or_equal:today',
             'message' => 'nullable|string',
         ]);
@@ -95,7 +107,7 @@ class ReminderController extends Controller
     {
         $this->authorizeReminder($reminder);
 
-        $reminder->load(['contract.renter', 'contract.room.house']);
+        $reminder->load(['contract.renterRequest', 'contract.room.house']);
 
         return Inertia::render('Landlord/Reminders/Show', [
             'reminder' => $reminder,
@@ -111,14 +123,14 @@ class ReminderController extends Controller
 
         $user = auth()->user();
         
-        $contracts = Contract::with(['renter', 'room.house'])
+        $contracts = Contract::with(['renterRequest', 'room.house'])
             ->whereHas('room.house', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
             ->where('status', 'active')
             ->get();
 
-        $reminder->load(['contract.renter', 'contract.room.house']);
+        $reminder->load(['contract.renterRequest', 'contract.room.house']);
 
         return Inertia::render('Landlord/Reminders/Edit', [
             'reminder' => $reminder,
@@ -135,7 +147,8 @@ class ReminderController extends Controller
 
         $validated = $request->validate([
             'contract_id' => 'required|exists:contracts,id',
-            'type' => 'required|in:payment,contract_expiry',
+            'bill_id' => 'nullable|exists:bills,id',
+            'type' => 'required|in:payment,contract_expiry,bill_creation,bill_payment',
             'reminder_date' => 'required|date',
             'message' => 'nullable|string',
         ]);
@@ -180,11 +193,12 @@ class ReminderController extends Controller
     {
         $user = auth()->user();
         
+        // Count reminders that have not been sent yet (is_sent = false)
+        // Do not filter by reminder_date so badge shows all unsent notifications
         $count = Reminder::whereHas('contract.room.house', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            $q->where('user_id', $user->id);
             })
             ->where('is_sent', false)
-            ->where('reminder_date', '<=', now())
             ->count();
 
         return response()->json(['count' => $count]);

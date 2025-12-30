@@ -11,6 +11,7 @@ class Reminder extends Model
 
     protected $fillable = [
         'contract_id',
+        'bill_id',
         'type',
         'reminder_date',
         'message',
@@ -28,6 +29,14 @@ class Reminder extends Model
     public function contract()
     {
         return $this->belongsTo(Contract::class);
+    }
+
+    /**
+     * Get the bill for this reminder
+     */
+    public function bill()
+    {
+        return $this->belongsTo(Bill::class);
     }
 
     /**

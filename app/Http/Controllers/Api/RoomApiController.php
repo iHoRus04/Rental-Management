@@ -13,7 +13,7 @@ class RoomApiController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => House::select('id', 'name', 'address')->get()
+            'data' => House::all()
         ]);
     }
 
@@ -41,6 +41,19 @@ class RoomApiController extends Controller
         return response()->json([
             'success' => true,
             'data' => $room
+        ]);
+    }
+
+    // Danh sách tất cả phòng
+    public function allRooms()
+    {
+        $rooms = Room::with('house')
+                    ->select('id', 'name', 'price', 'area', 'floor', 'status', 'images', 'house_id')
+                    ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rooms
         ]);
     }
 }

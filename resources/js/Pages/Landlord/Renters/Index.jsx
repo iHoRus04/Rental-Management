@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function Index() {
     const { renters } = usePage().props;
@@ -109,3 +110,5 @@ export default function Index() {
         </div>
     );
 }
+
+Index.layout = (page) => <AuthenticatedLayout children={page} />;

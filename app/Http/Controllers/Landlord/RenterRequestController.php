@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Landlord;
 
 use App\Http\Controllers\Controller;
 use App\Models\RenterRequest;
+use App\Models\Renter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -35,16 +36,58 @@ class RenterRequestController extends Controller
         ]);
     }
 
-    public function show(RenterRequest $request)
+    public function show(RenterRequest $renterRequest)
     {
-        $request->load('room.house');
+        $renterRequest->load('room.house');
         
         return Inertia::render('Landlord/RenterRequests/Show', [
-            'renterRequest' => $request,
+            'renterRequest' => $renterRequest,
         ]);
     }
 
-    public function updateStatus(Request $request, RenterRequest $renterRequest)
+    public function create()
+    {
+        $user = Auth::user();
+        
+        // Get all rooms for this landlord
+        $rooms = \App\Models\Room::with('house')
+            ->whereHas('house', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })
+            ->get();
+
+        return Inertia::render('Landlord/RenterRequests/Create', [
+            'rooms' => $rooms,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'room_id' => 'required|exists:rooms,id',
+            'message' => 'nullable|string',
+        ]);
+
+        // Ensure the landlord owns the selected room
+        $room = \App\Models\Room::findOrFail($validated['room_id']);
+        if ($room->house->user_id != $user->id) {
+            return back()->withErrors(['room_id' => 'Bạn không có quyền chọn phòng này!']);
+        }
+
+        // Set default status to 'new' and create
+        $validated['status'] = 'new';
+        RenterRequest::create($validated);
+
+        return redirect()->route('landlord.renter-requests.index')
+                        ->with('success', 'Tạo yêu cầu thuê phòng thành công!');
+    }
+
+    public function updateStatus(Request $httpRequest, RenterRequest $renterRequest, $status)
     {
         $user = Auth::user();
         
@@ -57,13 +100,13 @@ class RenterRequestController extends Controller
             return redirect()->back()->with('error', 'Không tìm thấy thông tin nhà cho yêu cầu này!');
         }
 
-        $status = $request->input('status');
         $validStatuses = ['new', 'contacted', 'approved', 'rejected'];
         
         if (!in_array($status, $validStatuses)) {
             return redirect()->back()->with('error', 'Trạng thái không hợp lệ!');
         }
 
+        // Simply update status
         $renterRequest->update(['status' => $status]);
 
         return redirect()->back()->with('success', 'Cập nhật trạng thái yêu cầu thành công!');

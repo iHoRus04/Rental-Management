@@ -20,11 +20,17 @@ class BillController extends Controller
         $this->billService = $billService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $bills = Bill::with(['contract', 'room', 'renter'])
+        $bills = Bill::with(['contract', 'room', 'renterRequest'])
             ->latest()
             ->get();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'bills' => $bills,
+            ]);
+        }
 
         return Inertia::render('Landlord/Bills/Index', [
             'bills' => $bills,
@@ -33,9 +39,28 @@ class BillController extends Controller
 
     public function create()
     {
-        $contracts = Contract::with(['room', 'renter'])
+        $contracts = Contract::with(['room', 'renterRequest'])
             ->where('status', 'active')
-            ->get();
+            ->get()
+            ->map(function ($contract) {
+                return [
+                    'id' => $contract->id,
+                    'room_id' => $contract->room_id,
+                    'renter_request_id' => $contract->renter_request_id,
+                    'monthly_rent' => $contract->monthly_rent,
+                    'status' => $contract->status,
+                    'room' => [
+                        'id' => $contract->room->id,
+                        'name' => $contract->room->name,
+                    ],
+                    'renterRequest' => $contract->renterRequest ? [
+                        'id' => $contract->renterRequest->id,
+                        'name' => $contract->renterRequest->name,
+                        'phone' => $contract->renterRequest->phone,
+                        'email' => $contract->renterRequest->email,
+                    ] : null,
+                ];
+            });
 
         return Inertia::render('Landlord/Bills/Create', [
             'contracts' => $contracts,
@@ -65,7 +90,7 @@ class BillController extends Controller
         $bill = new Bill([
             'contract_id' => $contract->id,
             'room_id' => $contract->room_id,
-            'renter_id' => $contract->renter_id,
+            'renter_request_id' => $contract->renter_request_id,
             'month' => $validated['month'],
             'year' => $validated['year'],
             'room_price' => $validated['room_price'],
@@ -93,7 +118,7 @@ class BillController extends Controller
 
     public function show(Bill $bill)
     {
-        $bill->load(['contract', 'room', 'renter']);
+        $bill->load(['contract', 'room', 'renterRequest']);
         
         return Inertia::render('Landlord/Bills/Show', [
             'bill' => $bill,
@@ -102,9 +127,11 @@ class BillController extends Controller
 
     public function edit(Bill $bill)
     {
-        $contracts = Contract::with(['room', 'renter'])
+        $contracts = Contract::with(['room', 'renterRequest'])
             ->where('status', 'active')
             ->get();
+
+        $bill->load(['room', 'renterRequest']);
 
         return Inertia::render('Landlord/Bills/Edit', [
             'bill' => $bill,
@@ -197,7 +224,7 @@ class BillController extends Controller
      */
     public function exportPDF(Bill $bill)
     {
-        $bill->load(['contract', 'room', 'renter', 'payments']);
+        $bill->load(['contract', 'room', 'renterRequest', 'payments']);
 
         $filename = 'hoa-don-' . $bill->month . '-' . $bill->year . '-' . str_replace(' ', '-', $bill->room->name) . '.pdf';
         

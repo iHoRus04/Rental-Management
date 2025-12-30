@@ -21,19 +21,19 @@ export default function YearToDateRevenue() {
                 <div className="bg-white rounded-lg shadow p-6">
                     <p className="text-gray-600 text-sm">Tổng tiền cả năm</p>
                     <p className="text-3xl font-bold text-blue-600">
-                        {yearData.reduce((sum, m) => sum + m.total_billed, 0).toLocaleString('vi-VN')} ₫
+                        {yearData.reduce((sum, m) => sum + m.total_billed, 0).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫
                     </p>
                 </div>
                 <div className="bg-white rounded-lg shadow p-6">
                     <p className="text-gray-600 text-sm">Đã thu cả năm</p>
                     <p className="text-3xl font-bold text-green-600">
-                        {yearData.reduce((sum, m) => sum + m.total_paid, 0).toLocaleString('vi-VN')} ₫
+                        {yearData.reduce((sum, m) => sum + m.total_paid, 0).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫
                     </p>
                 </div>
                 <div className="bg-white rounded-lg shadow p-6">
                     <p className="text-gray-600 text-sm">Chưa thu cả năm</p>
                     <p className="text-3xl font-bold text-red-600">
-                        {yearData.reduce((sum, m) => sum + m.total_unpaid, 0).toLocaleString('vi-VN')} ₫
+                        {yearData.reduce((sum, m) => sum + m.total_unpaid, 0).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫
                     </p>
                 </div>
             </div>
@@ -64,9 +64,9 @@ export default function YearToDateRevenue() {
                                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                         <td className="px-6 py-4 font-medium text-gray-900">{monthData.month_name}</td>
                                         <td className="px-6 py-4 text-right text-gray-600">{monthData.bill_count}</td>
-                                        <td className="px-6 py-4 text-right text-gray-600">{monthData.total_billed.toLocaleString('vi-VN')} ₫</td>
-                                        <td className="px-6 py-4 text-right text-green-600 font-medium">{monthData.total_paid.toLocaleString('vi-VN')} ₫</td>
-                                        <td className="px-6 py-4 text-right text-red-600">{monthData.total_unpaid.toLocaleString('vi-VN')} ₫</td>
+                                        <td className="px-6 py-4 text-right text-gray-600">{monthData.total_billed.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</td>
+                                        <td className="px-6 py-4 text-right text-green-600 font-medium">{monthData.total_paid.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</td>
+                                        <td className="px-6 py-4 text-right text-red-600">{monthData.total_unpaid.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫</td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex items-center justify-center gap-2">
                                                 <div className="w-20 bg-gray-200 rounded h-2">
@@ -89,13 +89,13 @@ export default function YearToDateRevenue() {
                                     {yearData.reduce((sum, m) => sum + m.bill_count, 0)}
                                 </td>
                                 <td className="px-6 py-4 text-right text-blue-600">
-                                    {yearData.reduce((sum, m) => sum + m.total_billed, 0).toLocaleString('vi-VN')} ₫
+                                    {yearData.reduce((sum, m) => sum + m.total_billed, 0).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫
                                 </td>
                                 <td className="px-6 py-4 text-right text-green-600">
-                                    {yearData.reduce((sum, m) => sum + m.total_paid, 0).toLocaleString('vi-VN')} ₫
+                                    {yearData.reduce((sum, m) => sum + m.total_paid, 0).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫
                                 </td>
                                 <td className="px-6 py-4 text-right text-red-600">
-                                    {yearData.reduce((sum, m) => sum + m.total_unpaid, 0).toLocaleString('vi-VN')} ₫
+                                    {yearData.reduce((sum, m) => sum + m.total_unpaid, 0).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₫
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                     {((yearData.reduce((sum, m) => sum + m.total_paid, 0) / yearData.reduce((sum, m) => sum + m.total_billed, 0)) * 100).toFixed(0)}%

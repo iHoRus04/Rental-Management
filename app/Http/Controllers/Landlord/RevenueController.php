@@ -20,7 +20,7 @@ class RevenueController extends Controller
         $year = $request->input('year', now()->year);
 
         // Lấy tất cả bills của tháng này
-        $bills = Bill::with(['room', 'renter'])
+        $bills = Bill::with(['room', 'renterRequest'])
             ->where('month', $month)
             ->where('year', $year)
             ->get();
@@ -63,7 +63,7 @@ class RevenueController extends Controller
         $year = $request->input('year', now()->year);
 
         // Lấy tất cả bills của năm này
-        $bills = Bill::with(['room', 'renter'])
+        $bills = Bill::with(['room', 'renterRequest'])
             ->where('year', $year)
             ->get();
 
@@ -106,7 +106,7 @@ class RevenueController extends Controller
         $fromDate = $request->input('from_date');
         $toDate = $request->input('to_date');
 
-        $query = Payment::with(['bill.room', 'bill.contract.renter'])
+        $query = Payment::with(['bill.room', 'bill.contract.renterRequest'])
             ->latest('payment_date');
 
         if ($fromDate) {

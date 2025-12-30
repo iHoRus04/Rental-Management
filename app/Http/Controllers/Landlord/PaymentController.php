@@ -11,11 +11,17 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PaymentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $payments = Payment::with(['bill.room', 'bill.renter'])
+        $payments = Payment::with(['bill.room', 'bill.renterRequest'])
             ->latest('payment_date')
             ->get();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'payments' => $payments,
+            ]);
+        }
 
         return Inertia::render('Landlord/Payments/Index', [
             'payments' => $payments,
@@ -25,13 +31,13 @@ class PaymentController extends Controller
     public function create(Request $request)
     {
         $billId = $request->query('bill_id');
-        $bills = Bill::with(['room', 'renter'])
+        $bills = Bill::with(['room', 'renterRequest'])
             ->where('status', '!=', 'paid')
             ->get();
 
         $selectedBill = null;
         if ($billId) {
-            $selectedBill = Bill::with(['room', 'renter'])->find($billId);
+            $selectedBill = Bill::with(['room', 'renterRequest'])->find($billId);
         }
 
         return Inertia::render('Landlord/Payments/Create', [
@@ -67,7 +73,7 @@ class PaymentController extends Controller
 
     public function show(Payment $payment)
     {
-        $payment->load(['bill.room', 'bill.renter', 'bill.contract']);
+        $payment->load(['bill.room', 'bill.renterRequest', 'bill.contract']);
 
         return Inertia::render('Landlord/Payments/Show', [
             'payment' => $payment,
@@ -76,7 +82,9 @@ class PaymentController extends Controller
 
     public function edit(Payment $payment)
     {
-        $bills = Bill::with(['room', 'renter'])
+        $payment->load(['bill.room', 'bill.renterRequest', 'bill.contract']);
+        
+        $bills = Bill::with(['room', 'renterRequest'])
             ->where('status', '!=', 'paid')
             ->get();
 
@@ -127,7 +135,7 @@ class PaymentController extends Controller
      */
     public function exportPDF(Bill $bill)
     {
-        $bill->load(['contract', 'room', 'renter', 'payments']);
+        $bill->load(['contract', 'room', 'renterRequest', 'payments']);
 
         $filename = 'hoa-don-' . $bill->month . '-' . $bill->year . '-' . str_replace(' ', '-', $bill->room->name) . '.pdf';
 

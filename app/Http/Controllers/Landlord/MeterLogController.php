@@ -13,14 +13,21 @@ class MeterLogController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $meterLogs = MeterLog::with('room')
+        $meterLogs = MeterLog::with('room.contract.renterRequest')
             ->orderByDesc('year')
             ->orderByDesc('month')
             ->get();
 
         $rooms = Room::all();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'meterLogs' => $meterLogs,
+                'rooms' => $rooms,
+            ]);
+        }
 
         return Inertia::render('Landlord/MeterLogs/Index', [
             'meterLogs' => $meterLogs,

@@ -11,7 +11,7 @@ class Contract extends Model
 
     protected $fillable = [
         'room_id',
-        'renter_id',
+        'renter_request_id',
         'start_date',
         'end_date',
         'monthly_rent',
@@ -32,9 +32,9 @@ class Contract extends Model
         return $this->belongsTo(Room::class);
     }
 
-    public function renter()
+    public function renterRequest()
     {
-        return $this->belongsTo(Renter::class);
+        return $this->belongsTo(RenterRequest::class);
     }
 
     public function bills()

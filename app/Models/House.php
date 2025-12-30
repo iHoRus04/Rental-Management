@@ -12,8 +12,10 @@ class House extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'type',
         'address',
         'description',
+        'image',
     ];
 
     public function user()

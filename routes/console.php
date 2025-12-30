@@ -11,6 +11,6 @@ Artisan::command('inspire', function () {
 // Schedule automatic reminder generation
 Schedule::command('reminders:generate')
     ->daily()
-    ->at('08:00')
+    ->at('08:00') // Thay đổi giờ ở đây: '06:00', '12:00', '18:00', v.v.
     ->description('Tự động tạo nhắc nhở thanh toán và hết hạn hợp đồng');
 

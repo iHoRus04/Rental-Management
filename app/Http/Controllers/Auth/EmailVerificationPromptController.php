@@ -11,6 +11,11 @@ use Inertia\Response;
 class EmailVerificationPromptController extends Controller
 {
     /**
+     * EmailVerificationPromptController
+     *
+     * Hiển thị giao diện nhắc verify email cho user chưa xác thực email.
+     */
+    /**
      * Display the email verification prompt.
      */
     public function __invoke(Request $request): RedirectResponse|Response

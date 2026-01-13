@@ -11,10 +11,20 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * RoomController
+ *
+ * Quản lý phòng trong một nhà trọ: CRUD, xử lý hình ảnh (upload, xóa, remove image)
+ * và kiểm tra quyền sở hữu house trước khi thao tác.
+ */
 class RoomController extends Controller
 {
     /**
      * Kiểm tra quyền sở hữu house
+     *
+     * Mục đích: bảo đảm landlord hiện tại (`Auth::id()`)
+     * là chủ sở hữu của `House` trước khi cho phép truy cập hoặc thay đổi.
+     * Nếu không, sẽ trả về lỗi 403 để ngăn người dùng thao tác vào dữ liệu của người khác.
      */
     private function authorizeHouseOwnership(House $house)
     {
@@ -59,6 +69,11 @@ class RoomController extends Controller
             'images' => 'nullable|array|max:5',
         ]);
 
+        // Xử lý upload ảnh:
+        // - Lưu file vào disk `public` trong thư mục `rooms`
+        // - Giới hạn tối đa 5 ảnh cho mỗi phòng (kiểm tra trong vòng lặp)
+        // - Lưu đường dẫn dưới dạng JSON vào trường `images`
+        // (Lưu ý: Storage::disk('public') phải được cấu hình trong filesystem)
         // Handle image uploads
         $imagePaths = [];
         if ($request->hasFile('images')) {
@@ -86,7 +101,9 @@ class RoomController extends Controller
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');
         }
 
-        // Get active contract with renter request
+        // Lấy hợp đồng đang active (nếu có) kèm mối quan hệ `renterRequest`
+        // Mục đích: khi hiển thị trang phòng, cần biết xem hiện có hợp đồng
+        // nào đang chạy để show thông tin người thuê (hoặc request liên quan).
         $activeContract = $room->contracts()
             ->with('renterRequest')
             ->where('status', 'active')

@@ -10,6 +10,13 @@ use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
+/**
+ * ReminderController
+ *
+ * Quản lý nhắc nhở (Reminders). Controller này tự động gọi command
+ * `reminders:generate` để tạo các nhắc nhở (ví dụ: nhắc thanh toán, hợp đồng
+ * sắp hết hạn) trước khi hiển thị danh sách. Hỗ trợ lọc theo loại và trạng thái.
+ */
 class ReminderController extends Controller
 {
     /**
@@ -17,22 +24,28 @@ class ReminderController extends Controller
      */
     public function index(Request $request)
     {
-        // Tự động tạo các nhắc nhở mới
+        // NOTE: Hiện tại controller này gọi trực tiếp command để sinh reminder mới.
+        // Điều này có nghĩa là mỗi lần user mở trang Reminders sẽ kích hoạt quá trình
+        // sinh reminder (có thể tiêu tốn thời gian). Thay vì gọi trực tiếp ở đây,
+        // cân nhắc chạy command qua scheduler hoặc dispatch job vào queue.
         Artisan::call('reminders:generate');
-        
+
+        // Lấy landlord hiện tại để giới hạn dữ liệu chỉ cho nhà của họ
         $user = auth()->user();
-        
+
+        // Bắt đầu build query: eager-load các relation cần thiết để tránh N+1
         $query = Reminder::with(['contract.renterRequest', 'contract.room.house', 'bill'])
             ->whereHas('contract.room.house', function ($q) use ($user) {
+                // Chỉ lấy reminders thuộc về nhà của landlord đang đăng nhập
                 $q->where('user_id', $user->id);
             });
 
-        // Filter by type
+        // Lọc theo loại reminder (payment, contract_expiry, ...)
         if ($request->has('type') && $request->type !== 'all') {
             $query->where('type', $request->type);
         }
 
-        // Filter by status
+        // Lọc theo trạng thái: pending (chưa gửi và đến hạn), upcoming (chưa gửi và chưa đến), sent
         if ($request->has('status')) {
             if ($request->status === 'pending') {
                 $query->where('is_sent', false)
@@ -45,9 +58,11 @@ class ReminderController extends Controller
             }
         }
 
-        $reminders = $query->orderBy('reminder_date', 'asc')
+        // Sắp xếp theo ngày nhắc và phân trang
+        $reminders = $query->orderBy('reminder_date', 'desc')
                            ->paginate(15);
 
+        // Trả JSON khi client muốn, hoặc render Inertia page cho web UI
         if ($request->wantsJson()) {
             return response()->json([
                 'reminders' => $reminders,
@@ -66,6 +81,7 @@ class ReminderController extends Controller
      */
     public function create()
     {
+        // Chuẩn bị dữ liệu cho form tạo reminder: chỉ lấy hợp đồng active thuộc landlord
         $user = auth()->user();
         
         $contracts = Contract::with(['renterRequest', 'room.house'])
@@ -105,8 +121,10 @@ class ReminderController extends Controller
      */
     public function show(Reminder $reminder)
     {
+        // Bảo đảm reminder thuộc về landlord đang đăng nhập
         $this->authorizeReminder($reminder);
 
+        // Load các relation cần thiết để hiển thị chi tiết
         $reminder->load(['contract.renterRequest', 'contract.room.house']);
 
         return Inertia::render('Landlord/Reminders/Show', [
@@ -119,8 +137,10 @@ class ReminderController extends Controller
      */
     public function edit(Reminder $reminder)
     {
+        // Kiểm tra quyền sở hữu
         $this->authorizeReminder($reminder);
 
+        // Lấy danh sách hợp đồng để có thể chuyển reminder sang hợp đồng khác khi edit
         $user = auth()->user();
         
         $contracts = Contract::with(['renterRequest', 'room.house'])
@@ -130,6 +150,7 @@ class ReminderController extends Controller
             ->where('status', 'active')
             ->get();
 
+        // Load relation để hiển thị form edit đầy đủ thông tin
         $reminder->load(['contract.renterRequest', 'contract.room.house']);
 
         return Inertia::render('Landlord/Reminders/Edit', [
@@ -166,7 +187,7 @@ class ReminderController extends Controller
     public function markAsSent(Reminder $reminder)
     {
         $this->authorizeReminder($reminder);
-
+        // Đánh dấu nhắc nhở là đã gửi (cập nhật cờ is_sent và thời gian gửi nếu cần)
         $reminder->markAsSent();
 
         return back()->with('success', 'Đã đánh dấu nhắc nhở là đã gửi!');
@@ -211,8 +232,10 @@ class ReminderController extends Controller
     {
         $user = auth()->user();
         
+        // Load relation để kiểm tra quyền sở hữu (thuộc landlord nào)
         $reminder->load('contract.room.house');
         
+        // Nếu reminder không thuộc nhà của user đang đăng nhập => abort 403
         if ($reminder->contract->room->house->user_id !== $user->id) {
             abort(403, 'Unauthorized action.');
         }

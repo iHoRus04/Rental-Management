@@ -17,6 +17,12 @@ use Inertia\Response;
 class NewPasswordController extends Controller
 {
     /**
+     * NewPasswordController
+     *
+     * Xử lý màn hình reset mật khẩu (token) và lưu mật khẩu mới sau khi
+     * validate token. Trả view bằng Inertia và redirect sau khi thành công.
+     */
+    /**
      * Display the password reset view.
      */
     public function create(Request $request): Response

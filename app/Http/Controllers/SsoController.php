@@ -10,6 +10,13 @@ use App\Models\User;
 
 class SsoController extends Controller
 {
+    /**
+     * SSO helper controller
+     *
+     * Tạo và xác thực token tạm thời (SSO) giữa các ứng dụng trên cùng host.
+     * - `createToken()` tạo token ngắn hạn và trả về cookie cho client.
+     * - `validateToken()` được gọi bởi ứng dụng bên ngoài để kiểm tra và tiêu token.
+     */
     // Create a short-lived token for SSO and return it
     public function createToken(Request $request)
     {

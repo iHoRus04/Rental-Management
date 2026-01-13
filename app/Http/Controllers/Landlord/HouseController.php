@@ -11,6 +11,14 @@ use Illuminate\Support\Facades\Log;
 use App\Models\House;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
+/**
+ * HouseController
+ *
+ * Quản lý nhà trọ (Houses) của landlord.
+ * - Sử dụng trait AuthorizesRequests để tận dụng authorization blade/helpers.
+ * - Kiểm tra ownership (so sánh user_id) trước khi hiển thị/chỉnh sửa/xóa.
+ * - Xử lý upload/xóa hình ảnh thông qua Storage disk 'public'.
+ */
 class HouseController extends Controller
 {
     use AuthorizesRequests;

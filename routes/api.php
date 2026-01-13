@@ -23,6 +23,15 @@ Route::get('/renter-requests/pending-count', [RenterRequestApiController::class,
 // Meter Log API routes
 Route::get('/meter-logs/{roomId}/{month}/{year}', [MeterLogController::class, 'show']);
 
+// Room Services API route
+Route::get('/rooms/{roomId}/services', function ($roomId) {
+    $room = \App\Models\Room::with('services')->find($roomId);
+    if (!$room) {
+        return response()->json(['services' => []], 404);
+    }
+    return response()->json(['services' => $room->services]);
+});
+
 // SSO validate route - external app calls this to validate token and retrieve user info
 Route::get('/sso-validate/{token}', [\App\Http\Controllers\SsoController::class, 'validateToken']);
 // Simple endpoint to let frontends check whether the current session is authenticated.

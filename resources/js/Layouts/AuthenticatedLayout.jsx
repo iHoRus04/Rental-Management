@@ -19,8 +19,10 @@ export default function AuthenticatedLayout({ header, children }) {
         }
     }, [flash]);
 
-    // Fetch pending reminders count
+    // Fetch pending reminders count (only for landlord)
     useEffect(() => {
+        if (user.role !== 'landlord') return;
+
         const fetchPendingCount = async () => {
             try {
                 const response = await fetch('/landlord/reminders/pending-count');
@@ -35,10 +37,12 @@ export default function AuthenticatedLayout({ header, children }) {
         fetchPendingCount();
         const interval = setInterval(fetchPendingCount, 60000);
         return () => clearInterval(interval);
-    }, []);
+    }, [user.role]);
 
-    // Fetch pending renter-requests count (initialize from server-provided stats if available)
+    // Fetch pending renter-requests count (only for landlord)
     useEffect(() => {
+        if (user.role !== 'landlord') return;
+
         // Try to use shared props if available (e.g. stats from dashboard)
         try {
             const maybeStats = page.props?.stats;
@@ -61,7 +65,7 @@ export default function AuthenticatedLayout({ header, children }) {
         fetchRenterRequestsCount();
         const interval = setInterval(fetchRenterRequestsCount, 60000);
         return () => clearInterval(interval);
-    }, []);
+    }, [user.role]);
 
     // Close profile dropdown when clicking outside
     useEffect(() => {
@@ -80,10 +84,13 @@ export default function AuthenticatedLayout({ header, children }) {
         if (currentRoute.includes('/bills')) return 'bills';
         if (currentRoute.includes('/payments')) return 'payments';
         if (currentRoute.includes('/houses')) return 'houses';
+        if (currentRoute.includes('/services')) return 'services';
         if (currentRoute.includes('/meter-logs')) return 'meter-logs';
         if (currentRoute.includes('/reminders')) return 'reminders';
         if (currentRoute.includes('/renter-requests')) return 'renter-requests';
+        if (currentRoute.includes('/tenant-requests')) return 'tenant-requests';
         if (currentRoute.includes('/rooms')) return 'rooms';
+        if (currentRoute.includes('/tenant/requests')) return 'requests';
         return 'dashboard';
     };
 
@@ -179,15 +186,26 @@ export default function AuthenticatedLayout({ header, children }) {
         }
     };
 
-    const menuItems = [
+    // Menu items based on user role
+    const getLandlordMenuItems = () => [
         { id: 'dashboard', label: 'Dashboard', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>, route: 'landlord.dashboard' },
         { id: 'houses', label: 'Nhà trọ', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>, route: 'landlord.houses.index' },
+        { id: 'services', label: 'Dịch vụ', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>, route: 'landlord.services.index' },
+        { id: 'renter-requests', label: 'Yêu cầu thuê', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>, route: 'landlord.renter-requests.index' },
+        { id: 'tenant-requests', label: 'Yêu cầu từ người thuê', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>, route: 'landlord.tenant-requests.index' },
         { id: 'bills', label: 'Hóa đơn', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>, route: 'landlord.bills.index' },
         { id: 'payments', label: 'Thanh toán', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, route: 'landlord.payments.index' },
-        { id: 'renter-requests', label: 'Yêu cầu thuê', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>, route: 'landlord.renter-requests.index' },
         { id: 'meter-logs', label: 'Chỉ số điện nước', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>, route: 'landlord.meter-logs.index' },
         { id: 'reminders', label: 'Nhắc nhở', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>, route: 'landlord.reminders.index' },
     ];
+
+    const getTenantMenuItems = () => [
+        { id: 'dashboard', label: 'Dashboard', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>, route: 'tenant.dashboard' },
+        { id: 'requests', label: 'Yêu cầu của tôi', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>, route: 'tenant.requests.index' },
+    ];
+
+    // Get menu items based on role
+    const menuItems = user.role === 'tenant' ? getTenantMenuItems() : getLandlordMenuItems();
 
     const handleMenuClick = (item) => {
         if (item.route) router.visit(route(item.route));

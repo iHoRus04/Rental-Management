@@ -9,6 +9,14 @@ use App\Models\RenterRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
+/**
+ * ContractController
+ *
+ * Quản lý hợp đồng cho từng phòng: hiển thị, tạo, cập nhật, xóa.
+ * Controller chuẩn hóa dữ liệu trả về cho frontend (Inertia) và
+ * chịu trách nhiệm cập nhật trạng thái phòng (ví dụ: occupied/available)
+ * khi trạng thái hợp đồng thay đổi.
+ */
 class ContractController extends Controller
 {
     public function index(Room $room)
@@ -177,11 +185,30 @@ class ContractController extends Controller
 
     public function destroy(Room $room, Contract $contract)
     {
+        $renterRequestId = $contract->renter_request_id;
+        
         $contract->delete();
         
         // Kiểm tra nếu không còn hợp đồng active nào, cập nhật trạng thái phòng
         if (!$room->contracts()->where('status', 'active')->exists()) {
             $room->update(['status' => 'available']);
+        }
+
+        // Xóa tài khoản tenant nếu không còn hợp đồng nào
+        if ($renterRequestId) {
+            $hasOtherContracts = \App\Models\Contract::where('renter_request_id', $renterRequestId)
+                ->where(function ($query) {
+                    $query->where('end_date', '>=', now())
+                          ->orWhereNull('end_date');
+                })
+                ->exists();
+            
+            // Nếu không còn hợp đồng active, xóa tài khoản tenant
+            if (!$hasOtherContracts) {
+                \App\Models\User::where('renter_request_id', $renterRequestId)
+                    ->where('role', 'tenant')
+                    ->delete();
+            }
         }
 
         return redirect()->route('landlord.rooms.contracts.index', $room->id)

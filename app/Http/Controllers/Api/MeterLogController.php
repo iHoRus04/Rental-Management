@@ -9,6 +9,12 @@ use Illuminate\Http\Request;
 class MeterLogController extends Controller
 {
     /**
+     * MeterLogController (API)
+     *
+     * Trả về chỉ số điện/nước (`MeterLog`) cho phòng theo tháng/năm.
+     * Dùng cho API nội bộ hoặc client cần hiển thị lịch sử tiêu thụ.
+     */
+    /**
      * Get meter log for a specific room, month, and year
      */
     public function show($roomId, $month, $year)

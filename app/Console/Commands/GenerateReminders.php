@@ -29,13 +29,17 @@ class GenerateReminders extends Command
      */
     public function handle()
     {
+        // Thông báo bắt đầu (chạy trên CLI hoặc gọi từ controller)
         $this->info('Bắt đầu tạo nhắc nhở tự động...');
 
+        // Chạy từng nhóm generator riêng biệt. Mỗi hàm trả về số lượng reminder mới tạo.
+        // Thứ tự không quá quan trọng nhưng giữ logic tách biệt cho dễ bảo trì.
         $billCreationReminders = $this->generateBillCreationReminders();
         $billPaymentReminders = $this->generateBillPaymentReminders();
         $paymentReminders = $this->generatePaymentReminders();
         $expiryReminders = $this->generateContractExpiryReminders();
 
+        // In kết quả tóm tắt
         $this->info("✓ Đã tạo {$billCreationReminders} nhắc nhở tạo hóa đơn");
         $this->info("✓ Đã tạo {$billPaymentReminders} nhắc nhở thanh toán hóa đơn");
         $this->info("✓ Đã tạo {$paymentReminders} nhắc nhở thanh toán");
@@ -50,33 +54,37 @@ class GenerateReminders extends Command
      */
     private function generatePaymentReminders()
     {
+        // Tạo reminder nhắc thanh toán định kỳ cho các hợp đồng đang active.
+        // Ý tưởng: tính ngày thanh toán tiếp theo dựa trên trường `payment_date` (giả sử lưu ngày trong tháng),
+        // sau đó tạo reminder 5 ngày trước ngày thanh toán.
         $count = 0;
         $today = Carbon::today();
         $nextMonth = Carbon::today()->addMonth();
 
-        // Get all active contracts
+        // Lấy tất cả hợp đồng active để xử lý
         $contracts = Contract::where('status', 'active')->get();
 
         foreach ($contracts as $contract) {
-            // Calculate next payment date based on payment_date field (day of month)
+            // Tạo ngày thanh toán trong tháng tiếp theo (dùng payment_date của hợp đồng)
             $nextPaymentDate = Carbon::create(
                 $nextMonth->year,
                 $nextMonth->month,
                 $contract->payment_date
             );
 
-            // Reminder date: 5 days before payment date
+            // Reminder: 5 ngày trước ngày thanh toán
             $reminderDate = $nextPaymentDate->copy()->subDays(5);
 
-            // Only create if reminder date is in the future
+            // Chỉ tạo reminder nếu ngày reminder nằm trong tương lai (>= hôm nay)
             if ($reminderDate->gte($today)) {
-                // Check if reminder already exists
+                // Kiểm tra đã tồn tại reminder cùng loại cho cùng ngày chưa (tránh duplicate)
                 $exists = Reminder::where('contract_id', $contract->id)
                     ->where('type', 'payment')
                     ->where('reminder_date', $reminderDate)
                     ->exists();
 
                 if (!$exists) {
+                    // Tạo reminder mới với message mô tả
                     Reminder::create([
                         'contract_id' => $contract->id,
                         'type' => 'payment',
@@ -99,11 +107,12 @@ class GenerateReminders extends Command
      */
     private function generateContractExpiryReminders()
     {
+        // Tạo nhắc nhở hợp đồng sắp hết hạn (trong 30 ngày tới)
         $count = 0;
         $today = Carbon::today();
         $in30Days = Carbon::today()->addDays(30);
 
-        // Get contracts expiring in the next 30 days
+        // Lọc hợp đồng active có end_date trong khoảng [today, in30Days]
         $contracts = Contract::where('status', 'active')
             ->whereBetween('end_date', [$today, $in30Days])
             ->get();
@@ -112,15 +121,15 @@ class GenerateReminders extends Command
             $endDate = Carbon::parse($contract->end_date);
             $daysUntilExpiry = $today->diffInDays($endDate);
             
-            // Tạo nhắc nhở nếu hợp đồng sắp hết hạn trong vòng 30 ngày
-            // Kiểm tra xem đã có reminder chưa gửi cho hợp đồng này chưa
+            // Nếu chưa có reminder chưa gửi cho loại này => tạo mới
             $exists = Reminder::where('contract_id', $contract->id)
                 ->where('type', 'contract_expiry')
                 ->where('is_sent', false)
                 ->exists();
 
             if (!$exists) {
-                $reminderDate = $today; // Tạo nhắc nhở ngay hôm nay
+                // Tạo nhắc nhở ngay hôm nay, thêm thông điệp khẩn nếu cận hạn
+                $reminderDate = $today;
                 $urgencyMessage = '';
                 
                 if ($daysUntilExpiry <= 7) {
@@ -151,28 +160,29 @@ class GenerateReminders extends Command
      */
     private function generateBillCreationReminders()
     {
+        // Tạo nhắc nhở yêu cầu tạo hóa đơn cho những hợp đồng chưa có bill của tháng hiện tại
         $count = 0;
         $today = Carbon::today();
         $currentMonth = $today->month;
         $currentYear = $today->year;
 
-        // Lấy tất cả hợp đồng đang active
+        // Lấy danh sách hợp đồng active kèm thông tin phòng để hiển thị tên
         $contracts = Contract::where('status', 'active')->with('room')->get();
 
         foreach ($contracts as $contract) {
-            // Kiểm tra xem đã có hóa đơn cho tháng này chưa
+            // Kiểm tra đã có bill cho tháng hiện tại hay chưa
             $billExists = Bill::where('contract_id', $contract->id)
                 ->where('month', $currentMonth)
                 ->where('year', $currentYear)
                 ->exists();
 
             if (!$billExists) {
-                // Tạo nhắc nhở vào ngày 1-3 của tháng để tạo hóa đơn
+                // Chúng ta chọn ngày reminder vào ngày 3 của tháng (1-3)
                 $reminderDate = Carbon::create($currentYear, $currentMonth, 3);
 
-                // Chỉ tạo nếu ngày nhắc là hôm nay hoặc trong tương lai
+                // Nếu ngày reminder chưa qua (>= hôm nay) thì tạo reminder
                 if ($reminderDate->gte($today)) {
-                    // Kiểm tra xem đã có reminder chưa
+                    // Tránh tạo trùng
                     $reminderExists = Reminder::where('contract_id', $contract->id)
                         ->where('type', 'bill_creation')
                         ->where('reminder_date', $reminderDate)
@@ -202,23 +212,26 @@ class GenerateReminders extends Command
      */
     private function generateBillPaymentReminders()
     {
+        // Tạo reminder cho các hóa đơn chưa thanh toán hoặc thanh toán một phần khi
+        // hạn thanh toán đang đến gần (<= 3 ngày) hoặc đã quá hạn.
         $count = 0;
         $today = Carbon::today();
 
-        // Lấy tất cả hóa đơn chưa thanh toán hoặc thanh toán một phần
+        // Lấy tất cả hóa đơn có status pending hoặc partial để kiểm tra
         $bills = Bill::whereIn('status', ['pending', 'partial'])
             ->with(['contract.room', 'renterRequest'])
             ->get();
 
         foreach ($bills as $bill) {
             $dueDate = Carbon::parse($bill->due_date);
+            // diffInDays với tham số false cho phép trả âm nếu quá hạn
             $daysUntilDue = $today->diffInDays($dueDate, false);
             
-            // Nếu hóa đơn sắp đến hạn (trong vòng 3 ngày) hoặc đã quá hạn
+            // Nếu trong vòng 3 ngày tới hoặc đã quá hạn
             if ($daysUntilDue <= 3) {
-                $reminderDate = $today; // Tạo nhắc nhở ngay hôm nay
+                $reminderDate = $today; // chúng ta tạo reminder ngay hôm nay
                 
-                // Kiểm tra xem đã có reminder chưa
+                // Tránh tạo trùng reminder cho cùng bill chưa gửi
                 $reminderExists = Reminder::where('bill_id', $bill->id)
                     ->where('type', 'bill_payment')
                     ->where('is_sent', false)

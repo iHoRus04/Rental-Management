@@ -11,4 +11,17 @@ class RenterRequest extends Model
   public function room() { return $this->belongsTo(Room::class); }
   
   public function contracts() { return $this->hasMany(Contract::class); }
+  
+  // Service relationships
+  public function services()
+  {
+      return $this->belongsToMany(Service::class, 'renter_request_services')
+          ->withPivot('price', 'is_active', 'note', 'start_date', 'end_date', 'id')
+          ->withTimestamps();
+  }
+  
+  public function renterRequestServices()
+  {
+      return $this->hasMany(RenterRequestService::class);
+  }
 }

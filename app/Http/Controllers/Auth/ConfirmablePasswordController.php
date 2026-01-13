@@ -13,6 +13,12 @@ use Inertia\Response;
 class ConfirmablePasswordController extends Controller
 {
     /**
+     * ConfirmablePasswordController
+     *
+     * Hiển thị form xác nhận mật khẩu và xử lý xác thực mật khẩu hiện tại
+     * trước khi cho phép truy cập hành động nhạy cảm.
+     */
+    /**
      * Show the confirm password view.
      */
     public function show(): Response

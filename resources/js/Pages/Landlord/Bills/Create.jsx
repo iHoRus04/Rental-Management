@@ -6,6 +6,7 @@ export default function Create() {
     const { contracts } = usePage().props;
     const [selectedContract, setSelectedContract] = useState(null);
     const [meterLog, setMeterLog] = useState(null);
+    const [roomServices, setRoomServices] = useState([]);
 
     const { data, setData, post, processing, errors } = useForm({
         contract_id: '',
@@ -32,9 +33,26 @@ export default function Create() {
             setSelectedContract(contract);
             setData('room_price', contract.monthly_rent);
             fetchMeterLog(contract.room_id);
+            fetchRoomServices(contract.room_id);
         } else {
             setSelectedContract(null);
             setMeterLog(null);
+            setRoomServices([]);
+        }
+    };
+
+    const fetchRoomServices = async (roomId) => {
+        try {
+            const response = await fetch(`/api/rooms/${roomId}/services`);
+            if (response.ok) {
+                const result = await response.json();
+                setRoomServices(result.services || []);
+            } else {
+                setRoomServices([]);
+            }
+        } catch (error) {
+            console.log('Không thể tải dịch vụ của phòng');
+            setRoomServices([]);
         }
     };
 
@@ -159,6 +177,41 @@ export default function Create() {
                                             <p className="text-xs text-blue-500 font-bold uppercase tracking-wider mb-1">Giá thuê mặc định</p>
                                             <p className="text-xl font-bold text-blue-700">{(selectedContract.monthly_rent || 0).toLocaleString('vi-VN')} ₫</p>
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* Room Services Info */}
+                                {roomServices.length > 0 && (
+                                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 animate-fade-in">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider">Dịch vụ của phòng (Tham khảo)</p>
+                                            <Link
+                                                href={route('landlord.rooms.services', selectedContract.room_id)}
+                                                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium underline"
+                                                target="_blank"
+                                            >
+                                                Xem chi tiết
+                                            </Link>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                            {roomServices.map((service) => (
+                                                <div key={service.id} className="bg-white rounded-lg p-3 border border-emerald-100">
+                                                    <p className="text-xs text-gray-500 mb-1">{service.name}</p>
+                                                    <p className="text-sm font-bold text-emerald-700">
+                                                        {new Intl.NumberFormat('vi-VN').format(service.pivot.price)} ₫
+                                                    </p>
+                                                    {service.unit && (
+                                                        <p className="text-[10px] text-gray-400">
+                                                            {service.unit === 'kwh' && 'Đơn vị: kWh'}
+                                                            {service.unit === 'm3' && 'Đơn vị: m³'}
+                                                            {service.unit === 'month' && 'Theo tháng'}
+                                                            {service.unit === 'service' && 'Dịch vụ'}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-[11px] text-gray-500 mt-3 italic">💡 Bạn có thể tham khảo các mức giá này khi nhập dữ liệu bên dưới</p>
                                     </div>
                                 )}
 

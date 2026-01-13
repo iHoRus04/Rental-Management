@@ -8,6 +8,14 @@ use App\Models\Room;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
+/**
+ * MeterLogController
+ *
+ * Quản lý chỉ số điện nước (meter logs) theo phòng, theo tháng.
+ * - Kiểm tra duplicate (tháng/năm cùng phòng) khi tạo hoặc cập nhật.
+ * - Sử dụng method `calculateUsage()` trên model để tính mức tiêu thụ
+ *   dựa trên chỉ số hiện tại và chỉ số trước đó.
+ */
 class MeterLogController extends Controller
 {
     /**
@@ -71,6 +79,8 @@ class MeterLogController extends Controller
                 ->with('error', 'Chỉ số cho tháng/năm này đã tồn tại!');
         }
 
+        // Tạo MeterLog và tính mức tiêu thụ (sử dụng `calculateUsage()`
+        // để dựa trên chỉ số hiện tại và chỉ số trước đó nếu có)
         $meterLog = new MeterLog($validated);
         $meterLog->calculateUsage();
         $meterLog->save();

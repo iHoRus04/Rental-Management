@@ -2,7 +2,7 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 
-export default function RenterRequestShow({ auth, renterRequest }) {
+export default function RenterRequestShow({ auth, renterRequest, hasActiveContract, tenantAccount }) {
     const { props } = usePage();
     const csrfToken = props?.csrf_token || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     
@@ -151,6 +151,96 @@ export default function RenterRequestShow({ auth, renterRequest }) {
                                 </div>
                             )}
                         </div>
+
+                        {/* 2. Tài khoản đăng nhập */}
+                        {tenantAccount && (
+                            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-[24px] shadow-sm border border-indigo-100 p-6">
+                                <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                        </svg>
+                                    </span>
+                                    Tài khoản đăng nhập
+                                    <span className="ml-auto px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">Đã tạo</span>
+                                </h2>
+                                
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-white rounded-xl border border-indigo-100">
+                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Họ tên</p>
+                                        <p className="text-lg font-bold text-gray-900">{tenantAccount.name}</p>
+                                    </div>
+
+                                    <div className="p-4 bg-white rounded-xl border border-indigo-100">
+                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Tài khoản đăng nhập (Email)</p>
+                                        <p className="text-lg font-mono font-medium text-indigo-600">{tenantAccount.email}</p>
+                                    </div>
+
+                                    <div className="p-4 bg-white rounded-xl border border-indigo-100">
+                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Mật khẩu mặc định</p>
+                                        <div className="flex items-center gap-3">
+                                            <p className="text-lg font-mono font-medium text-gray-900">{renterRequest.phone}</p>
+                                            <span className="text-xs text-gray-500">(Số điện thoại)</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 bg-white rounded-xl border border-indigo-100">
+                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Vai trò</p>
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            Người thuê trọ
+                                        </span>
+                                    </div>
+
+                                    <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                                        <div className="flex items-start gap-2">
+                                            <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <div>
+                                                <p className="text-sm font-bold text-amber-900 mb-1">Lưu ý quan trọng</p>
+                                                <p className="text-xs text-amber-700 leading-relaxed">
+                                                    Mật khẩu mặc định là số điện thoại của người thuê. Vui lòng cung cấp thông tin đăng nhập cho họ 
+                                                    và khuyến khích đổi mật khẩu sau lần đăng nhập đầu tiên.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 3. Nút tạo tài khoản (nếu chưa có) */}
+                        {!tenantAccount && hasActiveContract && renterRequest.status === 'approved' && (
+                            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-[24px] shadow-sm border border-blue-100 p-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-bold text-gray-900 mb-2">Tạo tài khoản đăng nhập</h3>
+                                        <p className="text-sm text-gray-600 mb-4">
+                                            Khách hàng này đã được duyệt và đang thuê phòng. Tạo tài khoản để họ có thể đăng nhập và gửi yêu cầu/báo cáo.
+                                        </p>
+                                        <Link
+                                            href={route('landlord.renter-requests.create-account', renterRequest.id)}
+                                            method="post"
+                                            as="button"
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg shadow-blue-600/30 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            Tạo tài khoản ngay
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* RIGHT COLUMN: Room Info */}

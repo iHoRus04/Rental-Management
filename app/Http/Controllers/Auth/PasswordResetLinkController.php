@@ -13,6 +13,11 @@ use Inertia\Response;
 class PasswordResetLinkController extends Controller
 {
     /**
+     * PasswordResetLinkController
+     *
+     * Xử lý gửi link reset mật khẩu tới email người dùng (forgot password).
+     */
+    /**
      * Display the password reset link request view.
      */
     public function create(): Response

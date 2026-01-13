@@ -14,6 +14,13 @@ use Inertia\Response;
 class ProfileController extends Controller
 {
     /**
+     * ProfileController
+     *
+     * Quản lý trang thông tin người dùng (profile): hiển thị form, cập nhật
+     * thông tin và xóa tài khoản. Các phương thức trả về Inertia views
+     * hoặc RedirectResponse như phù hợp.
+     */
+    /**
      * Display the user's profile form.
      */
     public function edit(Request $request): Response

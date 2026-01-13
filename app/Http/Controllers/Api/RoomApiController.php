@@ -8,6 +8,12 @@ use App\Models\House;
 
 class RoomApiController extends Controller
 {
+    /**
+     * RoomApiController
+     *
+     * API endpoints đơn giản để lấy thông tin `House` và `Room` cho
+     * client (ứng dụng di động / public frontend). Trả về JSON.
+     */
     // Danh sách nhà
     public function houses()
     {

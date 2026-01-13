@@ -9,6 +9,12 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
+/**
+ * RevenueController
+ *
+ * Xử lý các báo cáo thu nhập: báo cáo theo tháng, theo năm, lịch sử thanh toán.
+ * Tách phần tính toán (aggregation) và trả dữ liệu cho view báo cáo.
+ */
 class RevenueController extends Controller
 {
     /**
@@ -16,6 +22,8 @@ class RevenueController extends Controller
      */
     public function monthlyReport(Request $request)
     {
+        // Lấy tất cả bills và tổng hợp các chỉ số chính (tổng, đã thu, chưa thu)
+
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 

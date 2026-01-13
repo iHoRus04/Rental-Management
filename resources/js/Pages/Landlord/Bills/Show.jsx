@@ -64,7 +64,7 @@ export default function Show() {
                                 <div className="flex items-center gap-2 text-gray-500 text-sm">
                                     <span className="font-bold text-gray-900">{bill.room.name}</span>
                                     <span>•</span>
-                                    <span>{bill.renterRequest?.name || 'Không xác định'}</span>
+                                    <span>{bill.renter_request?.name || 'Không xác định'}</span>
                                 </div>
                             </div>
                             <div>

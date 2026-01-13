@@ -76,6 +76,12 @@ export default function Index() {
                                         Chi tiết
                                     </Link>
                                     <Link
+                                        href={route('landlord.renters.services', renter.id)}
+                                        className="text-purple-600 hover:text-purple-900"
+                                    >
+                                        Dịch vụ
+                                    </Link>
+                                    <Link
                                         href={route('landlord.renters.edit', renter.id)}
                                         className="text-green-600 hover:text-green-900"
                                     >

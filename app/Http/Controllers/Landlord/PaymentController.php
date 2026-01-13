@@ -9,6 +9,13 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
 
+/**
+ * PaymentController
+ *
+ * Quản lý ghi nhận thanh toán cho hóa đơn (Bill): tạo, chỉnh sửa, xóa.
+ * Khi tạo/cập nhật/xóa payment, controller cần cập nhật `paid_amount`
+ * của hóa đơn tương ứng và gọi `updatePaymentStatus()` để set trạng thái.
+ */
 class PaymentController extends Controller
 {
     public function index(Request $request)
@@ -59,10 +66,11 @@ class PaymentController extends Controller
 
         $bill = Bill::findOrFail($validated['bill_id']);
 
-        // Tạo payment record
+        // Tạo bản ghi payment
+        // Lưu record thanh toán rồi cập nhật `paid_amount` trên hóa đơn
         Payment::create($validated);
 
-        // Cập nhật bill paid_amount
+        // Cập nhật bill paid_amount (tổng đã thu) và trạng thái hóa đơn
         $bill->paid_amount += $validated['amount'];
         $bill->updatePaymentStatus();
         $bill->save();

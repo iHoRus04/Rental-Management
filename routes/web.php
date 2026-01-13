@@ -15,6 +15,7 @@ use App\Http\Controllers\Landlord\MeterLogController;
 use App\Http\Controllers\Landlord\ReminderController;
 use App\Http\Controllers\Landlord\RenterRequestController;
 use App\Http\Controllers\Landlord\DashboardController;
+use App\Http\Controllers\Landlord\ServiceController;
 
 // ✅ Trang Home
 Route::get('/', function () {
@@ -27,6 +28,10 @@ Route::get('/', function () {
 
         if ($user->role === 'landlord') {
             return redirect()->route('landlord.dashboard');
+        }
+
+        if ($user->role === 'tenant') {
+            return redirect()->route('tenant.dashboard');
         }
     }
 
@@ -59,12 +64,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::resource('houses', HouseController::class);
             Route::resource('houses.rooms', RoomController::class);
             
+            // Services management
+            Route::resource('services', ServiceController::class);
+            Route::get('rooms/{room}/services', [ServiceController::class, 'roomServices'])->name('rooms.services');
+            Route::post('rooms/{room}/services', [ServiceController::class, 'attachToRoom'])->name('rooms.services.attach');
+            Route::put('room-services/{roomService}', [ServiceController::class, 'updateRoomService'])->name('room-services.update');
+            Route::delete('room-services/{roomService}', [ServiceController::class, 'detachFromRoom'])->name('room-services.detach');
+            
             // Add route for removing room images - support both DELETE and POST methods
             Route::match(['delete', 'post'], 'houses/{house}/rooms/{room}/images', [RoomController::class, 'removeImage'])
                 ->name('houses.rooms.removeImage');
                 
             Route::resource('rooms.contracts', ContractController::class);
-            Route::resource('renters', RenterController::class);
+            
+            // Renter Request Services management (moved from renters to renter-requests)
+            Route::get('renter-requests/{renterRequest}/services', [RenterRequestController::class, 'renterRequestServices'])->name('renter-requests.services');
+            Route::post('renter-requests/{renterRequest}/services', [RenterRequestController::class, 'attachService'])->name('renter-requests.services.attach');
+            Route::put('renter-request-services/{renterRequestService}', [RenterRequestController::class, 'updateRenterRequestService'])->name('renter-request-services.update');
+            Route::delete('renter-request-services/{renterRequestService}', [RenterRequestController::class, 'detachService'])->name('renter-request-services.detach');
+            
             Route::resource('bills', BillController::class);
             Route::resource('payments', PaymentController::class);
             Route::resource('meter-logs', MeterLogController::class);
@@ -86,6 +104,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // Update renter request status
             Route::post('renter-requests/{renterRequest}/update-status/{status}', [RenterRequestController::class, 'updateStatus'])->name('renter-requests.update-status');
             
+            // Create tenant account
+            Route::post('renter-requests/{renterRequest}/create-account', [RenterRequestController::class, 'createTenantAccount'])->name('renter-requests.create-account');
+            
+            // Tenant Requests (from tenant users)
+            Route::get('tenant-requests', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'index'])->name('tenant-requests.index');
+            Route::get('tenant-requests/{tenantRequest}', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'show'])->name('tenant-requests.show');
+            Route::post('tenant-requests/{tenantRequest}/status/{status}', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'updateStatus'])->name('tenant-requests.update-status');
+            Route::post('tenant-requests/{tenantRequest}/respond', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'respond'])->name('tenant-requests.respond');
+            
             // Tạo hóa đơn hàng tháng
             Route::post('bills/generate-monthly', [BillController::class, 'generateMonthly'])->name('bills.generateMonthly');
             
@@ -96,6 +123,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
             
             // Xuất PDF
             Route::post('bills/{bill}/export-pdf', [BillController::class, 'exportPDF'])->name('bills.exportPDF');
+        });
+
+    // ✅ Tenant Module
+    Route::middleware('tenant')
+        ->prefix('tenant')
+        ->name('tenant.')
+        ->group(function () {
+            Route::get('dashboard', [\App\Http\Controllers\Tenant\DashboardController::class, 'index'])->name('dashboard');
+            
+            // Tenant Requests
+            Route::get('requests', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'index'])->name('requests.index');
+            Route::get('requests/create', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'create'])->name('requests.create');
+            Route::post('requests', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'store'])->name('requests.store');
+            Route::get('requests/{tenantRequest}', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'show'])->name('requests.show');
         });
 
 

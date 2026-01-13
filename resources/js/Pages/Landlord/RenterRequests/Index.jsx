@@ -4,6 +4,7 @@ import { Head, Link } from '@inertiajs/react';
 
 export default function RenterRequestsIndex({ auth, requests }) {
     const [filterStatus, setFilterStatus] = useState('all');
+    const [filterContract, setFilterContract] = useState('all'); // Add contract filter
     const [searchTerm, setSearchTerm] = useState('');
 
     const requestsArray = Array.isArray(requests) ? requests : [];
@@ -20,10 +21,13 @@ export default function RenterRequestsIndex({ auth, requests }) {
 
     const filteredRequests = requestsArray.filter(request => {
         const matchesStatus = filterStatus === 'all' || request.status === filterStatus;
+        const matchesContract = filterContract === 'all' || 
+                               (filterContract === 'renting' && request.has_active_contract) ||
+                               (filterContract === 'not_renting' && !request.has_active_contract);
         const matchesSearch = (request.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                               (request.phone || '').includes(searchTerm) ||
                               (request.room?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesStatus && matchesSearch;
+        return matchesStatus && matchesContract && matchesSearch;
     });
 
     return (
@@ -63,6 +67,16 @@ export default function RenterRequestsIndex({ auth, requests }) {
                             <option value="contacted">📞 Đã liên hệ</option>
                             <option value="approved">✅ Đã duyệt</option>
                             <option value="rejected">❌ Đã từ chối</option>
+                        </select>
+
+                        <select 
+                            value={filterContract}
+                            onChange={(e) => setFilterContract(e.target.value)}
+                            className="w-full sm:w-auto py-2.5 pl-4 pr-10 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm cursor-pointer"
+                        >
+                            <option value="all">Tất cả</option>
+                            <option value="renting">🏠 Đang thuê</option>
+                            <option value="not_renting">📋 Chưa thuê</option>
                         </select>
 
                         <Link
@@ -144,17 +158,54 @@ export default function RenterRequestsIndex({ auth, requests }) {
 
                                     {/* 3. Status & Action Section (Right) */}
                                     <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-3 w-full md:w-auto md:pl-6 md:border-l md:border-dashed md:border-gray-200">
-                                        <div className={`px-3 py-1 rounded-full text-xs font-bold border ${status.bg} ${status.text} ${status.border} flex items-center gap-1.5`}>
-                                            <span>{status.icon}</span> {status.label}
+                                        <div className="flex flex-col items-end gap-2">
+                                            <div className={`px-3 py-1 rounded-full text-xs font-bold border ${status.bg} ${status.text} ${status.border} flex items-center gap-1.5`}>
+                                                <span>{status.icon}</span> {status.label}
+                                            </div>
+                                            
+                                            {/* Show "Đang thuê" badge if has active contract */}
+                                            {request.has_active_contract && (
+                                                <div className="px-3 py-1 rounded-full text-xs font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1.5">
+                                                    <span>🏠</span> Đang thuê
+                                                </div>
+                                            )}
                                         </div>
 
-                                        <Link
-                                            href={route('landlord.renter-requests.show', request.id || '#')}
-                                            className="px-4 py-2 bg-white text-gray-700 text-sm font-bold rounded-xl border border-gray-200 hover:border-emerald-500 hover:text-emerald-600 transition-all flex items-center gap-2 group-hover:bg-emerald-50/50"
-                                        >
-                                            Chi tiết
-                                            <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                        </Link>
+                                        <div className="flex gap-2">
+                                            {/* Create Account button - show if approved & has contract but no user account */}
+                                            {request.status === 'approved' && request.has_active_contract && !request.has_user_account && (
+                                                <Link
+                                                    href={route('landlord.renter-requests.create-account', request.id)}
+                                                    method="post"
+                                                    as="button"
+                                                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2"
+                                                    title="Tạo tài khoản đăng nhập"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                    Tạo TK
+                                                </Link>
+                                            )}
+
+                                            {/* Only show Services button for approved requests with active contract */}
+                                            {request.status === 'approved' && request.has_active_contract && (
+                                                <Link
+                                                    href={route('landlord.renter-requests.services', request.id || '#')}
+                                                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2"
+                                                    title="Quản lý dịch vụ"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                                    Dịch vụ
+                                                </Link>
+                                            )}
+                                            
+                                            <Link
+                                                href={route('landlord.renter-requests.show', request.id || '#')}
+                                                className="px-4 py-2 bg-white text-gray-700 text-sm font-bold rounded-xl border border-gray-200 hover:border-emerald-500 hover:text-emerald-600 transition-all flex items-center gap-2 group-hover:bg-emerald-50/50"
+                                            >
+                                                Chi tiết
+                                                <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                            </Link>
+                                        </div>
                                     </div>
                                 </div>
                             );

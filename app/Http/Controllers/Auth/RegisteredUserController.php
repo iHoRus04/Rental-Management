@@ -16,6 +16,12 @@ use Inertia\Response;
 class RegisteredUserController extends Controller
 {
     /**
+     * RegisteredUserController
+     *
+     * Xử lý đăng ký user mới: hiển thị form và lưu user mới.
+     * Sau khi đăng ký sẽ phát event `Registered` và login tự động.
+     */
+    /**
      * Display the registration view.
      */
     public function create(): Response

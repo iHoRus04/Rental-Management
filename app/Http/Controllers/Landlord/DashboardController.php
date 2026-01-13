@@ -13,6 +13,14 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
+/**
+ * DashboardController
+ *
+ * Tổng hợp các thống kê cho landlord dashboard:
+ * - Số nhà, phòng, hợp đồng, người thuê
+ * - Doanh thu tháng, phần trăm so với tháng trước
+ * - Tỉ lệ thu, khoản đang chờ thu và biểu đồ doanh thu 6 tháng
+ */
 class DashboardController extends Controller
 {
     public function index()
@@ -96,11 +104,16 @@ class DashboardController extends Controller
         })
         ->sum('amount');
 
-        // Pending Amount
-        $pendingAmount = $monthlyRevenue - $collectedAmount;
+        // Monthly pending amount (this month): revenue - collected this month
+        $monthlyPending = $monthlyRevenue - $collectedAmount;
 
-        // Collection Rate
+        // Collection Rate for current month
         $collectionRate = $monthlyRevenue > 0 ? round(($collectedAmount / $monthlyRevenue) * 100, 1) : 0;
+
+        // Total unpaid amount across all time: sum of bills with status pending or partial
+        $totalUnpaidAmount = Bill::whereHas('room.house', function ($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })->whereIn('status', ['pending', 'partial'])->sum('amount');
 
         // Unpaid Bills Count (all bills not fully paid: pending or partial)
         $unpaidBills = Bill::whereHas('room.house', function ($q) use ($user) {
@@ -183,7 +196,8 @@ class DashboardController extends Controller
             'revenueChangePercent' => $revenueChangePercent,
             'revenueChangeIsPositive' => $revenueChangeIsPositive,
             'collectedAmount' => $collectedAmount,
-            'pendingAmount' => $pendingAmount,
+            'pendingAmount' => $totalUnpaidAmount, // now shows total unpaid across all time
+            'monthlyPending' => $monthlyPending,    // keep monthly pending as separate value
             'collectionRate' => $collectionRate,
             'unpaidBills' => $unpaidBills,
             'revenueChart' => $revenueChart,

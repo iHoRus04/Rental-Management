@@ -16,6 +16,13 @@ use Inertia\Response;
 class AuthenticatedSessionController extends Controller
 {
     /**
+     * AuthenticatedSessionController
+     *
+     * Xử lý việc đăng nhập và đăng xuất cho user. Ghi nhớ session,
+     * chuyển hướng dựa trên vai trò (`admin`/`landlord`) và dọn dẹp SSO tokens
+     * khi logout.
+     */
+    /**
      * Display the login view.
      */
     public function create(): Response

@@ -13,36 +13,55 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class BillController extends Controller
 {
+    /**
+     * Service xử lý logic tạo hóa đơn hàng loạt
+     */
     protected $billService;
 
+    /**
+     * Inject BillService thông qua constructor
+     */
     public function __construct(BillService $billService)
     {
         $this->billService = $billService;
     }
 
+    /**
+     * Danh sách hóa đơn
+     * - Hỗ trợ trả về JSON (API)
+     * - Hoặc render trang Inertia
+     */
     public function index(Request $request)
     {
+        // Lấy danh sách hóa đơn + eager loading các quan hệ
         $bills = Bill::with(['contract', 'room', 'renterRequest'])
             ->latest()
             ->get();
 
+        // Nếu request là JSON (ví dụ gọi API)
         if ($request->wantsJson()) {
             return response()->json([
                 'bills' => $bills,
             ]);
         }
 
+        // Render giao diện danh sách hóa đơn
         return Inertia::render('Landlord/Bills/Index', [
             'bills' => $bills,
         ]);
     }
 
+    /**
+     * Trang tạo hóa đơn mới
+     */
     public function create()
     {
+        // Lấy các hợp đồng đang active
         $contracts = Contract::with(['room', 'renterRequest'])
             ->where('status', 'active')
             ->get()
             ->map(function ($contract) {
+                // Chuẩn hóa dữ liệu trả về cho frontend
                 return [
                     'id' => $contract->id,
                     'room_id' => $contract->room_id,
@@ -67,8 +86,12 @@ class BillController extends Controller
         ]);
     }
 
+    /**
+     * Lưu hóa đơn mới
+     */
     public function store(Request $request)
     {
+        // Validate dữ liệu gửi lên
         $validated = $request->validate([
             'contract_id' => 'required|exists:contracts,id',
             'month' => 'required|integer|min:1|max:12',
@@ -85,8 +108,10 @@ class BillController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // Lấy thông tin hợp đồng
         $contract = Contract::findOrFail($validated['contract_id']);
-        
+
+        // Tạo hóa đơn mới
         $bill = new Bill([
             'contract_id' => $contract->id,
             'room_id' => $contract->room_id,
@@ -106,27 +131,39 @@ class BillController extends Controller
             'paid_amount' => 0,
         ]);
 
+        // Tính tổng tiền hóa đơn
         $bill->calculateTotal();
+
+        // Lưu ghi chú nếu có
         if (isset($validated['notes'])) {
             $bill->notes = $validated['notes'];
         }
+
         $bill->save();
 
         return redirect()->route('landlord.bills.index')
-                        ->with('success', 'Tạo hóa đơn thành công!');
+            ->with('success', 'Tạo hóa đơn thành công!');
     }
 
+    /**
+     * Xem chi tiết hóa đơn
+     */
     public function show(Bill $bill)
     {
+        // Load thêm các quan hệ cần thiết
         $bill->load(['contract', 'room', 'renterRequest']);
-        
+
         return Inertia::render('Landlord/Bills/Show', [
             'bill' => $bill,
         ]);
     }
 
+    /**
+     * Trang chỉnh sửa hóa đơn
+     */
     public function edit(Bill $bill)
     {
+        // Danh sách hợp đồng active
         $contracts = Contract::with(['room', 'renterRequest'])
             ->where('status', 'active')
             ->get();
@@ -139,23 +176,30 @@ class BillController extends Controller
         ]);
     }
 
+    /**
+     * Cập nhật hóa đơn
+     */
     public function update(Request $request, Bill $bill)
     {
-        // Nếu chỉ cập nhật thanh toán
+        /**
+         * Trường hợp chỉ cập nhật tiền đã thanh toán
+         */
         if ($request->has('paid_amount') && !$request->has('month')) {
             $validated = $request->validate([
                 'paid_amount' => 'required|numeric|min:0',
             ]);
 
             $bill->paid_amount = $validated['paid_amount'];
-            $bill->updatePaymentStatus();
+            $bill->updatePaymentStatus(); // Cập nhật trạng thái paid / partial / unpaid
             $bill->save();
 
             return redirect()->route('landlord.bills.show', $bill->id)
-                            ->with('success', 'Cập nhật thanh toán thành công!');
+                ->with('success', 'Cập nhật thanh toán thành công!');
         }
 
-        // Cập nhật toàn bộ thông tin hóa đơn
+        /**
+         * Trường hợp cập nhật toàn bộ hóa đơn
+         */
         $validated = $request->validate([
             'month' => 'required|integer|min:1|max:12',
             'year' => 'required|integer|min:2020',
@@ -171,6 +215,7 @@ class BillController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // Gán lại dữ liệu
         $bill->fill([
             'month' => $validated['month'],
             'year' => $validated['year'],
@@ -185,24 +230,28 @@ class BillController extends Controller
             'due_date' => $validated['due_date'],
         ]);
 
+        // Tính lại tổng tiền
         $bill->calculateTotal();
-        
+
         if (isset($validated['notes'])) {
             $bill->notes = $validated['notes'];
         }
-        
+
         $bill->save();
 
         return redirect()->route('landlord.bills.show', $bill->id)
-                        ->with('success', 'Cập nhật hóa đơn thành công!');
+            ->with('success', 'Cập nhật hóa đơn thành công!');
     }
 
+    /**
+     * Xóa hóa đơn
+     */
     public function destroy(Bill $bill)
     {
         $bill->delete();
 
         return redirect()->route('landlord.bills.index')
-                        ->with('success', 'Đã xóa hóa đơn');
+            ->with('success', 'Đã xóa hóa đơn');
     }
 
     /**
@@ -213,10 +262,11 @@ class BillController extends Controller
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
+        // Gọi service xử lý logic tạo hàng loạt
         $count = $this->billService->generateMonthlyBills($month, $year);
 
         return redirect()->route('landlord.bills.index')
-                        ->with('success', "Đã tạo {$count} hóa đơn cho tháng {$month}/{$year}");
+            ->with('success', "Đã tạo {$count} hóa đơn cho tháng {$month}/{$year}");
     }
 
     /**
@@ -224,16 +274,20 @@ class BillController extends Controller
      */
     public function exportPDF(Bill $bill)
     {
+        // Load toàn bộ dữ liệu cần cho PDF
         $bill->load(['contract', 'room', 'renterRequest', 'payments']);
 
+        // Tên file PDF
         $filename = 'hoa-don-' . $bill->month . '-' . $bill->year . '-' . str_replace(' ', '-', $bill->room->name) . '.pdf';
-        
+
+        // Render PDF từ view Blade
         $pdf = Pdf::loadView('landlord.invoices.pdf', ['bill' => $bill])
             ->setPaper('a4', 'portrait')
             ->setOption('defaultFont', 'DejaVu Sans')
             ->setOption('isHtml5ParserEnabled', true)
             ->setOption('isRemoteEnabled', true);
 
+        // Trả file PDF về client
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
@@ -242,4 +296,3 @@ class BillController extends Controller
             ->header('Expires', '0');
     }
 }
-

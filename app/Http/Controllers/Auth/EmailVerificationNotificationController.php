@@ -9,6 +9,12 @@ use Illuminate\Http\Request;
 class EmailVerificationNotificationController extends Controller
 {
     /**
+     * EmailVerificationNotificationController
+     *
+     * Gửi lại email xác thực cho user khi họ yêu cầu. Nếu email đã được
+     * xác thực thì redirect về dashboard.
+     */
+    /**
      * Send a new email verification notification.
      */
     public function store(Request $request): RedirectResponse

@@ -22,6 +22,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'renter_request_id',
     ];
 
     /**
@@ -52,6 +54,29 @@ class User extends Authenticatable
         return $this->hasMany(House::class);
     }
 
-    
+    public function renterRequest()
+    {
+        return $this->belongsTo(RenterRequest::class);
+    }
 
+    public function tenantRequests()
+    {
+        return $this->hasMany(TenantRequest::class, 'tenant_id');
+    }
+
+    public function landlordRequests()
+    {
+        return $this->hasMany(TenantRequest::class, 'landlord_id');
+    }
+
+    // Helper methods
+    public function isLandlord()
+    {
+        return $this->role === 'landlord';
+    }
+
+    public function isTenant()
+    {
+        return $this->role === 'tenant';
+    }
 }

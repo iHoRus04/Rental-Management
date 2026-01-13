@@ -42,4 +42,22 @@ class Room extends Model
     {
         return $this->hasMany(Bill::class);
     }
+
+    /**
+     * Get services associated with this room
+     */
+    public function services()
+    {
+        return $this->belongsToMany(Service::class, 'room_services')
+            ->withPivot('price', 'is_active', 'note')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get room services
+     */
+    public function roomServices()
+    {
+        return $this->hasMany(RoomService::class);
+    }
 }

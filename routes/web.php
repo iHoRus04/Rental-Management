@@ -7,12 +7,12 @@ use Inertia\Inertia;
 use App\Http\Controllers\Landlord\HouseController;
 use App\Http\Controllers\Landlord\RoomController;
 use App\Http\Controllers\Landlord\ContractController;
-use App\Http\Controllers\Landlord\RenterController;
 use App\Http\Controllers\Landlord\BillController;
 use App\Http\Controllers\Landlord\PaymentController;
 use App\Http\Controllers\Landlord\RevenueController;
 use App\Http\Controllers\Landlord\MeterLogController;
 use App\Http\Controllers\Landlord\ReminderController;
+
 use App\Http\Controllers\Landlord\RenterRequestController;
 use App\Http\Controllers\Landlord\DashboardController;
 use App\Http\Controllers\Landlord\ServiceController;

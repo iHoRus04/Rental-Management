@@ -7,7 +7,7 @@ export default function Index({ houses }) {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Lọc dữ liệu giả lập (nếu cần xử lý client-side)
-    const filteredHouses = houses.filter(house => 
+    const filteredHouses = houses.filter(house =>
         house.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         house.address.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -24,8 +24,8 @@ export default function Index({ houses }) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                
-                    
+
+
                     {/* Nút Filter (Giống mẫu) */}
                     <button className="flex items-center gap-2 bg-white text-gray-600 border border-gray-200 px-5 py-2.5 rounded-xl font-bold text-sm hover:border-emerald-300 hover:text-emerald-600 transition-all shadow-sm">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
@@ -47,8 +47,8 @@ export default function Index({ houses }) {
             {filteredHouses.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                     {filteredHouses.map((house) => (
-                        <div 
-                            key={house.id} 
+                        <div
+                            key={house.id}
                             className="group bg-white rounded-[24px] border border-gray-100 overflow-hidden hover:shadow-[0_20px_40px_-15px_rgba(16,185,129,0.15)] transition-all duration-300 flex flex-col cursor-pointer"
                         >
                             {/* 1. IMAGE AREA (Chiếm phần lớn phía trên) */}
@@ -59,9 +59,9 @@ export default function Index({ houses }) {
                                     </div>
                                 )}
                                 {house.image ? (
-                                    <img 
-                                        src={`/storage/${house.image}`} 
-                                        alt={house.name} 
+                                    <img
+                                        src={`/storage/${house.image}`}
+                                        alt={house.name}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                     />
                                 ) : (
@@ -102,7 +102,7 @@ export default function Index({ houses }) {
                                     <h3 className="text-lg font-bold text-gray-900 group-hover:text-teal-700 transition-colors line-clamp-1">
                                         {house.name}
                                     </h3>
-                                    
+
                                     {/* Giá tiền/Trạng thái (Phải - Giống mẫu $1,500 Rent) */}
                                     <div className="text-right flex-shrink-0">
                                         <span className="text-emerald-600 font-extrabold text-lg block">

@@ -22,32 +22,26 @@ class RenterRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
-        
-        // Get renter requests for houses owned by this landlord with contract info
+        $user     = Auth::user();
+        $houseIds = $user->getAccessibleHouseIds();
+
         $requests = RenterRequest::with(['room.house', 'contracts' => function ($query) {
-                // Load only active contracts (not expired)
                 $query->where('end_date', '>=', now())
                       ->orWhereNull('end_date');
             }])
-            ->whereHas('room.house', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
+            ->whereHas('room', function ($query) use ($houseIds) {
+                $query->whereIn('house_id', $houseIds);
             })
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($renterRequest) {
-                // Add has_active_contract flag
                 $renterRequest->has_active_contract = $renterRequest->contracts->count() > 0;
-                // Check if has user account
-                $renterRequest->has_user_account = \App\Models\User::where('renter_request_id', $renterRequest->id)->exists();
+                $renterRequest->has_user_account    = \App\Models\User::where('renter_request_id', $renterRequest->id)->exists();
                 return $renterRequest;
             });
 
-        // Return JSON response for API calls
         if ($request->wantsJson()) {
-            return response()->json([
-                'requests' => $requests
-            ]);
+            return response()->json(['requests' => $requests]);
         }
 
         return Inertia::render('Landlord/RenterRequests/Index', [
@@ -77,13 +71,11 @@ class RenterRequestController extends Controller
 
     public function create()
     {
-        $user = Auth::user();
-        
-        // Get all rooms for this landlord
+        $user     = Auth::user();
+        $houseIds = $user->getAccessibleHouseIds();
+
         $rooms = \App\Models\Room::with('house')
-            ->whereHas('house', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
+            ->whereIn('house_id', $houseIds)
             ->get();
 
         return Inertia::render('Landlord/RenterRequests/Create', [
@@ -103,10 +95,10 @@ class RenterRequestController extends Controller
             'message' => 'nullable|string',
         ]);
 
-        // Ensure the landlord owns the selected room (báº£o máº­t: khÃ´ng cho landlord khÃ¡c thao tÃ¡c)
+        // Đảm bảo user có quyền chọn phòng này
         $room = \App\Models\Room::findOrFail($validated['room_id']);
-        if ($room->house->user_id != $user->id) {
-            return back()->withErrors(['room_id' => 'Báº¡n khÃ´ng cÃ³ quyá»n chá»n phÃ²ng nÃ y!']);
+        if (!$user->managesHouse($room->house_id)) {
+            return back()->withErrors(['room_id' => 'Bạn không có quyền chọn phòng này!']);
         }
 
         // Set default status to 'new' and create

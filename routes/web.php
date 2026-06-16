@@ -16,6 +16,7 @@ use App\Http\Controllers\Landlord\ReminderController;
 use App\Http\Controllers\Landlord\RenterRequestController;
 use App\Http\Controllers\Landlord\DashboardController;
 use App\Http\Controllers\Landlord\ServiceController;
+use App\Http\Controllers\Landlord\StaffController;
 
 // ✅ Trang Home
 Route::get('/', function () {
@@ -26,7 +27,7 @@ Route::get('/', function () {
             return redirect()->route('admin.dashboard');
         }
 
-        if ($user->role === 'landlord') {
+        if ($user->role === 'landlord' || $user->role === 'staff') {
             return redirect()->route('landlord.dashboard');
         }
 
@@ -50,14 +51,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     ->name('admin.dashboard');
 
 
-    // ✅ Landlord Dashboard
+    // ✅ Landlord Dashboard (landlord + staff)
     Route::get('/landlord/dashboard', [DashboardController::class, 'index'])
-        ->middleware('role:landlord')
+        ->middleware('role:landlord,staff')
         ->name('landlord.dashboard');
 
     
-    // ✅ Landlord Module: Houses
-    Route::middleware('role:landlord')
+    // ✅ Landlord Module: Houses (landlord + staff)
+    Route::middleware('role:landlord,staff')
         ->prefix('landlord')
         ->name('landlord.')
         ->group(function () {
@@ -107,6 +108,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // Create tenant account
             Route::post('renter-requests/{renterRequest}/create-account', [RenterRequestController::class, 'createTenantAccount'])->name('renter-requests.create-account');
             
+            // ✅ Staff Management (chỉ landlord mới tạo/xóa/sửa staff)
+            Route::middleware('role:landlord')->group(function () {
+                Route::resource('staff', StaffController::class);
+                Route::post('staff/{staff}/houses', [StaffController::class, 'assignHouse'])->name('staff.houses.assign');
+                Route::delete('staff/{staff}/houses/{house}', [StaffController::class, 'removeHouse'])->name('staff.houses.remove');
+            });
+
             // Tenant Requests (from tenant users)
             Route::get('tenant-requests', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'index'])->name('tenant-requests.index');
             Route::get('tenant-requests/{tenantRequest}', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'show'])->name('tenant-requests.show');

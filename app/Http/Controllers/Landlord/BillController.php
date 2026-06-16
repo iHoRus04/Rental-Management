@@ -33,8 +33,13 @@ class BillController extends Controller
      */
     public function index(Request $request)
     {
-        // Lấy danh sách hóa đơn + eager loading các quan hệ
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
         $bills = Bill::with(['contract', 'room', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->latest()
             ->get();
 
@@ -56,8 +61,13 @@ class BillController extends Controller
      */
     public function create()
     {
-        // Lấy các hợp đồng đang active
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
         $contracts = Contract::with(['room', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->where('status', 'active')
             ->get()
             ->map(function ($contract) {

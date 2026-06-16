@@ -15,26 +15,39 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Tạo tài khoản Admin
-        $admin = User::create([
-            'name' => 'Admin',
-            'email' => 'admin@example.com',
+        User::create([
+            'name'     => 'Admin',
+            'email'    => 'admin@example.com',
             'password' => Hash::make('password'),
-            'role' => 'admin',
+            'role'     => 'admin',
+            'status'   => 'active',
         ]);
 
         // Tạo tài khoản Chủ trọ
         $landlordUser = User::create([
-            'name' => 'Chủ trọ A',
-            'email' => 'landlord@example.com',
+            'name'     => 'Chủ trọ A',
+            'email'    => 'landlord@example.com',
             'password' => Hash::make('password'),
-            'role' => 'landlord',
+            'role'     => 'landlord',
+            'status'   => 'active',
         ]);
 
         // Thêm thông tin mở rộng cho chủ trọ
         Landlord::create([
             'user_id' => $landlordUser->id,
-            'phone' => '0123456789',
+            'phone'   => '0123456789',
             'address' => 'Hồ Chí Minh',
+        ]);
+
+        // Tạo tài khoản Nhân viên mẫu
+        User::create([
+            'name'        => 'Nhân viên A',
+            'email'       => 'staff@example.com',
+            'password'    => Hash::make('password'),
+            'role'        => 'staff',
+            'status'      => 'active',
+            'phone'       => '0987654321',
+            'landlord_id' => $landlordUser->id,
         ]);
     }
 }

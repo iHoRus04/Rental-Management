@@ -25,7 +25,9 @@ class HouseController extends Controller
 
     public function index(Request $request)
     {
-        $houses = Auth::user()->houses()->latest()->get();
+        $user     = Auth::user();
+        $houseIds = $user->getAccessibleHouseIds();
+        $houses   = House::whereIn('id', $houseIds)->latest()->get();
         
         if ($request->wantsJson()) {
             return response()->json([
@@ -40,8 +42,7 @@ class HouseController extends Controller
 
     public function show(House $house)
     {
-        // ✅ Kiểm tra ownership
-        if ($house->user_id !== Auth::id()) {
+        if (!Auth::user()->managesHouse($house)) {
             abort(403, 'Bạn không có quyền truy cập nhà trọ này.');
         }
 
@@ -85,7 +86,7 @@ class HouseController extends Controller
             'house_data' => $house->toArray(),
         ]);
 
-        // ✅ Kiểm tra ownership
+        // ✅ Kiểm tra quyền (chỉ landlord mới được sửa)
         if ($house->user_id !== Auth::id()) {
             Log::warning('Edit House - Access Denied', [
                 'house_user_id' => $house->user_id,
@@ -105,7 +106,6 @@ class HouseController extends Controller
 
     public function update(Request $request, House $house)
 {
-    // Kiểm tra ownership
     if ($house->user_id !== Auth::id()) {
         abort(403, 'Bạn không có quyền cập nhật nhà trọ này.');
     }
@@ -141,7 +141,7 @@ class HouseController extends Controller
 
     public function destroy(House $house)
     {
-        // ✅ Kiểm tra ownership
+        // ✅ Chỉ landlord (chủ sở hữu) mới được xóa
         if ($house->user_id !== Auth::id()) {
             abort(403, 'Bạn không có quyền xóa nhà trọ này.');
         }

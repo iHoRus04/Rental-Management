@@ -23,23 +23,29 @@ class MeterLogController extends Controller
      */
     public function index(Request $request)
     {
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
         $meterLogs = MeterLog::with('room.contract.renterRequest')
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->orderByDesc('year')
             ->orderByDesc('month')
             ->get();
 
-        $rooms = Room::all();
+        $rooms = Room::whereIn('house_id', $houseIds)->get();
 
         if ($request->wantsJson()) {
             return response()->json([
                 'meterLogs' => $meterLogs,
-                'rooms' => $rooms,
+                'rooms'     => $rooms,
             ]);
         }
 
         return Inertia::render('Landlord/MeterLogs/Index', [
             'meterLogs' => $meterLogs,
-            'rooms' => $rooms,
+            'rooms'     => $rooms,
         ]);
     }
 
@@ -48,7 +54,9 @@ class MeterLogController extends Controller
      */
     public function create()
     {
-        $rooms = Room::all();
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+        $rooms    = Room::whereIn('house_id', $houseIds)->get();
 
         return Inertia::render('Landlord/MeterLogs/Create', [
             'rooms' => $rooms,

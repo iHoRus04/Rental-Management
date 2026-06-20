@@ -21,19 +21,19 @@ export default function RenterRequestsIndex({ auth, requests }) {
 
     const filteredRequests = requestsArray.filter(request => {
         const matchesStatus = filterStatus === 'all' || request.status === filterStatus;
-        const matchesContract = filterContract === 'all' || 
-                               (filterContract === 'renting' && request.has_active_contract) ||
-                               (filterContract === 'not_renting' && !request.has_active_contract);
+        const matchesContract = filterContract === 'all' ||
+            (filterContract === 'renting' && request.has_active_contract) ||
+            (filterContract === 'not_renting' && !request.has_active_contract);
         const matchesSearch = (request.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              (request.phone || '').includes(searchTerm) ||
-                              (request.room?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+            (request.phone || '').includes(searchTerm) ||
+            (request.room?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
         return matchesStatus && matchesContract && matchesSearch;
     });
 
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title="Yêu cầu thuê phòng" />
-            
+
             <div className="max-w-[1200px] mx-auto">
                 {/* --- HEADER --- */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
@@ -47,9 +47,9 @@ export default function RenterRequestsIndex({ auth, requests }) {
 
                     <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                         <div className="relative flex-grow sm:flex-grow-0">
-                            <input 
-                                type="text" 
-                                placeholder="Tìm kiếm..." 
+                            <input
+                                type="text"
+                                placeholder="Tìm kiếm..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full sm:w-64 pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
@@ -57,7 +57,7 @@ export default function RenterRequestsIndex({ auth, requests }) {
                             <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
 
-                        <select 
+                        <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
                             className="w-full sm:w-auto py-2.5 pl-4 pr-10 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm cursor-pointer"
@@ -69,7 +69,7 @@ export default function RenterRequestsIndex({ auth, requests }) {
                             <option value="rejected">❌ Đã từ chối</option>
                         </select>
 
-                        <select 
+                        <select
                             value={filterContract}
                             onChange={(e) => setFilterContract(e.target.value)}
                             className="w-full sm:w-auto py-2.5 pl-4 pr-10 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm cursor-pointer"
@@ -101,10 +101,10 @@ export default function RenterRequestsIndex({ auth, requests }) {
                     <div className="space-y-4">
                         {filteredRequests.map((request) => {
                             const status = getStatusConfig(request.status || 'new');
-                            
+
                             return (
-                                <div 
-                                    key={request.id || Math.random()} 
+                                <div
+                                    key={request.id || Math.random()}
                                     className="group relative bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all duration-300 flex flex-col md:flex-row items-center gap-6"
                                 >
                                     {/* Left Status Strip */}
@@ -162,7 +162,7 @@ export default function RenterRequestsIndex({ auth, requests }) {
                                             <div className={`px-3 py-1 rounded-full text-xs font-bold border ${status.bg} ${status.text} ${status.border} flex items-center gap-1.5`}>
                                                 <span>{status.icon}</span> {status.label}
                                             </div>
-                                            
+
                                             {/* Show "Đang thuê" badge if has active contract */}
                                             {request.has_active_contract && (
                                                 <div className="px-3 py-1 rounded-full text-xs font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1.5">
@@ -197,7 +197,7 @@ export default function RenterRequestsIndex({ auth, requests }) {
                                                     Dịch vụ
                                                 </Link>
                                             )}
-                                            
+
                                             <Link
                                                 href={route('landlord.renter-requests.show', request.id || '#')}
                                                 className="px-4 py-2 bg-white text-gray-700 text-sm font-bold rounded-xl border border-gray-200 hover:border-emerald-500 hover:text-emerald-600 transition-all flex items-center gap-2 group-hover:bg-emerald-50/50"

@@ -5,28 +5,27 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 export default function Create() {
     const { contracts } = usePage().props;
     const [selectedContract, setSelectedContract] = useState(null);
-    const [meterLog, setMeterLog]       = useState(null);
+    const [meterLog, setMeterLog] = useState(null);
     const [roomServices, setRoomServices] = useState([]); // tất cả dịch vụ thô từ API
 
     // Dịch vụ phân loại
-    const [fixedServices, setFixedServices]   = useState([]); // unit=month/service: { id, name, price, checked }
-    const [electricPrice, setElectricPrice]   = useState(0);  // đơn giá điện từ dịch vụ
-    const [waterPrice, setWaterPrice]         = useState(0);  // đơn giá nước từ dịch vụ
+    const [fixedServices, setFixedServices] = useState([]); // unit=month/service: { id, name, price, checked }
+    const [electricPrice, setElectricPrice] = useState(0);  // đơn giá điện từ dịch vụ
+    const [waterPrice, setWaterPrice] = useState(0);  // đơn giá nước từ dịch vụ
 
     const { data, setData, post, processing, errors } = useForm({
-        contract_id:    '',
-        month:          new Date().getMonth() + 1,
-        year:           new Date().getFullYear(),
-        room_price:     '',
-        electric_kwh:   0,
+        contract_id: '',
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        room_price: '',
+        electric_kwh: 0,
         electric_price: 0,
-        water_usage:    0,
-        water_price:    0,
-        internet_cost:  0,
-        trash_cost:     0,
-        other_costs:    0,
-        due_date:       '',
-        notes:          '',
+        water_usage: 0,
+        water_price: 0,
+        service_costs: 0,
+        other_costs: 0,
+        due_date: '',
+        notes: '',
     });
 
     /* ─── Chọn hợp đồng ─── */
@@ -38,8 +37,12 @@ export default function Create() {
         if (contract) {
             setSelectedContract(contract);
             setData('room_price', contract.monthly_rent);
-            fetchMeterLog(contract.room_id);
-            fetchRoomServices(contract.room_id);
+
+            const houseElectricPrice = parseFloat(contract.room?.house?.electric_price || 0);
+            const houseWaterPrice = parseFloat(contract.room?.house?.water_price || 0);
+
+            fetchMeterLog(contract.room_id, data.month, data.year);
+            fetchRoomServices(contract.room_id, houseElectricPrice, houseWaterPrice);
         } else {
             setSelectedContract(null);
             setMeterLog(null);
@@ -55,29 +58,30 @@ export default function Create() {
     };
 
     /* ─── Fetch dịch vụ phòng ─── */
-    const fetchRoomServices = async (roomId) => {
+    const fetchRoomServices = async (roomId, houseElectricPrice = 0, houseWaterPrice = 0) => {
         try {
             const res = await fetch(`/api/rooms/${roomId}/services`);
             if (!res.ok) { resetServices(); return; }
 
-            const result   = await res.json();
+            const result = await res.json();
             const services = result.services || [];
             setRoomServices(services);
 
             const fixed = [];
-            let elP = 0, wP = 0;
+            let elP = houseElectricPrice || 0;
+            let wP = houseWaterPrice || 0;
 
             services.forEach(s => {
                 // Bỏ qua dịch vụ inactive trong pivot
                 if (s.pivot?.is_active === false) return;
 
-                const unit  = s.unit;
+                const unit = s.unit;
                 const price = parseFloat(s.pivot?.price ?? s.default_price ?? 0);
 
                 if (unit === 'kwh') {
-                    elP = price;
+                    if (!elP) elP = price;
                 } else if (unit === 'm3') {
-                    wP = price;
+                    if (!wP) wP = price;
                 } else {
                     // Tất cả loại khác (month, service, ...) → có thể toggle
                     fixed.push({ id: s.id, name: s.name, price, checked: true });
@@ -92,9 +96,9 @@ export default function Create() {
             const serviceTotal = fixed.reduce((sum, s) => sum + s.price, 0);
             setData(prev => ({
                 ...prev,
-                electric_price: elP  || prev.electric_price,
-                water_price:    wP   || prev.water_price,
-                other_costs:    serviceTotal,
+                electric_price: elP || prev.electric_price,
+                water_price: wP || prev.water_price,
+                service_costs: serviceTotal,
             }));
         } catch {
             resetServices();
@@ -108,53 +112,55 @@ export default function Create() {
         );
         setFixedServices(updated);
 
-        // Cập nhật other_costs = tổng dịch vụ đang được chọn
+        // Cập nhật service_costs = tổng dịch vụ đang được chọn
         const total = updated.filter(s => s.checked).reduce((sum, s) => sum + s.price, 0);
-        setData('other_costs', total);
+        setData('service_costs', total);
     };
 
     /* ─── Fetch chỉ số điện nước ─── */
-    const fetchMeterLog = async (roomId) => {
+    const fetchMeterLog = async (roomId, targetMonth = data.month, targetYear = data.year) => {
         try {
-            const res = await fetch(`/api/meter-logs/${roomId}/${data.month}/${data.year}`);
+            const res = await fetch(`/api/meter-logs/${roomId}/${targetMonth}/${targetYear}`);
             if (res.ok) {
                 const log = await res.json();
                 setMeterLog(log);
                 setData(prev => ({
                     ...prev,
                     electric_kwh: parseInt(log.electric_usage || 0),
-                    water_usage:  parseInt(log.water_usage || 0),
+                    water_usage: parseInt(log.water_usage || 0),
                 }));
             } else {
                 setMeterLog(null);
+                setData(prev => ({
+                    ...prev,
+                    electric_kwh: 0,
+                    water_usage: 0,
+                }));
             }
         } catch {
             setMeterLog(null);
+            setData(prev => ({
+                ...prev,
+                electric_kwh: 0,
+                water_usage: 0,
+            }));
         }
-    };
-
-    const handleMonthYearChange = () => {
-        if (selectedContract) fetchMeterLog(selectedContract.room_id);
     };
 
     /* ─── Tính toán ─── */
     const calcElectric = () => parseFloat(data.electric_kwh || 0) * parseFloat(data.electric_price || 0);
-    const calcWater    = () => parseFloat(data.water_usage  || 0) * parseFloat(data.water_price    || 0);
-    const calcTotal    = () =>
-        parseFloat(data.room_price    || 0) +
+    const calcWater = () => parseFloat(data.water_usage || 0) * parseFloat(data.water_price || 0);
+    const calcTotal = () =>
+        parseFloat(data.room_price || 0) +
         calcElectric() +
-        calcWater()    +
-        parseFloat(data.internet_cost || 0) +
-        parseFloat(data.trash_cost    || 0) +
-        parseFloat(data.other_costs   || 0);
+        calcWater() +
+        parseFloat(data.service_costs || 0) +
+        parseFloat(data.other_costs || 0);
 
     const fmt = (v) => parseFloat(v || 0).toLocaleString('vi-VN');
 
     // Dịch vụ đang được chọn
-    const activeServices  = fixedServices.filter(s => s.checked);
-    const servicesCost    = activeServices.reduce((sum, s) => sum + s.price, 0);
-    // Chi phí khác ngoài dịch vụ
-    const extraOther      = parseFloat(data.other_costs || 0) - servicesCost;
+    const activeServices = fixedServices.filter(s => s.checked);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -257,37 +263,14 @@ export default function Create() {
                                                 </svg>
                                                 <span className="text-sm font-bold text-gray-700">Dịch vụ của phòng</span>
                                             </div>
-                                            {servicesCost > 0 && (
+                                            {data.service_costs > 0 && (
                                                 <span className="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-full font-bold">
-                                                    Đã chọn: +{fmt(servicesCost)} ₫
+                                                    Đã chọn: +{fmt(data.service_costs)} ₫
                                                 </span>
                                             )}
                                         </div>
 
                                         <div className="p-4 space-y-2">
-                                            {/* Dịch vụ điện - chỉ hiển thị thông tin */}
-                                            {electricPrice > 0 && (
-                                                <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-100">
-                                                    <span className="text-lg">⚡</span>
-                                                    <div className="flex-1">
-                                                        <p className="text-xs font-bold text-amber-700">Đơn giá điện (tự động điền)</p>
-                                                        <p className="text-sm text-amber-900 font-semibold">{electricPrice.toLocaleString('vi-VN')} ₫/kWh</p>
-                                                    </div>
-                                                    <span className="text-[10px] bg-amber-200 text-amber-700 px-2 py-0.5 rounded-full font-bold">AUTO</span>
-                                                </div>
-                                            )}
-
-                                            {/* Dịch vụ nước - chỉ hiển thị thông tin */}
-                                            {waterPrice > 0 && (
-                                                <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-blue-50 border border-blue-100">
-                                                    <span className="text-lg">💧</span>
-                                                    <div className="flex-1">
-                                                        <p className="text-xs font-bold text-blue-700">Đơn giá nước (tự động điền)</p>
-                                                        <p className="text-sm text-blue-900 font-semibold">{waterPrice.toLocaleString('vi-VN')} ₫/m³</p>
-                                                    </div>
-                                                    <span className="text-[10px] bg-blue-200 text-blue-700 px-2 py-0.5 rounded-full font-bold">AUTO</span>
-                                                </div>
-                                            )}
 
                                             {/* Dịch vụ tháng — có thể bật/tắt */}
                                             {fixedServices.length > 0 && (
@@ -303,20 +286,18 @@ export default function Create() {
                                                     {fixedServices.map((service) => (
                                                         <label
                                                             key={service.id}
-                                                            className={`flex items-center gap-3 px-3 py-3 rounded-xl border-2 cursor-pointer transition-all select-none ${
-                                                                service.checked
+                                                            className={`flex items-center gap-3 px-3 py-3 rounded-xl border-2 cursor-pointer transition-all select-none ${service.checked
                                                                     ? 'border-emerald-300 bg-emerald-50'
                                                                     : 'border-gray-100 bg-gray-50 opacity-60'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {/* Custom checkbox */}
                                                             <div
                                                                 onClick={() => toggleService(service.id)}
-                                                                className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border-2 transition-all ${
-                                                                    service.checked
+                                                                className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border-2 transition-all ${service.checked
                                                                         ? 'bg-emerald-500 border-emerald-500'
                                                                         : 'border-gray-300 bg-white'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {service.checked && (
                                                                     <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -353,7 +334,11 @@ export default function Create() {
                                         <label className="block text-sm font-bold text-gray-700 mb-2">Tháng <span className="text-red-500">*</span></label>
                                         <select
                                             value={data.month}
-                                            onChange={(e) => { setData('month', e.target.value); handleMonthYearChange(); }}
+                                            onChange={(e) => {
+                                                const m = parseInt(e.target.value);
+                                                setData('month', m);
+                                                if (selectedContract) fetchMeterLog(selectedContract.room_id, m, data.year);
+                                            }}
                                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none bg-white"
                                         >
                                             {[...Array(12)].map((_, i) => (
@@ -367,7 +352,11 @@ export default function Create() {
                                         <input
                                             type="number"
                                             value={data.year}
-                                            onChange={(e) => { setData('year', e.target.value); handleMonthYearChange(); }}
+                                            onChange={(e) => {
+                                                const y = parseInt(e.target.value) || new Date().getFullYear();
+                                                setData('year', y);
+                                                if (selectedContract) fetchMeterLog(selectedContract.room_id, data.month, y);
+                                            }}
                                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
                                         />
                                         {errors.year && <p className="text-red-500 text-sm mt-1">{errors.year}</p>}
@@ -394,6 +383,20 @@ export default function Create() {
                             </h2>
 
                             <div className="space-y-6">
+                                {/* Cảnh báo chưa nhập điện nước */}
+                                {!meterLog && selectedContract && (
+                                    <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-rose-800">
+                                        <span className="text-xl">⚠️</span>
+                                        <div>
+                                            <h4 className="font-bold text-sm">Chưa nhập điện nước</h4>
+                                            <p className="text-xs text-rose-600 mt-0.5">
+                                                Hệ thống không tìm thấy chỉ số điện nước cho Tháng {data.month}/{data.year}.
+                                                Vui lòng đi đến trang quản lý chỉ số để ghi số trước, hoặc bạn có thể tự nhập thủ công số kWh điện và số khối nước dưới đây.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Tiền phòng */}
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">🏠 Tiền phòng (VNĐ)</label>
@@ -420,7 +423,11 @@ export default function Create() {
                                                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none"
                                                 placeholder="0"
                                             />
-                                            {meterLog && <p className="text-[10px] text-blue-600 mt-1 font-medium">📊 Đồng hồ: {meterLog.electric_usage}</p>}
+                                            {meterLog ? (
+                                                <p className="text-[10px] text-blue-600 mt-1 font-medium">📊 Đồng hồ: {meterLog.electric_usage} kWh</p>
+                                            ) : (
+                                                selectedContract && <p className="text-[10px] text-rose-500 mt-1 font-bold">⚠️ Chưa nhập điện nước</p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Đơn giá</label>
@@ -454,7 +461,11 @@ export default function Create() {
                                                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none"
                                                 placeholder="0"
                                             />
-                                            {meterLog && <p className="text-[10px] text-blue-600 mt-1 font-medium">📊 Đồng hồ: {meterLog.water_usage}</p>}
+                                            {meterLog ? (
+                                                <p className="text-[10px] text-blue-600 mt-1 font-medium">📊 Đồng hồ: {meterLog.water_usage} m³</p>
+                                            ) : (
+                                                selectedContract && <p className="text-[10px] text-rose-500 mt-1 font-bold">⚠️ Chưa nhập điện nước</p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Đơn giá</label>
@@ -474,40 +485,29 @@ export default function Create() {
                                     </div>
                                 </div>
 
-                                {/* Internet / Rác / Khác */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Chi phí dịch vụ cố định (Tự động tính) */}
+                                {data.service_costs > 0 && (
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">🌐 Internet</label>
+                                        <label className="block text-sm font-bold text-teal-800 mb-2">📋 Chi phí dịch vụ cố định (VNĐ)</label>
                                         <input
-                                            type="number" value={data.internet_cost}
-                                            onChange={e => setData('internet_cost', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-                                            placeholder="0"
+                                            type="text"
+                                            value={fmt(data.service_costs) + " ₫"}
+                                            readOnly
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-500 font-semibold outline-none cursor-not-allowed"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">🗑 Rác & Vệ sinh</label>
-                                        <input
-                                            type="number" value={data.trash_cost}
-                                            onChange={e => setData('trash_cost', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">📝 Chi phí khác</label>
-                                        <input
-                                            type="number" value={data.other_costs}
-                                            onChange={e => setData('other_costs', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-                                            placeholder="0"
-                                        />
-                                        {servicesCost > 0 && (
-                                            <p className="text-[10px] text-emerald-600 mt-1 font-medium">
-                                                Gồm {fmt(servicesCost)} ₫ dịch vụ đã chọn
-                                            </p>
-                                        )}
-                                    </div>
+                                )}
+
+                                {/* Chi phí khác */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">📝 Chi phí khác (VNĐ)</label>
+                                    <input
+                                        type="number"
+                                        value={data.other_costs}
+                                        onChange={e => setData('other_costs', e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
+                                        placeholder="0"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -535,18 +535,7 @@ export default function Create() {
                                         <span className="font-semibold">{fmt(calcWater())} ₫</span>
                                     </div>
                                 )}
-                                {parseFloat(data.internet_cost) > 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-emerald-200">🌐 Internet</span>
-                                        <span className="font-semibold">{fmt(data.internet_cost)} ₫</span>
-                                    </div>
-                                )}
-                                {parseFloat(data.trash_cost) > 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-emerald-200">🗑 Rác & Vệ sinh</span>
-                                        <span className="font-semibold">{fmt(data.trash_cost)} ₫</span>
-                                    </div>
-                                )}
+
                                 {/* Từng dịch vụ đã chọn */}
                                 {activeServices.map((s, i) => (
                                     <div key={i} className="flex justify-between">
@@ -554,11 +543,11 @@ export default function Create() {
                                         <span className="font-semibold">{s.price.toLocaleString('vi-VN')} ₫</span>
                                     </div>
                                 ))}
-                                {/* Chi phí khác ngoài dịch vụ */}
-                                {extraOther > 0 && (
+                                {/* Chi phí khác */}
+                                {parseFloat(data.other_costs) > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-emerald-200">📝 Chi phí khác</span>
-                                        <span className="font-semibold">{fmt(extraOther)} ₫</span>
+                                        <span className="font-semibold">{fmt(data.other_costs)} ₫</span>
                                     </div>
                                 )}
                             </div>

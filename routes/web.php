@@ -63,6 +63,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('landlord.')
         ->group(function () {
             Route::resource('houses', HouseController::class);
+            Route::put('houses/{house}/utility-prices', [HouseController::class, 'updateUtilityPrices'])->name('houses.update-utility-prices');
             Route::resource('houses.rooms', RoomController::class);
             
             // Services management
@@ -145,6 +146,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('requests/create', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'create'])->name('requests.create');
             Route::post('requests', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'store'])->name('requests.store');
             Route::get('requests/{tenantRequest}', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'show'])->name('requests.show');
+            
+            // Tenant Bills
+            Route::get('bills', [\App\Http\Controllers\Tenant\BillController::class, 'index'])->name('bills.index');
+            Route::get('bills/{bill}', [\App\Http\Controllers\Tenant\BillController::class, 'show'])->name('bills.show');
         });
 
 

@@ -32,8 +32,10 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             if (Schema::hasColumn('users', 'landlord_id')) {
-                $table->dropForeign(['landlord_id']);
-                $table->dropColumn('landlord_id');
+                if (DB::connection()->getDriverName() !== 'sqlite') {
+                    $table->dropForeign(['landlord_id']);
+                    $table->dropColumn('landlord_id');
+                }
             }
             if (Schema::hasColumn('users', 'status')) {
                 $table->dropColumn('status');

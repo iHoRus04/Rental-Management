@@ -243,6 +243,41 @@
                 </tr>
                 @endif
                 
+                @if(is_array($bill->service_details) && count($bill->service_details) > 0)
+                    @php
+                        $hasFixed = false;
+                        foreach($bill->service_details as $svc) {
+                            if(($svc['type'] ?? '') === 'fixed') {
+                                $hasFixed = true;
+                                break;
+                            }
+                        }
+                    @endphp
+                    @if($hasFixed)
+                        @foreach($bill->service_details as $svc)
+                            @if(($svc['type'] ?? '') === 'fixed')
+                            <tr>
+                                <td>{{ $svc['name'] }}</td>
+                                <td style="text-align: center;">1 {{ $svc['unit'] === 'month' ? 'tháng' : ($svc['unit'] ?? 'đơn vị') }}</td>
+                                <td class="amount">{{ number_format($svc['total'] ?? 0, 0, ',', '.') }} ₫</td>
+                            </tr>
+                            @endif
+                        @endforeach
+                    @elseif($bill->service_costs > 0)
+                        <tr>
+                            <td>Chi phí dịch vụ cố định</td>
+                            <td style="text-align: center;">1 tháng</td>
+                            <td class="amount">{{ number_format($bill->service_costs, 0, ',', '.') }} ₫</td>
+                        </tr>
+                    @endif
+                @elseif($bill->service_costs > 0)
+                <tr>
+                    <td>Chi phí dịch vụ cố định</td>
+                    <td style="text-align: center;">1 tháng</td>
+                    <td class="amount">{{ number_format($bill->service_costs, 0, ',', '.') }} ₫</td>
+                </tr>
+                @endif
+                
                 @if($bill->internet_cost > 0)
                 <tr>
                     <td>Tiền Internet</td>

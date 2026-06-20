@@ -25,8 +25,10 @@ return new class extends Migration
     {
         if (Schema::hasColumn('contracts', 'renter_id')) {
             Schema::table('contracts', function (Blueprint $table) {
-                $table->dropForeign(['renter_id']);
-                $table->dropColumn('renter_id');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    $table->dropForeign(['renter_id']);
+                    $table->dropColumn('renter_id');
+                }
             });
         }
     }

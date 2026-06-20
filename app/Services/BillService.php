@@ -4,14 +4,23 @@ namespace App\Services;
 
 use App\Models\Bill;
 use App\Models\Contract;
+use App\Models\MeterLog;
+use App\Models\RoomService;
 use Carbon\Carbon;
 
 class BillService
 {
     /**
      * Tạo hóa đơn tự động cho tất cả hợp đồng còn hoạt động
+     * 
+     * Quy trình:
+     * 1. Lấy MeterLog → electric_usage, water_usage
+     * 2. Lấy room_services (active) → đơn giá điện, nước, dịch vụ cố định
+     * 3. Tính toán: amount = room_price + electric_cost + water_cost + other_costs
+     * 4. Tạo price_snapshot JSON (đóng băng biểu giá)
+     * 5. Tạo service_details JSON (breakdown chi tiết)
      */
-    public function generateMonthlyBills($month = null, $year = null)
+    public function generateMonthlyBills($month = null, $year = null, $createdBy = null)
     {
         $month = $month ?? now()->month;
         $year = $year ?? now()->year;
@@ -23,6 +32,9 @@ class BillService
                 $query->whereNull('end_date')
                       ->orWhere('end_date', '>=', Carbon::now()->startOfMonth());
             })
+            ->with(['room.house', 'room.services' => function ($q) {
+                $q->wherePivot('is_active', true);
+            }])
             ->get();
 
         $billsCreated = 0;
@@ -38,7 +50,95 @@ class BillService
                 continue;
             }
 
-            // Tạo hóa đơn mới
+            // === Bước 1: Lấy MeterLog của tháng ===
+            $meterLog = MeterLog::where('room_id', $contract->room_id)
+                ->where('month', $month)
+                ->where('year', $year)
+                ->first();
+
+            $electricUsage = $meterLog ? $meterLog->electric_usage : 0;
+            $waterUsage = $meterLog ? $meterLog->water_usage : 0;
+
+            // === Bước 2: Lấy room_services (active) ===
+            $roomServices = $contract->room->services ?? collect();
+            $house = $contract->room->house ?? null;
+            
+            $electricPrice = 0;
+            $waterPrice = 0;
+            $fixedServicesCost = 0;
+            $serviceDetails = [];
+
+            foreach ($roomServices as $service) {
+                $price = floatval($service->pivot->price ?? $service->default_price ?? 0);
+                $unit = $service->unit;
+
+                if ($unit === 'kwh') {
+                    if ($house && $house->electric_price > 0) {
+                        $price = floatval($house->electric_price);
+                    }
+                    $electricPrice = $price;
+                    $serviceDetails[] = [
+                        'name' => $service->name,
+                        'unit' => $unit,
+                        'unit_price' => $price,
+                        'quantity' => $electricUsage,
+                        'total' => $electricUsage * $price,
+                        'type' => 'electric',
+                    ];
+                } elseif ($unit === 'm3') {
+                    if ($house && $house->water_price > 0) {
+                        $price = floatval($house->water_price);
+                    }
+                    $waterPrice = $price;
+                    $serviceDetails[] = [
+                        'name' => $service->name,
+                        'unit' => $unit,
+                        'unit_price' => $price,
+                        'quantity' => $waterUsage,
+                        'total' => $waterUsage * $price,
+                        'type' => 'water',
+                    ];
+                } else {
+                    // Dịch vụ cố định (internet, rác, ...) tính theo tháng
+                    $fixedServicesCost += $price;
+                    $serviceDetails[] = [
+                        'name' => $service->name,
+                        'unit' => $unit,
+                        'unit_price' => $price,
+                        'quantity' => 1,
+                        'total' => $price,
+                        'type' => 'fixed',
+                    ];
+                }
+            }
+
+            // === Bước 3: Tính toán chi phí ===
+            $electricCost = $electricUsage * $electricPrice;
+            $waterCost = $waterUsage * $waterPrice;
+
+            // === Bước 4: Tạo Price Snapshot (đóng băng biểu giá) ===
+            $priceSnapshot = [
+                'room_price' => $contract->monthly_rent,
+                'electric_unit_price' => $electricPrice,
+                'water_unit_price' => $waterPrice,
+                'services' => $roomServices->map(function ($s) use ($house) {
+                    $price = floatval($s->pivot->price ?? $s->default_price);
+                    if ($s->unit === 'kwh' && $house && $house->electric_price > 0) {
+                        $price = floatval($house->electric_price);
+                    } elseif ($s->unit === 'm3' && $house && $house->water_price > 0) {
+                        $price = floatval($house->water_price);
+                    }
+                    return [
+                        'id' => $s->id,
+                        'name' => $s->name,
+                        'unit' => $s->unit,
+                        'price' => $price,
+                    ];
+                })->values()->toArray(),
+                'snapshot_at' => now()->toIso8601String(),
+            ];
+
+            // === Bước 5: Tạo hóa đơn ===
             $bill = new Bill([
                 'contract_id' => $contract->id,
                 'room_id' => $contract->room_id,
@@ -46,18 +146,23 @@ class BillService
                 'month' => $month,
                 'year' => $year,
                 'room_price' => $contract->monthly_rent,
-                'electric_kwh' => 0,
-                'electric_cost' => 0,
-                'water_cost' => 0,
+                'electric_kwh' => $electricUsage,
+                'electric_price' => $electricPrice,
+                'electric_cost' => $electricCost,
+                'water_usage' => $waterUsage,
+                'water_price' => $waterPrice,
+                'water_cost' => $waterCost,
+                'service_costs' => $fixedServicesCost,
                 'internet_cost' => 0,
                 'trash_cost' => 0,
                 'other_costs' => 0,
                 'status' => 'pending',
                 'paid_amount' => 0,
-                // Calculate due_date based on contract start_date + payment_date (days)
-                // If contract->payment_date is not set, fall back to first day of next month
                 'due_date' => $this->calculateDueDate($contract, $year, $month),
                 'paid_date' => null,
+                'price_snapshot' => $priceSnapshot,
+                'service_details' => $serviceDetails,
+                'created_by' => $createdBy,
             ]);
 
             $bill->calculateTotal();
@@ -93,8 +198,12 @@ class BillService
     {
         if (isset($data['electric_kwh'])) {
             $bill->electric_kwh = $data['electric_kwh'];
-            // Giá điện mặc định 3000 VND/kWh, có thể cấu hình sau
-            $bill->electric_cost = $data['electric_kwh'] * 3000;
+            $bill->electric_cost = $data['electric_kwh'] * ($bill->electric_price ?? 0);
+        }
+
+        if (isset($data['water_usage'])) {
+            $bill->water_usage = $data['water_usage'];
+            $bill->water_cost = $data['water_usage'] * ($bill->water_price ?? 0);
         }
 
         if (isset($data['water_cost'])) {
@@ -117,6 +226,31 @@ class BillService
         $bill->save();
 
         return $bill;
+    }
+
+    /**
+     * Tạo price snapshot cho hóa đơn đơn lẻ
+     */
+    public function createPriceSnapshot($roomId)
+    {
+        $roomServices = RoomService::where('room_id', $roomId)
+            ->where('is_active', true)
+            ->with('service')
+            ->get();
+
+        $snapshot = [
+            'services' => $roomServices->map(function ($rs) {
+                return [
+                    'id' => $rs->service_id,
+                    'name' => $rs->service->name,
+                    'unit' => $rs->service->unit,
+                    'price' => floatval($rs->price),
+                ];
+            })->values()->toArray(),
+            'snapshot_at' => now()->toIso8601String(),
+        ];
+
+        return $snapshot;
     }
 
     /**

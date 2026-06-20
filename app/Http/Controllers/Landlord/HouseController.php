@@ -139,6 +139,23 @@ class HouseController extends Controller
         ->with('success', 'Cập nhật thành công!');
 }
 
+    public function updateUtilityPrices(Request $request, House $house)
+    {
+        if (!Auth::user()->managesHouse($house)) {
+            abort(403, 'Bạn không có quyền cập nhật nhà trọ này.');
+        }
+
+        $validated = $request->validate([
+            'electric_price' => 'required|numeric|min:0',
+            'water_price' => 'required|numeric|min:0',
+        ]);
+
+        $house->update($validated);
+
+        return redirect()->back()
+            ->with('success', 'Cập nhật giá điện nước thành công!');
+    }
+
     public function destroy(House $house)
     {
         // ✅ Chỉ landlord (chủ sở hữu) mới được xóa

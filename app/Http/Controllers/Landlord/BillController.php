@@ -64,7 +64,7 @@ class BillController extends Controller
         $user     = auth()->user();
         $houseIds = $user->getAccessibleHouseIds();
 
-        $contracts = Contract::with(['room', 'renterRequest'])
+        $contracts = Contract::with(['room.house', 'renterRequest'])
             ->whereHas('room', function ($q) use ($houseIds) {
                 $q->whereIn('house_id', $houseIds);
             })
@@ -81,6 +81,11 @@ class BillController extends Controller
                     'room' => [
                         'id' => $contract->room->id,
                         'name' => $contract->room->name,
+                        'house' => $contract->room->house ? [
+                            'id' => $contract->room->house->id,
+                            'electric_price' => $contract->room->house->electric_price,
+                            'water_price' => $contract->room->house->water_price,
+                        ] : null,
                     ],
                     'renterRequest' => $contract->renterRequest ? [
                         'id' => $contract->renterRequest->id,
@@ -111,6 +116,7 @@ class BillController extends Controller
             'electric_price' => 'nullable|numeric|min:0',
             'water_usage' => 'nullable|integer|min:0',
             'water_price' => 'nullable|numeric|min:0',
+            'service_costs' => 'nullable|numeric|min:0',
             'internet_cost' => 'nullable|numeric|min:0',
             'trash_cost' => 'nullable|numeric|min:0',
             'other_costs' => 'nullable|numeric|min:0',
@@ -120,6 +126,12 @@ class BillController extends Controller
 
         // Lấy thông tin hợp đồng
         $contract = Contract::findOrFail($validated['contract_id']);
+
+        // Tạo price snapshot (đóng băng biểu giá)
+        $priceSnapshot = $this->billService->createPriceSnapshot($contract->room_id);
+        $priceSnapshot['room_price'] = $validated['room_price'];
+        $priceSnapshot['electric_unit_price'] = $validated['electric_price'] ?? 0;
+        $priceSnapshot['water_unit_price'] = $validated['water_price'] ?? 0;
 
         // Tạo hóa đơn mới
         $bill = new Bill([
@@ -133,12 +145,15 @@ class BillController extends Controller
             'electric_price' => $validated['electric_price'] ?? 0,
             'water_usage' => $validated['water_usage'] ?? 0,
             'water_price' => $validated['water_price'] ?? 0,
+            'service_costs' => $validated['service_costs'] ?? 0,
             'internet_cost' => $validated['internet_cost'] ?? 0,
             'trash_cost' => $validated['trash_cost'] ?? 0,
             'other_costs' => $validated['other_costs'] ?? 0,
             'due_date' => $validated['due_date'],
             'status' => 'pending',
             'paid_amount' => 0,
+            'price_snapshot' => $priceSnapshot,
+            'created_by' => auth()->id(),
         ]);
 
         // Tính tổng tiền hóa đơn
@@ -160,8 +175,8 @@ class BillController extends Controller
      */
     public function show(Bill $bill)
     {
-        // Load thêm các quan hệ cần thiết
-        $bill->load(['contract', 'room', 'renterRequest']);
+        // Load thêm các quan hệ cần thiết + audit trail
+        $bill->load(['contract', 'room', 'renterRequest', 'createdByUser', 'payments.verifiedByUser']);
 
         return Inertia::render('Landlord/Bills/Show', [
             'bill' => $bill,
@@ -218,6 +233,7 @@ class BillController extends Controller
             'electric_price' => 'nullable|numeric|min:0',
             'water_usage' => 'nullable|integer|min:0',
             'water_price' => 'nullable|numeric|min:0',
+            'service_costs' => 'nullable|numeric|min:0',
             'internet_cost' => 'nullable|numeric|min:0',
             'trash_cost' => 'nullable|numeric|min:0',
             'other_costs' => 'nullable|numeric|min:0',
@@ -234,6 +250,7 @@ class BillController extends Controller
             'electric_price' => $validated['electric_price'] ?? $bill->electric_price,
             'water_usage' => $validated['water_usage'] ?? $bill->water_usage,
             'water_price' => $validated['water_price'] ?? $bill->water_price,
+            'service_costs' => $validated['service_costs'] ?? $bill->service_costs,
             'internet_cost' => $validated['internet_cost'] ?? $bill->internet_cost,
             'trash_cost' => $validated['trash_cost'] ?? $bill->trash_cost,
             'other_costs' => $validated['other_costs'] ?? $bill->other_costs,
@@ -272,8 +289,8 @@ class BillController extends Controller
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
-        // Gọi service xử lý logic tạo hàng loạt
-        $count = $this->billService->generateMonthlyBills($month, $year);
+        // Gọi service xử lý logic tạo hàng loạt (truyền user hiện tại để audit)
+        $count = $this->billService->generateMonthlyBills($month, $year, auth()->id());
 
         return redirect()->route('landlord.bills.index')
             ->with('success', "Đã tạo {$count} hóa đơn cho tháng {$month}/{$year}");

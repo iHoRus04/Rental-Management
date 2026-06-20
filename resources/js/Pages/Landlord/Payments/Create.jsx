@@ -13,6 +13,7 @@ export default function Create() {
         payment_method: 'cash',
         reference: '',
         notes: '',
+        bank_transaction_code: '',
     });
 
     const currentBill = bills.find(b => b.id == data.bill_id);
@@ -189,6 +190,27 @@ export default function Create() {
                                         placeholder="Số tài khoản, mã giao dịch..."
                                     />
                                 </div>
+
+                                {/* Mã giao dịch ngân hàng - bắt buộc khi chuyển khoản */}
+                                {data.payment_method === 'bank_transfer' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Mã giao dịch ngân hàng <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.bank_transaction_code}
+                                            onChange={(e) => setData('bank_transaction_code', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
+                                            placeholder="Nhập mã giao dịch từ ngân hàng..."
+                                            required
+                                        />
+                                        {errors.bank_transaction_code && <p className="text-red-500 text-sm mt-1">{errors.bank_transaction_code}</p>}
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            🔒 Mã này giúp chủ trọ đối soát, chống gian lận
+                                        </p>
+                                    </div>
+                                )}
 
                                 <div className="col-span-1 md:col-span-2">
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Ghi chú</label>

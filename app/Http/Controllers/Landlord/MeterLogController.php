@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Landlord;
 use App\Http\Controllers\Controller;
 use App\Models\MeterLog;
 use App\Models\Room;
+use App\Models\House;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -26,6 +27,12 @@ class MeterLogController extends Controller
         $user     = auth()->user();
         $houseIds = $user->getAccessibleHouseIds();
 
+        $houses = House::whereIn('id', $houseIds)->withCount('rooms')->get();
+
+        $rooms = Room::whereIn('house_id', $houseIds)
+            ->with(['contract.renterRequest'])
+            ->get();
+
         $meterLogs = MeterLog::with('room.contract.renterRequest')
             ->whereHas('room', function ($q) use ($houseIds) {
                 $q->whereIn('house_id', $houseIds);
@@ -34,16 +41,16 @@ class MeterLogController extends Controller
             ->orderByDesc('month')
             ->get();
 
-        $rooms = Room::whereIn('house_id', $houseIds)->get();
-
         if ($request->wantsJson()) {
             return response()->json([
+                'houses'    => $houses,
                 'meterLogs' => $meterLogs,
                 'rooms'     => $rooms,
             ]);
         }
 
         return Inertia::render('Landlord/MeterLogs/Index', [
+            'houses'    => $houses,
             'meterLogs' => $meterLogs,
             'rooms'     => $rooms,
         ]);

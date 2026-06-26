@@ -26,6 +26,22 @@ class BillController extends Controller
         $this->billService = $billService;
     }
 
+    private function authorizeBillAction(Bill $bill, string $action = 'view')
+    {
+        $user = auth()->user();
+        $bill->loadMissing('room');
+        
+        if (!$bill->room || !$user->managesHouse($bill->room->house_id)) {
+            abort(403, 'Bạn không có quyền truy cập hóa đơn này.');
+        }
+
+        if ($user->role === 'staff') {
+            if (!$user->hasPermission("bills.{$action}")) {
+                abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+            }
+        }
+    }
+
     /**
      * Danh sách hóa đơn
      * - Hỗ trợ trả về JSON (API)
@@ -36,7 +52,9 @@ class BillController extends Controller
         $user     = auth()->user();
         $houseIds = $user->getAccessibleHouseIds();
 
-        $bills = Bill::with(['contract', 'room', 'renterRequest'])
+        $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
+
+        $bills = Bill::with(['contract', 'room.house', 'renterRequest'])
             ->whereHas('room', function ($q) use ($houseIds) {
                 $q->whereIn('house_id', $houseIds);
             })
@@ -46,13 +64,15 @@ class BillController extends Controller
         // Nếu request là JSON (ví dụ gọi API)
         if ($request->wantsJson()) {
             return response()->json([
-                'bills' => $bills,
+                'bills'  => $bills,
+                'houses' => $houses,
             ]);
         }
 
         // Render giao diện danh sách hóa đơn
         return Inertia::render('Landlord/Bills/Index', [
-            'bills' => $bills,
+            'bills'  => $bills,
+            'houses' => $houses,
         ]);
     }
 
@@ -62,6 +82,9 @@ class BillController extends Controller
     public function create()
     {
         $user     = auth()->user();
+        if ($user->role === 'staff' && !$user->hasPermission('bills.create')) {
+            abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+        }
         $houseIds = $user->getAccessibleHouseIds();
 
         $contracts = Contract::with(['room.house', 'renterRequest'])
@@ -106,6 +129,11 @@ class BillController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        if ($user->role === 'staff' && !$user->hasPermission('bills.create')) {
+            abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+        }
+
         // Validate dữ liệu gửi lên
         $validated = $request->validate([
             'contract_id' => 'required|exists:contracts,id',
@@ -126,6 +154,9 @@ class BillController extends Controller
 
         // Lấy thông tin hợp đồng
         $contract = Contract::findOrFail($validated['contract_id']);
+        if (!$user->managesHouse($contract->room->house_id)) {
+            abort(403, 'Bạn không có quyền tạo hóa đơn cho phòng này.');
+        }
 
         // Tạo price snapshot (đóng băng biểu giá)
         $priceSnapshot = $this->billService->createPriceSnapshot($contract->room_id);
@@ -175,6 +206,8 @@ class BillController extends Controller
      */
     public function show(Bill $bill)
     {
+        $this->authorizeBillAction($bill, 'view');
+        
         // Load thêm các quan hệ cần thiết + audit trail
         $bill->load(['contract', 'room', 'renterRequest', 'createdByUser', 'payments.verifiedByUser']);
 
@@ -188,8 +221,16 @@ class BillController extends Controller
      */
     public function edit(Bill $bill)
     {
-        // Danh sách hợp đồng active
+        $this->authorizeBillAction($bill, 'edit');
+        
+        $user = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        // Danh sách hợp đồng active thuộc các nhà trọ được quản lý
         $contracts = Contract::with(['room', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->where('status', 'active')
             ->get();
 
@@ -206,6 +247,7 @@ class BillController extends Controller
      */
     public function update(Request $request, Bill $bill)
     {
+        $this->authorizeBillAction($bill, 'edit');
         /**
          * Trường hợp chỉ cập nhật tiền đã thanh toán
          */
@@ -275,6 +317,7 @@ class BillController extends Controller
      */
     public function destroy(Bill $bill)
     {
+        $this->authorizeBillAction($bill, 'delete');
         $bill->delete();
 
         return redirect()->route('landlord.bills.index')
@@ -286,6 +329,11 @@ class BillController extends Controller
      */
     public function generateMonthly(Request $request)
     {
+        $user = auth()->user();
+        if ($user->role === 'staff' && !$user->hasPermission('bills.create')) {
+            abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+        }
+
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
@@ -301,6 +349,8 @@ class BillController extends Controller
      */
     public function exportPDF(Bill $bill)
     {
+        $this->authorizeBillAction($bill, 'view');
+        
         // Load toàn bộ dữ liệu cần cho PDF
         $bill->load(['contract', 'room', 'renterRequest', 'payments']);
 

@@ -19,8 +19,24 @@ use Inertia\Inertia;
  */
 class ContractController extends Controller
 {
+    private function authorizeContractAction(Room $room, string $action = 'view')
+    {
+        $user = auth()->user();
+        if (!$user->managesHouse($room->house_id)) {
+            abort(403, 'Bạn không có quyền truy cập nhà trọ này.');
+        }
+
+        if ($user->role === 'staff') {
+            if (!$user->hasPermission("contracts.{$action}")) {
+                abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+            }
+        }
+    }
+
     public function index(Room $room)
     {
+        $this->authorizeContractAction($room, 'view');
+        
         $contracts = $room->contracts()
             ->with('renterRequest')
             ->latest()
@@ -48,6 +64,8 @@ class ContractController extends Controller
 
     public function create(Room $room)
     {
+        $this->authorizeContractAction($room, 'create');
+        
         // Lấy danh sách RenterRequest của phòng này với trạng thái 'approved'
         $renterRequests = RenterRequest::where('room_id', $room->id)
             ->where('status', 'approved')
@@ -63,6 +81,8 @@ class ContractController extends Controller
 
     public function store(Request $request, Room $room)
     {
+        $this->authorizeContractAction($room, 'create');
+        
         $validated = $request->validate([
             'renter_request_id' => 'required|exists:renter_requests,id',
             'start_date' => 'required|date',
@@ -97,6 +117,8 @@ class ContractController extends Controller
 
     public function show(Room $room, Contract $contract)
     {
+        $this->authorizeContractAction($room, 'view');
+        
         $contract->load('renterRequest');
         
         $contractData = [
@@ -121,6 +143,8 @@ class ContractController extends Controller
 
     public function edit(Room $room, Contract $contract)
     {
+        $this->authorizeContractAction($room, 'edit');
+        
         $renterRequests = RenterRequest::select(['id', 'name', 'phone', 'email'])
             ->where('status', 'approved')
             ->orderBy('name')
@@ -135,6 +159,8 @@ class ContractController extends Controller
 
     public function update(Request $request, Room $room, Contract $contract)
     {
+        $this->authorizeContractAction($room, 'edit');
+        
         // Nếu chỉ cập nhật status (chấm dứt)
         if ($request->has('status') && !$request->has('renter_request_id')) {
             $validated = $request->validate([
@@ -185,6 +211,8 @@ class ContractController extends Controller
 
     public function destroy(Room $room, Contract $contract)
     {
+        $this->authorizeContractAction($room, 'delete');
+        
         $renterRequestId = $contract->renter_request_id;
         
         $contract->delete();

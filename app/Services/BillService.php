@@ -25,14 +25,24 @@ class BillService
         $month = $month ?? now()->month;
         $year = $year ?? now()->year;
 
-        // Lấy tất cả hợp đồng đang hoạt động
-        $contracts = Contract::where('status', 'active')
+        $user = $createdBy ? \App\Models\User::find($createdBy) : null;
+        $houseIds = $user ? $user->getAccessibleHouseIds() : [];
+
+        // Lấy tất cả hợp đồng đang hoạt động thuộc các nhà trọ được quản lý
+        $query = Contract::where('status', 'active')
             ->where('start_date', '<=', Carbon::create($year, $month, 1)->endOfMonth())
             ->where(function ($query) {
                 $query->whereNull('end_date')
                       ->orWhere('end_date', '>=', Carbon::now()->startOfMonth());
-            })
-            ->with(['room.house', 'room.services' => function ($q) {
+            });
+
+        if ($user) {
+            $query->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            });
+        }
+
+        $contracts = $query->with(['room.house', 'room.services' => function ($q) {
                 $q->wherePivot('is_active', true);
             }])
             ->get();

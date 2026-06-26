@@ -2,9 +2,11 @@ import { Link, Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 
-export default function Index({ staffList, houses }) {
-    const { auth } = usePage().props;
+export default function Index({ staffList, houses, roles }) {
+    const { auth, flash } = usePage().props;
     const [search, setSearch] = useState('');
+    const [assignRoleModal, setAssignRoleModal] = useState(null); // staff object
+    const [selectedRoleId, setSelectedRoleId] = useState('');
 
     const filtered = staffList.filter(s =>
         s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -15,6 +17,20 @@ export default function Index({ staffList, houses }) {
         if (confirm('Bạn có chắc muốn xóa nhân viên này?')) {
             router.delete(route('landlord.staff.destroy', id));
         }
+    };
+
+    const openAssignRole = (staff) => {
+        setAssignRoleModal(staff);
+        setSelectedRoleId(staff.staff_role_id || '');
+    };
+
+    const handleAssignRole = () => {
+        if (!assignRoleModal) return;
+        router.post(route('landlord.staff.assign-role', assignRoleModal.id), {
+            role_id: selectedRoleId || null,
+        }, {
+            onSuccess: () => setAssignRoleModal(null),
+        });
     };
 
     const statusBadge = (status) => {
@@ -45,15 +61,26 @@ export default function Index({ staffList, houses }) {
                     <p className="text-emerald-600/80 font-medium text-sm mt-1">Quản lý nhân viên và phân quyền nhà trọ</p>
                 </div>
 
-                <Link
-                    href={route('landlord.staff.create')}
-                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Thêm nhân viên
-                </Link>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href={route('landlord.staff-roles.index')}
+                        className="flex items-center gap-2 border border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        Quản lý Vai trò
+                    </Link>
+                    <Link
+                        href={route('landlord.staff.create')}
+                        className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Thêm nhân viên
+                    </Link>
+                </div>
             </div>
 
             {/* Search */}
@@ -81,6 +108,7 @@ export default function Index({ staffList, houses }) {
                                 <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nhân viên</th>
                                 <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Số điện thoại</th>
                                 <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                                <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Vai trò</th>
                                 <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nhà được phân công</th>
                                 <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Thao tác</th>
                             </tr>
@@ -111,7 +139,25 @@ export default function Index({ staffList, houses }) {
                                         {statusBadge(staff.status)}
                                     </td>
 
-                                    {/* Houses */}
+                                    {/* Role badge */}
+                                    <td className="px-6 py-4">
+                                        {staff.staffRole ? (
+                                            <div>
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                                    </svg>
+                                                    {staff.staffRole.name}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-400 border border-gray-100 italic">
+                                                    Chưa có vai trò
+                                                </span>
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4">
                                         {staff.houses && staff.houses.length > 0 ? (
                                             <div className="flex flex-wrap gap-1.5">
@@ -129,6 +175,15 @@ export default function Index({ staffList, houses }) {
                                     {/* Actions */}
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => openAssignRole(staff)}
+                                                className="p-2 rounded-lg text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 transition"
+                                                title="Gán vai trò"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                                </svg>
+                                            </button>
                                             <Link
                                                 href={route('landlord.staff.show', staff.id)}
                                                 className="p-2 rounded-lg text-gray-500 hover:bg-teal-50 hover:text-teal-600 transition"
@@ -179,6 +234,63 @@ export default function Index({ staffList, houses }) {
                     >
                         + Thêm nhân viên
                     </Link>
+                </div>
+            )}
+
+            {/* Assign Role Modal */}
+            {assignRoleModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-2xl p-6 w-[420px] mx-4">
+                        {/* Modal Header */}
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/25 flex-shrink-0">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-teal-900">Gán vai trò</h3>
+                                <p className="text-xs text-gray-500">{assignRoleModal.name} — {assignRoleModal.email}</p>
+                            </div>
+                        </div>
+
+                        <div className="mb-5">
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Vai trò</label>
+                            <select
+                                value={selectedRoleId}
+                                onChange={e => setSelectedRoleId(e.target.value)}
+                                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 transition bg-white"
+                            >
+                                <option value="">— Không có vai trò —</option>
+                                {roles.map(r => (
+                                    <option key={r.id} value={r.id}>
+                                        {r.name}{r.description ? ` (${r.description})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            {roles.length === 0 && (
+                                <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
+                                    ⚠️ Chưa có vai trò nào.{' '}
+                                    <a href={route('landlord.staff-roles.index')} className="underline hover:text-amber-700">Tạo vai trò</a>
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3">
+                            <button
+                                onClick={() => setAssignRoleModal(null)}
+                                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleAssignRole}
+                                className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all"
+                            >
+                                ✓ Lưu
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

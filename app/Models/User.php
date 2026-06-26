@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\House;
+use App\Models\StaffRole;
 
 class User extends Authenticatable
 {
@@ -22,11 +23,13 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'plain_password',
         'phone',
         'role',
         'status',
         'landlord_id',
         'renter_request_id',
+        'staff_role_id',
     ];
 
     /**
@@ -73,6 +76,12 @@ class User extends Authenticatable
     public function staffMembers()
     {
         return $this->hasMany(User::class, 'landlord_id');
+    }
+
+    /** Vai trò RBAC của staff */
+    public function staffRole()
+    {
+        return $this->belongsTo(StaffRole::class, 'staff_role_id');
     }
 
     /** Landlord của staff này */
@@ -154,5 +163,70 @@ class User extends Authenticatable
     public function hasRole(string $role): bool
     {
         return $this->role === $role;
+    }
+
+    // =====================================================
+    // PERMISSION HELPERS
+    // =====================================================
+
+    /**
+     * Kiểm tra user có quyền thực hiện một permission cụ thể không.
+     * Landlord luôn có tất cả quyền. Staff lấy từ StaffRole.
+     */
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->isLandlord() || $this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->isStaff()) {
+            $role = $this->staffRole;
+            if (!$role) return false;
+            $role->load('rolePermissions');
+            return $role->hasPermission($permission);
+        }
+
+        return false;
+    }
+
+    /**
+     * Trả về mảng permissions của user.
+     * Landlord: ['*'], Staff: danh sách quyền cụ thể.
+     */
+    public function getStaffPermissions(): array
+    {
+        if ($this->isLandlord() || $this->isAdmin()) {
+            return ['*'];
+        }
+
+        if ($this->isStaff()) {
+            $role = $this->staffRole;
+            if (!$role) return [];
+            $role->load('rolePermissions');
+            return $role->getPermissionsArray();
+        }
+
+        return [];
+    }
+
+    /**
+     * Lấy ID của landlord (chính mình nếu là landlord, hoặc landlord_id nếu là staff)
+     */
+    public function getLandlordId(): int
+    {
+        return $this->role === 'staff' ? $this->landlord_id : $this->id;
+    }
+
+    public function getRoomLimit(): int
+    {
+        return 50; // Default subscription limit
+    }
+
+    public function getCurrentRoomCount(): int
+    {
+        $landlordId = $this->getLandlordId();
+        return \App\Models\Room::whereHas('house', function ($q) use ($landlordId) {
+            $q->where('user_id', $landlordId);
+        })->count();
     }
 }

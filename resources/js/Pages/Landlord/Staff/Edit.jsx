@@ -1,7 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
-export default function Edit({ staff, houses }) {
+export default function Edit({ staff, houses, roles }) {
     const { data, setData, put, processing, errors } = useForm({
         name: staff.name || '',
         email: staff.email || '',
@@ -10,6 +10,7 @@ export default function Edit({ staff, houses }) {
         password: '',
         password_confirmation: '',
         house_ids: staff.house_ids || [],
+        staff_role_id: staff.staff_role_id || '',
     });
 
     const toggleHouse = (id) => {
@@ -114,6 +115,30 @@ export default function Edit({ staff, houses }) {
                                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 transition"
                             />
                         </div>
+                    </div>
+                </div>
+
+                {/* Card: Vai trò */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                    <h2 className="text-base font-bold text-gray-700 border-b pb-3 mb-4">Vai trò & Phân quyền</h2>
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Vai trò</label>
+                        <select
+                            value={data.staff_role_id}
+                            onChange={e => setData('staff_role_id', e.target.value)}
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 transition"
+                        >
+                            <option value="">— Không có vai trò —</option>
+                            {(roles || []).map(role => (
+                                <option key={role.id} value={role.id}>
+                                    {role.name}{role.description ? ` — ${role.description}` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        {errors.staff_role_id && <p className="text-red-500 text-xs mt-1">{errors.staff_role_id}</p>}
+                        <p className="text-xs text-gray-400 mt-1.5">
+                            Chọn vai trò để cấp quyền thao tác cho nhân viên này.
+                        </p>
                     </div>
                 </div>
 

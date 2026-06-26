@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Landlord;
 
 use App\Http\Controllers\Controller;
+use App\Models\StaffRole;
 use App\Models\User;
 use App\Models\House;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class StaffController extends Controller
 
         $staffList = User::where('landlord_id', $user->id)
             ->where('role', 'staff')
-            ->with('staffedHouses')
+            ->with(['staffedHouses', 'staffRole.rolePermissions'])
             ->latest()
             ->get()
             ->map(function ($staff) {
@@ -40,6 +41,11 @@ class StaffController extends Controller
                     'phone'         => $staff->phone,
                     'status'        => $staff->status,
                     'created_at'    => $staff->created_at,
+                    'staff_role_id' => $staff->staff_role_id,
+                    'staffRole'     => $staff->staffRole ? [
+                        'id'   => $staff->staffRole->id,
+                        'name' => $staff->staffRole->name,
+                    ] : null,
                     'houses'        => $staff->staffedHouses->map(fn($h) => [
                         'id'   => $h->id,
                         'name' => $h->name,
@@ -48,10 +54,12 @@ class StaffController extends Controller
             });
 
         $houses = House::where('user_id', $user->id)->get(['id', 'name']);
+        $roles  = StaffRole::where('landlord_id', $user->id)->get(['id', 'name', 'description']);
 
         return Inertia::render('Landlord/Staff/Index', [
             'staffList' => $staffList,
             'houses'    => $houses,
+            'roles'     => $roles,
         ]);
     }
 
@@ -62,9 +70,11 @@ class StaffController extends Controller
     {
         $user   = Auth::user();
         $houses = House::where('user_id', $user->id)->get(['id', 'name']);
+        $roles  = StaffRole::where('landlord_id', $user->id)->get(['id', 'name', 'description']);
 
         return Inertia::render('Landlord/Staff/Create', [
             'houses' => $houses,
+            'roles'  => $roles,
         ]);
     }
 
@@ -74,24 +84,27 @@ class StaffController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email|max:255',
-            'phone'    => 'nullable|string|max:20',
-            'password' => 'required|string|min:8|confirmed',
-            'house_ids' => 'nullable|array',
-            'house_ids.*' => 'exists:houses,id',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|email|unique:users,email|max:255',
+            'phone'         => 'nullable|string|max:20',
+            'password'      => 'required|string|min:8|confirmed',
+            'house_ids'     => 'nullable|array',
+            'house_ids.*'   => 'exists:houses,id',
+            'staff_role_id' => 'nullable|exists:staff_roles,id',
         ]);
 
         $user = Auth::user();
 
         $staff = User::create([
-            'name'        => $validated['name'],
-            'email'       => $validated['email'],
-            'phone'       => $validated['phone'] ?? null,
-            'password'    => Hash::make($validated['password']),
-            'role'        => 'staff',
-            'status'      => 'active',
-            'landlord_id' => $user->id,
+            'name'           => $validated['name'],
+            'email'          => $validated['email'],
+            'phone'          => $validated['phone'] ?? null,
+            'password'       => Hash::make($validated['password']),
+            'plain_password' => $validated['password'],
+            'role'           => 'staff',
+            'status'         => 'active',
+            'landlord_id'    => $user->id,
+            'staff_role_id'  => $validated['staff_role_id'] ?? null,
         ]);
 
         // Gán nhà trọ nếu có
@@ -126,12 +139,19 @@ class StaffController extends Controller
 
         return Inertia::render('Landlord/Staff/Show', [
             'staff'  => [
-                'id'         => $staff->id,
-                'name'       => $staff->name,
-                'email'      => $staff->email,
-                'phone'      => $staff->phone,
-                'status'     => $staff->status,
-                'created_at' => $staff->created_at,
+                'id'             => $staff->id,
+                'name'           => $staff->name,
+                'email'          => $staff->email,
+                'phone'          => $staff->phone,
+                'status'         => $staff->status,
+                'created_at'     => $staff->created_at,
+                'staff_role_id'  => $staff->staff_role_id,
+                'plain_password' => $staff->plain_password,
+                'staffRole'      => $staff->staffRole ? [
+                    'id'          => $staff->staffRole->id,
+                    'name'        => $staff->staffRole->name,
+                    'permissions' => $staff->staffRole->load('rolePermissions')->getPermissionsArray(),
+                ] : null,
                 'houses'     => $staff->staffedHouses->map(fn($h) => [
                     'id'          => $h->id,
                     'name'        => $h->name,
@@ -139,6 +159,7 @@ class StaffController extends Controller
                 ]),
             ],
             'houses' => $houses,
+            'roles'  => StaffRole::where('landlord_id', Auth::id())->get(['id', 'name']),
         ]);
     }
 
@@ -155,14 +176,16 @@ class StaffController extends Controller
 
         return Inertia::render('Landlord/Staff/Edit', [
             'staff'  => [
-                'id'        => $staff->id,
-                'name'      => $staff->name,
-                'email'     => $staff->email,
-                'phone'     => $staff->phone,
-                'status'    => $staff->status,
-                'house_ids' => $staff->staffedHouses->pluck('id')->toArray(),
+                'id'            => $staff->id,
+                'name'          => $staff->name,
+                'email'         => $staff->email,
+                'phone'         => $staff->phone,
+                'status'        => $staff->status,
+                'staff_role_id' => $staff->staff_role_id,
+                'house_ids'     => $staff->staffedHouses->pluck('id')->toArray(),
             ],
             'houses' => $houses,
+            'roles'  => StaffRole::where('landlord_id', Auth::id())->get(['id', 'name', 'description']),
         ]);
     }
 
@@ -174,26 +197,29 @@ class StaffController extends Controller
         $this->authorizeStaff($staff);
 
         $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|max:255|unique:users,email,' . $staff->id,
-            'phone'    => 'nullable|string|max:20',
-            'status'   => 'required|in:active,inactive',
-            'password' => 'nullable|string|min:8|confirmed',
-            'house_ids' => 'nullable|array',
-            'house_ids.*' => 'exists:houses,id',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|email|max:255|unique:users,email,' . $staff->id,
+            'phone'         => 'nullable|string|max:20',
+            'status'        => 'required|in:active,inactive',
+            'password'      => 'nullable|string|min:8|confirmed',
+            'house_ids'     => 'nullable|array',
+            'house_ids.*'   => 'exists:houses,id',
+            'staff_role_id' => 'nullable|exists:staff_roles,id',
         ]);
 
         $user = Auth::user();
 
         $updateData = [
-            'name'   => $validated['name'],
-            'email'  => $validated['email'],
-            'phone'  => $validated['phone'] ?? null,
-            'status' => $validated['status'],
+            'name'          => $validated['name'],
+            'email'         => $validated['email'],
+            'phone'         => $validated['phone'] ?? null,
+            'status'        => $validated['status'],
+            'staff_role_id' => $validated['staff_role_id'] ?? null,
         ];
 
         if (!empty($validated['password'])) {
-            $updateData['password'] = Hash::make($validated['password']);
+            $updateData['password']       = Hash::make($validated['password']);
+            $updateData['plain_password'] = $validated['password'];
         }
 
         $staff->update($updateData);
@@ -271,6 +297,25 @@ class StaffController extends Controller
         $staff->staffedHouses()->detach($house->id);
 
         return back()->with('success', 'Đã gỡ nhà trọ khỏi nhân viên!');
+    }
+
+    /**
+     * Đổi mật khẩu nhân viên (từ trang Show)
+     */
+    public function changePassword(Request $request, User $staff)
+    {
+        $this->authorizeStaff($staff);
+
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $staff->update([
+            'password'       => Hash::make($request->password),
+            'plain_password' => $request->password,
+        ]);
+
+        return back()->with('success', 'Đã đổi mật khẩu cho nhân viên thành công!');
     }
 
     /**

@@ -29,10 +29,32 @@ class ReminderController extends Controller
         $user     = auth()->user();
         $houseIds = $user->getAccessibleHouseIds();
 
+        // Query houses with count of pending reminders
+        $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get()->map(function ($house) {
+            $house->pending_reminders_count = \App\Models\Reminder::where('is_sent', false)
+                ->where('reminder_date', '<=', now())
+                ->whereHas('contract.room', function ($q) use ($house) {
+                    $q->where('house_id', $house->id);
+                })
+                ->count();
+            return $house;
+        });
+
+        $selectedHouse = null;
+        if ($request->has('house_id') && $request->house_id !== 'all') {
+            $selectedHouse = \App\Models\House::find($request->house_id);
+        }
+
         $query = Reminder::with(['contract.renterRequest', 'contract.room.house', 'bill'])
             ->whereHas('contract.room', function ($q) use ($houseIds) {
                 $q->whereIn('house_id', $houseIds);
             });
+
+        if ($request->has('house_id') && $request->house_id !== 'all') {
+            $query->whereHas('contract.room', function ($q) use ($request) {
+                $q->where('house_id', $request->house_id);
+            });
+        }
 
         if ($request->has('type') && $request->type !== 'all') {
             $query->where('type', $request->type);
@@ -53,13 +75,17 @@ class ReminderController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'reminders' => $reminders,
-                'filters'   => $request->only(['type', 'status']),
+                'filters'   => $request->only(['type', 'status', 'house_id']),
+                'houses'    => $houses,
+                'selectedHouse' => $selectedHouse,
             ]);
         }
 
         return Inertia::render('Landlord/Reminders/Index', [
             'reminders' => $reminders,
-            'filters'   => $request->only(['type', 'status']),
+            'filters'   => $request->only(['type', 'status', 'house_id']),
+            'houses'    => $houses,
+            'selectedHouse' => $selectedHouse,
         ]);
     }
 
@@ -130,9 +156,11 @@ class ReminderController extends Controller
         // Lấy danh sách hợp đồng để có thể chuyển reminder sang hợp đồng khác khi edit
         $user = auth()->user();
         
+        $houseIds = $user->getAccessibleHouseIds();
+        
         $contracts = Contract::with(['renterRequest', 'room.house'])
-            ->whereHas('room.house', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
             })
             ->where('status', 'active')
             ->get();

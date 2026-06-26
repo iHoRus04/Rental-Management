@@ -17,6 +17,7 @@ use App\Http\Controllers\Landlord\RenterRequestController;
 use App\Http\Controllers\Landlord\DashboardController;
 use App\Http\Controllers\Landlord\ServiceController;
 use App\Http\Controllers\Landlord\StaffController;
+use App\Http\Controllers\Landlord\StaffRoleController;
 
 // ✅ Trang Home
 Route::get('/', function () {
@@ -36,7 +37,7 @@ Route::get('/', function () {
         }
     }
 
-    return Inertia::render('Home');
+    return Inertia::render('Auth/Login');
 })->name('home');
 
 
@@ -62,6 +63,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->prefix('landlord')
         ->name('landlord.')
         ->group(function () {
+            // Setup Wizard
+            Route::get('setup-wizard', [DashboardController::class, 'showWizard'])->name('setup-wizard');
+            Route::post('setup-wizard', [DashboardController::class, 'saveWizard'])->name('setup-wizard.save');
+
             Route::resource('houses', HouseController::class);
             Route::put('houses/{house}/utility-prices', [HouseController::class, 'updateUtilityPrices'])->name('houses.update-utility-prices');
             Route::resource('houses.rooms', RoomController::class);
@@ -114,6 +119,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::resource('staff', StaffController::class);
                 Route::post('staff/{staff}/houses', [StaffController::class, 'assignHouse'])->name('staff.houses.assign');
                 Route::delete('staff/{staff}/houses/{house}', [StaffController::class, 'removeHouse'])->name('staff.houses.remove');
+                Route::post('staff/{staff}/change-password', [StaffController::class, 'changePassword'])->name('staff.change-password');
+
+                // ✅ RBAC: Quản lý vai trò và phân quyền
+                Route::resource('staff-roles', StaffRoleController::class)->except(['show', 'create', 'edit']);
+                Route::post('staff/{staff}/assign-role', [StaffRoleController::class, 'assignToStaff'])->name('staff.assign-role');
             });
 
             // Tenant Requests (from tenant users)
@@ -121,6 +131,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('tenant-requests/{tenantRequest}', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'show'])->name('tenant-requests.show');
             Route::post('tenant-requests/{tenantRequest}/status/{status}', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'updateStatus'])->name('tenant-requests.update-status');
             Route::post('tenant-requests/{tenantRequest}/respond', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'respond'])->name('tenant-requests.respond');
+            Route::post('tenant-requests/{tenantRequest}/assign', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'assign'])->name('tenant-requests.assign');
+            Route::post('tenant-requests/{tenantRequest}/resolve', [\App\Http\Controllers\Landlord\TenantRequestController::class, 'resolve'])->name('tenant-requests.resolve');
             
             // Tạo hóa đơn hàng tháng
             Route::post('bills/generate-monthly', [BillController::class, 'generateMonthly'])->name('bills.generateMonthly');
@@ -146,6 +158,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('requests/create', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'create'])->name('requests.create');
             Route::post('requests', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'store'])->name('requests.store');
             Route::get('requests/{tenantRequest}', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'show'])->name('requests.show');
+            Route::post('requests/{tenantRequest}/close', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'close'])->name('requests.close');
+            Route::post('requests/{tenantRequest}/reject', [\App\Http\Controllers\Tenant\TenantRequestController::class, 'reject'])->name('requests.reject');
             
             // Tenant Bills
             Route::get('bills', [\App\Http\Controllers\Tenant\BillController::class, 'index'])->name('bills.index');

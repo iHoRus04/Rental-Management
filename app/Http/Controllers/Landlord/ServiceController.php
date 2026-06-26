@@ -20,12 +20,25 @@ class ServiceController extends Controller
     /**
      * Display a listing of services
      */
-    public function index()
+    public function index(Request $request)
     {
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
+
         $services = Service::where('is_active', true)->get();
+
+        $rooms = Room::whereIn('house_id', $houseIds)
+            ->with(['services' => function ($q) {
+                $q->where('room_services.is_active', true);
+            }])
+            ->get();
 
         return Inertia::render('Landlord/Services/Index', [
             'services' => $services,
+            'houses'   => $houses,
+            'rooms'    => $rooms,
         ]);
     }
 

@@ -53,11 +53,20 @@ class HouseController extends Controller
 
     public function create()
     {
+        $user = Auth::user();
+        if ($user->role === 'staff' && !$user->hasPermission('houses.create')) {
+            abort(403, 'Bạn không có quyền tạo nhà trọ.');
+        }
         return Inertia::render('Landlord/Houses/Create');
     }
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+        if ($user->role === 'staff' && !$user->hasPermission('houses.create')) {
+            abort(403, 'Bạn không có quyền tạo nhà trọ.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string|max:255',
@@ -70,7 +79,16 @@ class HouseController extends Controller
             $validated['image'] = $request->file('image')->store('houses', 'public');
         }
 
-        Auth::user()->houses()->create($validated);
+        if ($user->role === 'staff') {
+            $house = new House($validated);
+            $house->user_id = $user->landlord_id;
+            $house->save();
+            
+            // Tự động gán staff vào quản lý nhà trọ vừa tạo
+            $user->staffedHouses()->attach($house->id, ['assigned_at' => now()]);
+        } else {
+            $user->houses()->create($validated);
+        }
 
         return redirect()->route('landlord.houses.index')
             ->with('success', 'Tạo nhà trọ thành công!');
@@ -86,8 +104,10 @@ class HouseController extends Controller
             'house_data' => $house->toArray(),
         ]);
 
-        // ✅ Kiểm tra quyền (chỉ landlord mới được sửa)
-        if ($house->user_id !== Auth::id()) {
+        $user = Auth::user();
+        
+        // ✅ Kiểm tra quyền (landlord sở hữu, staff được gán và có quyền edit)
+        if (!$user->managesHouse($house) || ($user->role === 'staff' && !$user->hasPermission('houses.edit'))) {
             Log::warning('Edit House - Access Denied', [
                 'house_user_id' => $house->user_id,
                 'current_user_id' => Auth::id(),
@@ -106,7 +126,8 @@ class HouseController extends Controller
 
     public function update(Request $request, House $house)
 {
-    if ($house->user_id !== Auth::id()) {
+    $user = Auth::user();
+    if (!$user->managesHouse($house) || ($user->role === 'staff' && !$user->hasPermission('houses.edit'))) {
         abort(403, 'Bạn không có quyền cập nhật nhà trọ này.');
     }
 
@@ -141,7 +162,8 @@ class HouseController extends Controller
 
     public function updateUtilityPrices(Request $request, House $house)
     {
-        if (!Auth::user()->managesHouse($house)) {
+        $user = Auth::user();
+        if (!$user->managesHouse($house) || ($user->role === 'staff' && !$user->hasPermission('houses.edit'))) {
             abort(403, 'Bạn không có quyền cập nhật nhà trọ này.');
         }
 
@@ -158,8 +180,9 @@ class HouseController extends Controller
 
     public function destroy(House $house)
     {
-        // ✅ Chỉ landlord (chủ sở hữu) mới được xóa
-        if ($house->user_id !== Auth::id()) {
+        $user = Auth::user();
+        // ✅ Chỉ landlord sở hữu hoặc staff được gán và có quyền delete mới được xóa
+        if (!$user->managesHouse($house) || ($user->role === 'staff' && !$user->hasPermission('houses.delete'))) {
             abort(403, 'Bạn không có quyền xóa nhà trọ này.');
         }
 

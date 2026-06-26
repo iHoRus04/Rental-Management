@@ -87,7 +87,21 @@ class TenantRequestController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'priority' => 'required|in:low,medium,high,urgent',
+            'images' => 'nullable|array|max:5',
+            'images.*' => 'file|mimes:jpeg,png,jpg,gif,mp4,mov,avi,webm|max:10240',
+        ], [
+            'images.max' => 'Bạn chỉ được đính kèm tối đa 5 hình ảnh hoặc video.',
+            'images.*.mimes' => 'Định dạng file không hỗ trợ (chỉ hỗ trợ hình ảnh hoặc video).',
+            'images.*.max' => 'Kích thước file tối đa là 10MB.',
         ]);
+
+        $imagePaths = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $file) {
+                $path = $file->store('tenant_requests', 'public');
+                $imagePaths[] = $path;
+            }
+        }
 
         TenantRequest::create([
             'tenant_id' => $user->id,
@@ -97,11 +111,12 @@ class TenantRequestController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'],
             'priority' => $validated['priority'],
+            'images' => $imagePaths,
             'status' => 'pending',
         ]);
 
         return redirect()->route('tenant.dashboard')
-            ->with('success', 'Yêu cầu đã được gửi!');
+            ->with('success', 'Yêu cầu đã được gửi thành công!');
     }
 
     public function show(TenantRequest $tenantRequest)
@@ -112,10 +127,57 @@ class TenantRequestController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $tenantRequest->load(['room', 'landlord']);
+        $tenantRequest->load(['room.house', 'landlord', 'assignedTo']);
 
         return Inertia::render('Tenant/Requests/Show', [
             'request' => $tenantRequest,
         ]);
+    }
+
+    public function close(TenantRequest $tenantRequest)
+    {
+        $user = Auth::user();
+
+        if ($tenantRequest->tenant_id != $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        if ($tenantRequest->status !== 'resolved') {
+            return redirect()->back()->with('error', 'Chỉ có thể đóng các yêu cầu đã được giải quyết!');
+        }
+
+        $tenantRequest->update([
+            'status' => 'closed',
+        ]);
+
+        return redirect()->back()->with('success', 'Đã xác nhận hoàn tất và đóng yêu cầu thành công!');
+    }
+
+    public function reject(Request $request, TenantRequest $tenantRequest)
+    {
+        $user = Auth::user();
+
+        if ($tenantRequest->tenant_id != $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        if ($tenantRequest->status !== 'resolved') {
+            return redirect()->back()->with('error', 'Chỉ có thể từ chối các yêu cầu đã hoàn thành sửa chữa!');
+        }
+
+        $validated = $request->validate([
+            'reject_reason' => 'required|string|max:1000',
+        ], [
+            'reject_reason.required' => 'Vui lòng nhập lý do từ chối nghiệm thu.',
+            'reject_reason.max' => 'Lý do từ chối không được vượt quá 1000 ký tự.',
+        ]);
+
+        // Revert status to in_progress and append reject log to description
+        $tenantRequest->update([
+            'status' => 'in_progress',
+            'description' => $tenantRequest->description . "\n\n[Yêu cầu sửa lại ngày " . now()->format('d/m/Y H:i') . ": " . $validated['reject_reason'] . "]",
+        ]);
+
+        return redirect()->back()->with('success', 'Đã từ chối nghiệm thu và yêu cầu sửa chữa lại thành công!');
     }
 }

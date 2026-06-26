@@ -26,10 +26,18 @@ class RoomController extends Controller
      * là chủ sở hữu của `House` trước khi cho phép truy cập hoặc thay đổi.
      * Nếu không, sẽ trả về lỗi 403 để ngăn người dùng thao tác vào dữ liệu của người khác.
      */
-    private function authorizeHouseOwnership(House $house)
+    private function authorizeHouseOwnership(House $house, string $action = 'view')
     {
-        if ($house->user_id !== Auth::id()) {
+        $user = Auth::user();
+        
+        if (!$user->managesHouse($house)) {
             abort(403, 'Bạn không có quyền truy cập nhà trọ này.');
+        }
+
+        if ($user->role === 'staff') {
+            if (!$user->hasPermission("rooms.{$action}")) {
+                abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+            }
         }
     }
 
@@ -47,7 +55,7 @@ class RoomController extends Controller
 
     public function create(House $house)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'create');
         
         return Inertia::render('Landlord/Rooms/Create', [
             'house' => $house,
@@ -56,7 +64,12 @@ class RoomController extends Controller
 
     public function store(Request $request, House $house)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'create');
+        
+        $user = Auth::user();
+        if ($user->getCurrentRoomCount() >= $user->getRoomLimit()) {
+            return redirect()->back()->withErrors(['name' => 'Bạn đã đạt giới hạn tối đa của gói cước (' . $user->getRoomLimit() . ' phòng). Vui lòng nâng cấp gói cước để tạo thêm phòng!']);
+        }
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -94,7 +107,7 @@ class RoomController extends Controller
 
     public function show(House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'view');
         
         // Kiểm tra room có thuộc house không
         if ($room->house_id !== $house->id) {
@@ -134,7 +147,7 @@ class RoomController extends Controller
 
     public function edit(House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'edit');
         
         if ($room->house_id !== $house->id) {
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');
@@ -148,7 +161,7 @@ class RoomController extends Controller
 
     public function update(Request $request, House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'edit');
         
         if ($room->house_id !== $house->id) {
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');
@@ -202,7 +215,7 @@ class RoomController extends Controller
 
     public function destroy(House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'delete');
         
         if ($room->house_id !== $house->id) {
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');
@@ -227,7 +240,7 @@ class RoomController extends Controller
      */
     public function removeImage(Request $request, House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'edit');
         
         if ($room->house_id !== $house->id) {
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');

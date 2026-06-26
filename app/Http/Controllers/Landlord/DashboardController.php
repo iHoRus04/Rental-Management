@@ -35,6 +35,10 @@ class DashboardController extends Controller
         // Total Houses
         $totalHouses = House::whereIn('id', $houseIds)->count();
 
+        if ($totalHouses === 0 && $user->role === 'landlord') {
+            return redirect()->route('landlord.setup-wizard');
+        }
+
         // Total Rooms
         $totalRooms = Room::whereIn('house_id', $houseIds)->count();
 
@@ -199,5 +203,77 @@ class DashboardController extends Controller
             'stats'     => $stats,
             'contracts' => $contracts,
         ]);
+    }
+
+    public function showWizard()
+    {
+        $user = auth()->user();
+        if ($user->houses()->count() > 0) {
+            return redirect()->route('landlord.dashboard');
+        }
+
+        $services = \App\Models\Service::where('is_active', true)->get();
+
+        return Inertia::render('Landlord/SetupWizard', [
+            'services' => $services,
+        ]);
+    }
+
+    public function saveWizard(Request $request)
+    {
+        $user = auth()->user();
+        if ($user->houses()->count() > 0) {
+            return redirect()->route('landlord.dashboard');
+        }
+
+        $validated = $request->validate([
+            'house_name' => 'required|string|max:255',
+            'house_address' => 'required|string|max:255',
+            'room_count' => 'required|integer|min:1|max:50',
+            'room_rent_price' => 'required|numeric|min:0',
+            'room_area' => 'nullable|numeric|min:0',
+            'services' => 'nullable|array',
+            'services.*.service_id' => 'required|exists:services,id',
+            'services.*.price' => 'required|numeric|min:0',
+        ], [
+            'house_name.required' => 'Vui lòng nhập tên nhà trọ.',
+            'house_address.required' => 'Vui lòng nhập địa chỉ nhà trọ.',
+            'room_count.required' => 'Vui lòng nhập số lượng phòng.',
+            'room_count.max' => 'Số lượng phòng tạo tối đa là 50 phòng.',
+            'room_rent_price.required' => 'Vui lòng nhập giá thuê phòng.',
+        ]);
+
+        // 1. Create the House
+        $house = House::create([
+            'user_id' => $user->id,
+            'name' => $validated['house_name'],
+            'address' => $validated['house_address'],
+        ]);
+
+        // 2. Create the Rooms
+        $roomCount = $validated['room_count'];
+        for ($i = 1; $i <= $roomCount; $i++) {
+            $roomName = "Phòng " . (100 + $i);
+            $room = $house->rooms()->create([
+                'name' => $roomName,
+                'price' => $validated['room_rent_price'],
+                'status' => 'available',
+                'floor' => 1,
+                'area' => $validated['room_area'] ?? 20,
+            ]);
+
+            // 3. Attach services to rooms
+            if (!empty($validated['services'])) {
+                foreach ($validated['services'] as $svc) {
+                    $room->services()->attach($svc['service_id'], [
+                        'price' => $svc['price'],
+                        'is_active' => true,
+                    ]);
+                }
+            }
+        }
+
+        return redirect()->route('landlord.dashboard')
+            ->with('success', 'Chúc mừng! Chuỗi nhà trọ đầu tiên của bạn đã được thiết lập thành công!');
     }
 }

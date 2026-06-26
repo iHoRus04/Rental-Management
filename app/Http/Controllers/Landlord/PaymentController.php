@@ -20,18 +20,25 @@ class PaymentController extends Controller
 {
     public function index(Request $request)
     {
-        $payments = Payment::with(['bill.room', 'bill.renterRequest'])
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
+
+        $payments = Payment::with(['bill.room.house', 'bill.renterRequest'])
             ->latest('payment_date')
             ->get();
 
         if ($request->wantsJson()) {
             return response()->json([
                 'payments' => $payments,
+                'houses'   => $houses,
             ]);
         }
 
         return Inertia::render('Landlord/Payments/Index', [
             'payments' => $payments,
+            'houses'   => $houses,
         ]);
     }
 

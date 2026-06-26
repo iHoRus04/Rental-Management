@@ -25,9 +25,11 @@ class RenterRequestController extends Controller
         $user     = Auth::user();
         $houseIds = $user->getAccessibleHouseIds();
 
+        $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
+
         $requests = RenterRequest::with(['room.house', 'contracts' => function ($query) {
                 $query->where('end_date', '>=', now())
-                      ->orWhereNull('end_date');
+                       ->orWhereNull('end_date');
             }])
             ->whereHas('room', function ($query) use ($houseIds) {
                 $query->whereIn('house_id', $houseIds);
@@ -41,11 +43,15 @@ class RenterRequestController extends Controller
             });
 
         if ($request->wantsJson()) {
-            return response()->json(['requests' => $requests]);
+            return response()->json([
+                'requests' => $requests,
+                'houses'   => $houses,
+            ]);
         }
 
         return Inertia::render('Landlord/RenterRequests/Index', [
             'requests' => $requests,
+            'houses'   => $houses,
         ]);
     }
 
@@ -114,10 +120,10 @@ class RenterRequestController extends Controller
         $user = Auth::user();
         
         // Ensure the landlord owns the house associated with this request
-        // (náº¿u khÃ´ng cÃ³ room hoáº·c house thÃ¬ tráº£ vá» lá»—i rÃµ rÃ ng)
+        // (náº¿u khÃ´ng cÃ³ room hoáº·c house thÃ¬ tráº£ vá»  lá»—i rÃµ rÃ ng)
         if ($renterRequest->room && $renterRequest->room->house) {
-            if ($renterRequest->room->house->user_id != $user->id) {
-                return redirect()->back()->with('error', 'Báº¡n khÃ´ng cÃ³ quyá»n cáº­p nháº­t yÃªu cáº§u nÃ y!');
+            if (!$user->managesHouse($renterRequest->room->house)) {
+                return redirect()->back()->with('error', 'Bạn không có quyền cập nhật yêu cầu này!');
             }
         } else {
             return redirect()->back()->with('error', 'KhÃ´ng tÃ¬m tháº¥y thÃ´ng tin nhÃ  cho yÃªu cáº§u nÃ y!');
@@ -144,7 +150,7 @@ class RenterRequestController extends Controller
         
         $count = RenterRequest::where('status', 'new')
             ->whereHas('room.house', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
+                $query->whereIn('id', $user->getAccessibleHouseIds());
             })
             ->count();
 
@@ -159,7 +165,7 @@ class RenterRequestController extends Controller
         $user = Auth::user();
         
         // Check ownership
-        if ($renterRequest->room && $renterRequest->room->house && $renterRequest->room->house->user_id != $user->id) {
+        if ($renterRequest->room && $renterRequest->room->house && !$user->managesHouse($renterRequest->room->house)) {
             abort(403, 'Unauthorized');
         }
 
@@ -200,7 +206,7 @@ class RenterRequestController extends Controller
         $user = Auth::user();
         
         // Check ownership
-        if ($renterRequest->room && $renterRequest->room->house && $renterRequest->room->house->user_id != $user->id) {
+        if ($renterRequest->room && $renterRequest->room->house && !$user->managesHouse($renterRequest->room->house)) {
             abort(403, 'Unauthorized');
         }
 
@@ -247,7 +253,7 @@ class RenterRequestController extends Controller
         
         // Check ownership
         $renterRequest = $renterRequestService->renterRequest;
-        if ($renterRequest->room && $renterRequest->room->house && $renterRequest->room->house->user_id != $user->id) {
+        if ($renterRequest->room && $renterRequest->room->house && !$user->managesHouse($renterRequest->room->house)) {
             abort(403, 'Unauthorized');
         }
 
@@ -273,7 +279,7 @@ class RenterRequestController extends Controller
         
         // Check ownership
         $renterRequest = $renterRequestService->renterRequest;
-        if ($renterRequest->room && $renterRequest->room->house && $renterRequest->room->house->user_id != $user->id) {
+        if ($renterRequest->room && $renterRequest->room->house && !$user->managesHouse($renterRequest->room->house)) {
             abort(403, 'Unauthorized');
         }
 
@@ -290,7 +296,7 @@ class RenterRequestController extends Controller
         $user = Auth::user();
         
         // Check ownership
-        if ($renterRequest->room && $renterRequest->room->house && $renterRequest->room->house->user_id != $user->id) {
+        if ($renterRequest->room && $renterRequest->room->house && !$user->managesHouse($renterRequest->room->house)) {
             abort(403, 'Unauthorized');
         }
 

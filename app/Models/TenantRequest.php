@@ -10,17 +10,22 @@ class TenantRequest extends Model
         'tenant_id',
         'landlord_id',
         'room_id',
+        'assigned_to',
         'type',
         'title',
         'description',
+        'images',
         'priority',
         'status',
         'landlord_response',
+        'resolved_images',
         'responded_at',
     ];
 
     protected $casts = [
         'responded_at' => 'datetime',
+        'images' => 'array',
+        'resolved_images' => 'array',
     ];
 
     public function tenant()
@@ -36,5 +41,10 @@ class TenantRequest extends Model
     public function room()
     {
         return $this->belongsTo(Room::class);
+    }
+
+    public function assignedTo()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 }

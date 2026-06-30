@@ -1,7 +1,14 @@
 import { Link, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
-export default function Index({ house, rooms }) {
+export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
+    const handleCreateClick = (e) => {
+        if (currentRoomCount >= roomLimit) {
+            e.preventDefault();
+            alert(`Không thể thêm phòng! Bạn đã đạt giới hạn tối đa của gói cước hiện hành (${roomLimit} phòng). Vui lòng nâng cấp hoặc gia hạn gói cước tại mục Gói Dịch Vụ để tạo thêm phòng!`);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans relative">
             <Head title={`Danh sách phòng - ${house.name}`} />
@@ -38,6 +45,7 @@ export default function Index({ house, rooms }) {
 
                     <Link
                         href={route('landlord.houses.rooms.create', house.id)}
+                        onClick={handleCreateClick}
                         className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-6 py-3 rounded-full font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -56,6 +64,7 @@ export default function Index({ house, rooms }) {
                         <p className="text-gray-500 text-sm mb-6">Hãy tạo các phòng trọ để bắt đầu quản lý khách thuê.</p>
                         <Link
                             href={route('landlord.houses.rooms.create', house.id)}
+                            onClick={handleCreateClick}
                             className="text-emerald-600 font-bold hover:underline"
                         >
                             + Thêm phòng ngay

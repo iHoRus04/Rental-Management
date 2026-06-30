@@ -46,10 +46,13 @@ class RoomController extends Controller
         $this->authorizeHouseOwnership($house);
         
         $rooms = $house->rooms()->get();
+        $user = Auth::user();
 
         return Inertia::render('Landlord/Rooms/Index', [
             'house' => $house,
             'rooms' => $rooms,
+            'roomLimit' => $user->getRoomLimit(),
+            'currentRoomCount' => $user->getCurrentRoomCount(),
         ]);
     }
 

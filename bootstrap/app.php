@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'landlord'   => \App\Http\Middleware\EnsureUserIsLandlord::class,
             'tenant'     => \App\Http\Middleware\EnsureUserIsTenant::class,
             'permission' => \App\Http\Middleware\PermissionMiddleware::class,
+            'user.status'=> \App\Http\Middleware\CheckUserStatus::class,
         ]);
 
         //

@@ -212,10 +212,10 @@ class DashboardController extends Controller
             return redirect()->route('landlord.dashboard');
         }
 
-        $services = \App\Models\Service::where('is_active', true)->get();
+        $packages = \App\Models\Package::where('is_active', true)->orderBy('price', 'asc')->get();
 
         return Inertia::render('Landlord/SetupWizard', [
-            'services' => $services,
+            'packages' => $packages,
         ]);
     }
 
@@ -226,31 +226,61 @@ class DashboardController extends Controller
             return redirect()->route('landlord.dashboard');
         }
 
+        // Tìm gói dịch vụ được chọn trước
+        $packageId = $request->input('package_id');
+        $package = \App\Models\Package::find($packageId);
+        $roomLimit = $package ? (int) $package->room_limit : 5;
+
         $validated = $request->validate([
+            'package_id' => 'required|exists:packages,id',
             'house_name' => 'required|string|max:255',
             'house_address' => 'required|string|max:255',
-            'room_count' => 'required|integer|min:1|max:50',
+            'room_count' => 'required|integer|min:1|max:' . $roomLimit,
             'room_rent_price' => 'required|numeric|min:0',
             'room_area' => 'nullable|numeric|min:0',
-            'services' => 'nullable|array',
-            'services.*.service_id' => 'required|exists:services,id',
-            'services.*.price' => 'required|numeric|min:0',
         ], [
+            'package_id.required' => 'Vui lòng chọn một gói dịch vụ phần mềm.',
             'house_name.required' => 'Vui lòng nhập tên nhà trọ.',
             'house_address.required' => 'Vui lòng nhập địa chỉ nhà trọ.',
             'room_count.required' => 'Vui lòng nhập số lượng phòng.',
-            'room_count.max' => 'Số lượng phòng tạo tối đa là 50 phòng.',
+            'room_count.max' => 'Số lượng phòng tạo vượt quá hạn mức của gói dịch vụ bạn đã chọn (' . $roomLimit . ' phòng).',
             'room_rent_price.required' => 'Vui lòng nhập giá thuê phòng.',
         ]);
 
-        // 1. Create the House
+        // 1. Tạo Subscription cho gói cước đã chọn
+        $startDate = \Carbon\Carbon::now();
+        $endDate = $startDate->copy();
+        $durationValue = $package->duration_value ?? 1;
+        $durationType = $package->duration_type ?? 'month';
+        
+        if ($durationType === 'lifetime' || $durationType === 'onetime') {
+            $endDate->addYears(100);
+        } elseif ($durationType === 'week') {
+            $endDate->addWeeks($durationValue);
+        } elseif ($durationType === 'year') {
+            $endDate->addYears($durationValue);
+        } else {
+            $endDate->addMonths($durationValue);
+        }
+        
+        \App\Models\Subscription::create([
+            'user_id' => $user->id,
+            'package_id' => $package->id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'price_paid' => $package->price,
+            'status' => 'active',
+            'payment_status' => 'paid',
+        ]);
+
+        // 2. Create the House
         $house = House::create([
             'user_id' => $user->id,
             'name' => $validated['house_name'],
             'address' => $validated['house_address'],
         ]);
 
-        // 2. Create the Rooms
+        // 3. Create the Rooms (Chủ trọ sẽ tự tạo dịch vụ riêng sau khi vào Dashboard)
         $roomCount = $validated['room_count'];
         for ($i = 1; $i <= $roomCount; $i++) {
             $roomName = "Phòng " . (100 + $i);
@@ -261,19 +291,9 @@ class DashboardController extends Controller
                 'floor' => 1,
                 'area' => $validated['room_area'] ?? 20,
             ]);
-
-            // 3. Attach services to rooms
-            if (!empty($validated['services'])) {
-                foreach ($validated['services'] as $svc) {
-                    $room->services()->attach($svc['service_id'], [
-                        'price' => $svc['price'],
-                        'is_active' => true,
-                    ]);
-                }
-            }
         }
 
         return redirect()->route('landlord.dashboard')
-            ->with('success', 'Chúc mừng! Chuỗi nhà trọ đầu tiên của bạn đã được thiết lập thành công!');
+            ->with('success', 'Chúc mừng! Bạn đã đăng ký thành công gói cước ' . $package->name . ' và thiết lập chuỗi nhà trọ thành công!');
     }
 }

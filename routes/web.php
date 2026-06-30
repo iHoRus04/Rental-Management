@@ -44,28 +44,57 @@ Route::get('/', function () {
 // ✅ Khu vực bắt buộc đăng nhập
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // ✅ Admin Dashboard
-    Route::get('/admin/dashboard', function () {
-        return Inertia::render('Admin/Dashboard');
-    })
-    ->middleware('role:admin')
-    ->name('admin.dashboard');
+    // Route trạng thái tài khoản (Cho phép cả những người dùng có status pending/inactive xem)
+    Route::get('/account-status', function () {
+        $user = Auth::user();
+        if ($user && $user->status === 'active') {
+            return redirect()->route('home');
+        }
+        return Inertia::render('Auth/AccountStatus', [
+            'status' => $user->status ?? 'pending'
+        ]);
+    })->name('account-status');
 
+    // Các route bắt buộc phải có tài khoản ACTIVE
+    Route::middleware(['user.status'])->group(function () {
 
-    // ✅ Landlord Dashboard (landlord + staff)
-    Route::get('/landlord/dashboard', [DashboardController::class, 'index'])
-        ->middleware('role:landlord,staff')
-        ->name('landlord.dashboard');
+        // ✅ Admin Dashboard & Management
+        Route::middleware('role:admin')
+            ->prefix('admin')
+            ->name('admin.')
+            ->group(function () {
+                Route::get('dashboard', function () {
+                    return Inertia::render('Admin/Dashboard');
+                })->name('dashboard');
 
-    
-    // ✅ Landlord Module: Houses (landlord + staff)
-    Route::middleware('role:landlord,staff')
-        ->prefix('landlord')
-        ->name('landlord.')
-        ->group(function () {
-            // Setup Wizard
-            Route::get('setup-wizard', [DashboardController::class, 'showWizard'])->name('setup-wizard');
-            Route::post('setup-wizard', [DashboardController::class, 'saveWizard'])->name('setup-wizard.save');
+                Route::get('landlords', [\App\Http\Controllers\Admin\AdminLandlordController::class, 'index'])->name('landlords.index');
+                Route::post('landlords/{user}/status', [\App\Http\Controllers\Admin\AdminLandlordController::class, 'updateStatus'])->name('landlords.update-status');
+                
+                Route::resource('packages', \App\Http\Controllers\Admin\AdminPackageController::class)->except(['show']);
+                Route::get('revenue', [\App\Http\Controllers\Admin\AdminRevenueController::class, 'index'])->name('revenue.index');
+                Route::resource('feedbacks', \App\Http\Controllers\Admin\AdminFeedbackController::class)->only(['index', 'update']);
+            });
+
+        // ✅ Landlord Dashboard (landlord + staff)
+        Route::get('/landlord/dashboard', [DashboardController::class, 'index'])
+            ->middleware('role:landlord,staff')
+            ->name('landlord.dashboard');
+
+        // ✅ Landlord Module: Houses (landlord + staff)
+        Route::middleware('role:landlord,staff')
+            ->prefix('landlord')
+            ->name('landlord.')
+            ->group(function () {
+                // Setup Wizard
+                Route::get('setup-wizard', [DashboardController::class, 'showWizard'])->name('setup-wizard');
+                Route::post('setup-wizard', [DashboardController::class, 'saveWizard'])->name('setup-wizard.save');
+
+                // Gói dịch vụ chủ trọ
+                Route::get('subscription', [\App\Http\Controllers\Landlord\LandlordSubscriptionController::class, 'index'])->name('subscription.index');
+                Route::post('subscription/subscribe', [\App\Http\Controllers\Landlord\LandlordSubscriptionController::class, 'subscribe'])->name('subscription.subscribe');
+
+                // Feedback chủ trọ
+                Route::resource('feedbacks', \App\Http\Controllers\Landlord\FeedbackController::class)->only(['index', 'store', 'update', 'destroy']);
 
             Route::resource('houses', HouseController::class);
             Route::put('houses/{house}/utility-prices', [HouseController::class, 'updateUtilityPrices'])->name('houses.update-utility-prices');
@@ -174,6 +203,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // SSO token: issue short-lived token to allow external site to recognize logged-in user
     Route::post('/sso-token', [\App\Http\Controllers\SsoController::class, 'createToken'])->name('sso.token');
+    });
 });
 
 require __DIR__.'/auth.php';

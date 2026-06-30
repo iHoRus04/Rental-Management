@@ -217,9 +217,33 @@ class User extends Authenticatable
         return $this->role === 'staff' ? $this->landlord_id : $this->id;
     }
 
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function activeSubscription()
+    {
+        return $this->hasOne(Subscription::class)
+            ->where('status', 'active')
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->orderBy('id', 'desc');
+    }
+
     public function getRoomLimit(): int
     {
-        return 50; // Default subscription limit
+        if ($this->role === 'staff') {
+            $landlord = User::find($this->landlord_id);
+            return $landlord ? $landlord->getRoomLimit() : 5;
+        }
+
+        $activeSub = $this->activeSubscription()->with('package')->first();
+        if ($activeSub && $activeSub->package) {
+            return (int) $activeSub->package->room_limit;
+        }
+
+        return 5; // Giới hạn dùng thử
     }
 
     public function getCurrentRoomCount(): int

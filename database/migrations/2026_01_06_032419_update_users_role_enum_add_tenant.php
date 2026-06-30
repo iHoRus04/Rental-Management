@@ -22,6 +22,9 @@ return new class extends Migration
     {
         // Remove 'tenant' from enum
         if (DB::connection()->getDriverName() !== 'sqlite') {
+            // Cập nhật các user có vai trò khác admin/landlord thành landlord trước khi thay đổi enum
+            DB::table('users')->whereNotIn('role', ['admin', 'landlord'])->update(['role' => 'landlord']);
+
             DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'landlord') NOT NULL DEFAULT 'landlord'");
         }
     }

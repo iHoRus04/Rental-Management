@@ -230,13 +230,86 @@ class ReminderController extends Controller
         $user     = auth()->user();
         $houseIds = $user->getAccessibleHouseIds();
 
-        $count = Reminder::whereHas('contract.room', function ($q) use ($houseIds) {
+        // 1. Số lượng nhắc nhở chưa gửi từ database
+        $remindersCount = Reminder::whereHas('contract.room', function ($q) use ($houseIds) {
                 $q->whereIn('house_id', $houseIds);
             })
             ->where('is_sent', false)
+            ->where('reminder_date', '<=', now())
             ->count();
 
-        return response()->json(['count' => $count]);
+        $notifications = [];
+        $totalCount = $remindersCount;
+
+        // 2. Kiểm tra hạn gói cước của Landlord
+        if ($user->role === 'landlord') {
+            $activeSub = $user->activeSubscription()->with('package')->first();
+            if ($activeSub) {
+                $daysLeft = (int) ceil(now()->diffInDays($activeSub->end_date, false));
+                if ($daysLeft <= 7) {
+                    $totalCount++;
+                    $notifications[] = [
+                        'type' => 'subscription',
+                        'title' => 'Gói cước sắp hết hạn',
+                        'message' => $daysLeft <= 0 
+                            ? "Gói cước \"{$activeSub->package->name}\" của bạn sẽ hết hạn vào hôm nay! Hãy gia hạn ngay."
+                            : "Gói cước \"{$activeSub->package->name}\" của bạn sẽ hết hạn trong {$daysLeft} ngày nữa ({$activeSub->end_date->format('d/m/Y')}). Vui lòng gia hạn.",
+                        'is_warning' => true,
+                        'url' => route('landlord.subscription.index'),
+                    ];
+                }
+            } else {
+                // Kiểm tra xem có gói cước nào đã hết hạn trong lịch sử không
+                $lastSub = \App\Models\Subscription::where('user_id', $user->id)
+                    ->with('package')
+                    ->orderBy('end_date', 'desc')
+                    ->first();
+                
+                if ($lastSub) {
+                    $totalCount++;
+                    $notifications[] = [
+                        'type' => 'subscription',
+                        'title' => 'Gói cước đã hết hạn',
+                        'message' => "Gói cước \"{$lastSub->package->name}\" của bạn đã hết hạn vào ngày {$lastSub->end_date->format('d/m/Y')}. Hãy gia hạn để tiếp tục sử dụng.",
+                        'is_danger' => true,
+                        'url' => route('landlord.subscription.index'),
+                    ];
+                }
+            }
+        }
+
+        // Lấy 5 nhắc nhở chưa xử lý gần nhất để hiển thị nhanh dưới chuông
+        $dbReminders = Reminder::with(['contract.renterRequest', 'contract.room.house'])
+            ->whereHas('contract.room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
+            ->where('is_sent', false)
+            ->where('reminder_date', '<=', now())
+            ->orderBy('reminder_date', 'desc')
+            ->limit(5)
+            ->get();
+
+        foreach ($dbReminders as $rem) {
+            $typeLabel = 'Nhắc nhở';
+            if ($rem->type === 'contract_expiry') $typeLabel = 'Hợp đồng sắp hết hạn';
+            elseif ($rem->type === 'payment') $typeLabel = 'Thanh toán phòng';
+            elseif ($rem->type === 'bill_creation') $typeLabel = 'Tạo hóa đơn';
+            elseif ($rem->type === 'bill_payment') $typeLabel = 'Thanh toán hóa đơn';
+
+            $notifications[] = [
+                'id' => $rem->id,
+                'type' => 'reminder',
+                'title' => $typeLabel,
+                'message' => $rem->message ?? "Bạn có nhắc nhở phòng {$rem->contract->room->name}.",
+                'is_warning' => false,
+                'url' => route('landlord.reminders.index'),
+            ];
+        }
+
+        return response()->json([
+            'count' => $totalCount,
+            'notifications' => $notifications
+        ]);
     }
 
     /**

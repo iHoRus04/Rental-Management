@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function Index({ feedbacks }) {
+    const { systemSettings } = usePage().props;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
@@ -89,7 +90,7 @@ export default function Index({ feedbacks }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         if (editingId) {
             post(route('landlord.feedbacks.update', editingId), {
                 onSuccess: () => {
@@ -110,7 +111,7 @@ export default function Index({ feedbacks }) {
     };
 
     return (
-        <div className="p-6 md:p-10 max-w-[1200px] mx-auto space-y-6 font-sans min-h-screen">
+        <div className="p-6 md:p-10 max-w-[1400px] mx-auto space-y-6 font-sans min-h-screen">
             <Head title="Góp ý & Phản hồi" />
 
             {/* HEADER tối giản */}
@@ -127,98 +128,153 @@ export default function Index({ feedbacks }) {
                 </button>
             </div>
 
-            {/* Danh sách phản hồi tối giản dạng Rows */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-100">
-                {feedbacks.length === 0 ? (
-                    <div className="p-16 text-center text-slate-400 text-sm font-medium">
-                        Bạn chưa gửi ý kiến phản hồi nào.
-                    </div>
-                ) : (
-                    feedbacks.map((fb) => {
-                        const isExpanded = expandedId === fb.id;
-                        return (
-                            <div key={fb.id} className="transition-all hover:bg-slate-50/40">
-                                {/* Dòng rút gọn */}
-                                <div 
-                                    onClick={() => toggleExpand(fb.id)}
-                                    className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer select-none"
-                                >
-                                    <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
-                                        {/* Icon Phân loại nhỏ gọn */}
-                                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold shrink-0 ${
-                                            fb.type === 'bug' 
-                                                ? 'bg-rose-50 text-rose-600 border border-rose-100' 
-                                                : fb.type === 'support'
-                                                ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                                                : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                        }`}>
-                                            {fb.type === 'bug' ? 'Lỗi' : fb.type === 'support' ? 'Hỗ trợ' : 'Góp ý'}
-                                        </span>
-
-                                        <span className="font-bold text-slate-700 text-sm truncate hover:text-slate-900">
-                                            {fb.title}
-                                        </span>
-                                        
-                                        {!isExpanded && (
-                                            <span className="text-slate-400 text-xs truncate max-w-[280px] hidden md:inline font-medium">
-                                                - {fb.content}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="flex items-center gap-4 shrink-0 self-end sm:self-auto text-xs font-semibold text-slate-400">
-                                        <span>{fb.created_at}</span>
-
-                                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider ${
-                                            fb.status === 'processed' 
-                                                ? 'bg-slate-100 text-slate-500' 
-                                                : 'bg-amber-50 text-amber-600 border border-amber-100'
-                                        }`}>
-                                            {fb.status === 'processed' ? 'Đã xử lý' : 'Đang xử lý'}
-                                        </span>
-
-                                        {fb.status === 'pending' && (
-                                            <div className="flex gap-2 text-xs font-bold shrink-0">
-                                                <button
-                                                    onClick={(e) => openEditModal(fb, e)}
-                                                    className="text-emerald-600 hover:text-emerald-800 transition-colors"
-                                                >
-                                                    Sửa
-                                                </button>
-                                                <span className="text-slate-200">|</span>
-                                                <button
-                                                    onClick={(e) => handleDeleteClick(fb.id, e)}
-                                                    className="text-rose-500 hover:text-rose-700 transition-colors"
-                                                >
-                                                    Xóa
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        <svg className={`w-4 h-4 text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                                    </div>
-                                </div>
-
-                                {/* Khối chi tiết mở rộng */}
-                                {isExpanded && (
-                                    <div className="px-5 pb-5 pt-1 sm:px-14 sm:pb-6 space-y-4 bg-slate-50/20 border-t border-slate-50">
-                                        <p className="text-slate-600 text-sm whitespace-pre-line leading-relaxed font-medium">
-                                            {fb.content}
-                                        </p>
-                                        
-                                        {fb.image && (
-                                            <div className="relative max-w-[200px] rounded-xl overflow-hidden border border-slate-100 bg-white shadow-sm group">
-                                                <a href={fb.image} target="_blank" rel="noopener noreferrer" className="block relative">
-                                                    <img src={fb.image} alt="Đính kèm" className="w-full h-auto max-h-32 object-cover hover:scale-105 transition-transform duration-200" />
-                                                </a>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+            <div className="flex flex-col lg:flex-row gap-6">
+                {/* Cột trái: Danh sách phản hồi */}
+                <div className="flex-1 space-y-4">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-100">
+                        {feedbacks.length === 0 ? (
+                            <div className="p-16 text-center text-slate-400 text-sm font-medium">
+                                Bạn chưa gửi ý kiến phản hồi nào.
                             </div>
-                        );
-                    })
-                )}
+                        ) : (
+                            feedbacks.map((fb) => {
+                                const isExpanded = expandedId === fb.id;
+                                return (
+                                    <div key={fb.id} className="transition-all hover:bg-slate-50/40">
+                                        {/* Dòng rút gọn */}
+                                        <div
+                                            onClick={() => toggleExpand(fb.id)}
+                                            className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer select-none"
+                                        >
+                                            <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
+                                                {/* Icon Phân loại nhỏ gọn */}
+                                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold shrink-0 ${fb.type === 'bug'
+                                                        ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                                                        : fb.type === 'support'
+                                                            ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                                                            : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                                    }`}>
+                                                    {fb.type === 'bug' ? 'Lỗi' : fb.type === 'support' ? 'Hỗ trợ' : 'Góp ý'}
+                                                </span>
+
+                                                <span className="font-bold text-slate-700 text-sm truncate hover:text-slate-900">
+                                                    {fb.title}
+                                                </span>
+
+                                                {!isExpanded && (
+                                                    <span className="text-slate-400 text-xs truncate max-w-[280px] hidden md:inline font-medium">
+                                                        - {fb.content}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center gap-4 shrink-0 self-end sm:self-auto text-xs font-semibold text-slate-400">
+                                                <span>{fb.created_at}</span>
+
+                                                <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider ${fb.status === 'processed'
+                                                        ? 'bg-slate-100 text-slate-500'
+                                                        : 'bg-amber-50 text-amber-600 border border-amber-100'
+                                                    }`}>
+                                                    {fb.status === 'processed' ? 'Đã xử lý' : 'Đang xử lý'}
+                                                </span>
+
+                                                {fb.status === 'pending' && (
+                                                    <div className="flex gap-2 text-xs font-bold shrink-0">
+                                                        <button
+                                                            onClick={(e) => openEditModal(fb, e)}
+                                                            className="text-emerald-600 hover:text-emerald-800 transition-colors"
+                                                        >
+                                                            Sửa
+                                                        </button>
+                                                        <span className="text-slate-200">|</span>
+                                                        <button
+                                                            onClick={(e) => handleDeleteClick(fb.id, e)}
+                                                            className="text-rose-500 hover:text-rose-700 transition-colors"
+                                                        >
+                                                            Xóa
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                <svg className={`w-4 h-4 text-slate-300 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                            </div>
+                                        </div>
+
+                                        {/* Khối chi tiết mở rộng */}
+                                        {isExpanded && (
+                                            <div className="px-5 pb-5 pt-1 sm:px-14 sm:pb-6 space-y-4 bg-slate-50/20 border-t border-slate-50">
+                                                <p className="text-slate-600 text-sm whitespace-pre-line leading-relaxed font-medium">
+                                                    {fb.content}
+                                                </p>
+
+                                                {fb.image && (
+                                                    <div className="relative max-w-[200px] rounded-xl overflow-hidden border border-slate-100 bg-white shadow-sm group">
+                                                        <a href={fb.image} target="_blank" rel="noopener noreferrer" className="block relative">
+                                                            <img src={fb.image} alt="Đính kèm" className="w-full h-auto max-h-32 object-cover hover:scale-105 transition-transform duration-200" />
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+
+                {/* Cột phải: Thẻ liên hệ hỗ trợ kỹ thuật */}
+                <div className="w-full lg:w-80 shrink-0">
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5 sticky top-24">
+                        <div className="border-b border-slate-50 pb-4">
+                            <h3 className="text-sm font-extrabold text-slate-800">Trung tâm Hỗ trợ</h3>
+                            <p className="text-[10px] text-slate-400 font-medium mt-1">Liên hệ trực tiếp với bộ phận chăm sóc khách hàng.</p>
+                        </div>
+
+                        {/* Hotline */}
+                        <div className="space-y-1.5">
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng đài hỗ trợ</span>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                                </div>
+                                <a href={`tel:${systemSettings?.support_phone}`} className="text-sm font-black text-slate-800 hover:text-emerald-600 transition-colors">
+                                    {systemSettings?.support_phone || '0987654321'}
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Email */}
+                        <div className="space-y-1.5">
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email hỗ trợ kỹ thuật</span>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                </div>
+                                <a href={`mailto:${systemSettings?.support_email}`} className="text-xs font-bold text-slate-700 hover:text-teal-600 transition-colors truncate">
+                                    {systemSettings?.support_email || 'support@dreamhouses.vn'}
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Address */}
+                        <div className="space-y-1.5">
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Văn phòng giao dịch</span>
+                            <div className="flex items-start gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                </div>
+                                <p className="text-[11px] font-medium text-slate-500 leading-normal">
+                                    {systemSettings?.support_address || '123 Đường Láng, Đống Đa, Hà Nội'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-slate-50 pt-4 text-[10px] text-slate-400 font-medium leading-normal text-center">
+                            Chúng tôi luôn sẵn sàng đồng hành hỗ trợ bạn quản lý nhà trọ chuyên nghiệp hơn.
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* MODAL SOẠN THẢO/CHỈNH SỬA TỐI GIẢN */}

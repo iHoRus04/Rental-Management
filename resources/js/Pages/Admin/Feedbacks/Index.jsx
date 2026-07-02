@@ -22,14 +22,14 @@ export default function Index({ feedbacks }) {
         <AdminLayout title="Quản lý Góp ý & Phản hồi">
             <Head title="Quản lý Góp ý & Phản hồi" />
 
-            <div className="space-y-6 max-w-[1200px] mx-auto font-sans min-h-screen">
+            <div className="space-y-6 max-w-[1400px] mx-auto font-sans min-h-screen pb-8">
                 {/* Stats Bar tối giản */}
                 <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h1 className="text-xl font-black text-slate-800 tracking-tight">📥 Quản lý Phản hồi</h1>
                         <p className="text-xs text-slate-400 mt-0.5">Tiếp nhận góp ý, hỗ trợ kỹ thuật và báo cáo sự cố từ các chủ trọ.</p>
                     </div>
-                    
+
                     <div className="flex gap-2 text-xs font-bold w-full sm:w-auto">
                         <span className="px-3.5 py-1.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100/50">
                             ⏳ Chờ: {feedbacks.filter(fb => fb.status === 'pending').length}
@@ -61,18 +61,17 @@ export default function Index({ feedbacks }) {
                                             <div className="w-6 h-6 rounded-lg bg-teal-50 text-teal-700 font-extrabold text-[11px] flex items-center justify-center shrink-0">
                                                 {fb.sender.name.charAt(0).toUpperCase()}
                                             </div>
-                                            
+
                                             <span className="text-xs font-bold text-slate-700 shrink-0">
                                                 {fb.sender.name}
                                             </span>
 
-                                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider shrink-0 ${
-                                                fb.type === 'bug' 
-                                                    ? 'bg-rose-50 text-rose-600 border border-rose-100' 
-                                                    : fb.type === 'support'
+                                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider shrink-0 ${fb.type === 'bug'
+                                                ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                                                : fb.type === 'support'
                                                     ? 'bg-blue-50 text-blue-600 border border-blue-100'
                                                     : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                            }`}>
+                                                }`}>
                                                 {fb.type === 'bug' ? 'Lỗi' : fb.type === 'support' ? 'Hỗ trợ' : 'Góp ý'}
                                             </span>
 
@@ -90,11 +89,10 @@ export default function Index({ feedbacks }) {
                                         <div className="flex items-center gap-4 shrink-0 self-end md:self-auto text-xs font-semibold text-slate-400">
                                             <span>{fb.created_at}</span>
 
-                                            <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider ${
-                                                fb.status === 'processed' 
-                                                    ? 'bg-slate-100 text-slate-500' 
-                                                    : 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse'
-                                            }`}>
+                                            <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-extrabold tracking-wider ${fb.status === 'processed'
+                                                ? 'bg-slate-100 text-slate-500'
+                                                : 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse'
+                                                }`}>
                                                 {fb.status === 'processed' ? 'Đã xử lý' : 'Đang chờ'}
                                             </span>
 
@@ -123,7 +121,7 @@ export default function Index({ feedbacks }) {
                                             <p className="text-slate-600 text-sm whitespace-pre-line leading-relaxed font-medium">
                                                 {fb.content}
                                             </p>
-                                            
+
                                             {fb.image && (
                                                 <div className="relative max-w-[280px] rounded-xl overflow-hidden border border-slate-100 bg-white shadow-sm group">
                                                     <a href={fb.image} target="_blank" rel="noopener noreferrer" className="block relative">

@@ -11,7 +11,7 @@ export default function Index() {
     useEffect(() => {
         const interval = setInterval(() => {
             router.reload({ only: ['reminders'], preserveScroll: true });
-        }, 60000); 
+        }, 60000);
         return () => clearInterval(interval);
     }, []);
 
@@ -63,9 +63,9 @@ export default function Index() {
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title="Nhắc nhở & Thông báo" />
-            
-            <div className="max-w-[1200px] mx-auto">
-                
+
+            <div className="max-w-[1400px] mx-auto">
+
                 {/* HOUSE LIST GRID VIEW */}
                 {!selectedHouse ? (
                     <>
@@ -209,25 +209,22 @@ export default function Index() {
                                     const isSent = reminder.is_sent;
 
                                     return (
-                                        <div 
-                                            key={reminder.id} 
-                                            className={`group bg-white rounded-2xl p-5 border shadow-sm transition-all duration-300 flex flex-col md:flex-row items-start md:items-center gap-4 ${
-                                                isOverdue ? 'border-rose-200 hover:border-rose-300 hover:shadow-rose-100' : 
-                                                isSent ? 'border-gray-100 opacity-75 hover:opacity-100' : 'border-gray-100 hover:border-emerald-200 hover:shadow-emerald-50'
-                                            }`}
+                                        <div
+                                            key={reminder.id}
+                                            className={`group bg-white rounded-2xl p-5 border shadow-sm transition-all duration-300 flex flex-col md:flex-row items-start md:items-center gap-4 ${isOverdue ? 'border-rose-200 hover:border-rose-300 hover:shadow-rose-100' :
+                                                    isSent ? 'border-gray-100 opacity-75 hover:opacity-100' : 'border-gray-100 hover:border-emerald-200 hover:shadow-emerald-50'
+                                                }`}
                                         >
                                             {/* Left Status Bar */}
-                                            <div className={`w-1.5 h-12 rounded-full flex-shrink-0 hidden md:block ${
-                                                isSent ? 'bg-gray-300' : 
-                                                isOverdue ? 'bg-rose-500' : 'bg-emerald-500'
-                                            }`}></div>
+                                            <div className={`w-1.5 h-12 rounded-full flex-shrink-0 hidden md:block ${isSent ? 'bg-gray-300' :
+                                                    isOverdue ? 'bg-rose-500' : 'bg-emerald-500'
+                                                }`}></div>
 
                                             {/* 1. Date & Type */}
                                             <div className="flex items-center gap-4 min-w-[180px]">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
-                                                    isSent ? 'bg-gray-100 text-gray-400' : 
-                                                    isOverdue ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'
-                                                }`}>
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${isSent ? 'bg-gray-100 text-gray-400' :
+                                                        isOverdue ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'
+                                                    }`}>
                                                     <span className="font-bold text-lg">{new Date(reminder.reminder_date).getDate()}</span>
                                                 </div>
                                                 <div>
@@ -284,13 +281,12 @@ export default function Index() {
                                         <Link
                                             key={index}
                                             href={url || '#'}
-                                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
-                                                link.active
+                                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${link.active
                                                     ? 'bg-emerald-600 text-white shadow-md'
                                                     : !link.url
-                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                    : 'bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-600'
-                                            }`}
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                        : 'bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-600'
+                                                }`}
                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                         />
                                     );

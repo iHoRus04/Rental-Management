@@ -63,16 +63,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->prefix('admin')
             ->name('admin.')
             ->group(function () {
-                Route::get('dashboard', function () {
-                    return Inertia::render('Admin/Dashboard');
-                })->name('dashboard');
+                Route::get('dashboard', [\App\Http\Controllers\Admin\AdminDashboardController::class, 'index'])->name('dashboard');
 
                 Route::get('landlords', [\App\Http\Controllers\Admin\AdminLandlordController::class, 'index'])->name('landlords.index');
+                Route::get('landlords/{user}', [\App\Http\Controllers\Admin\AdminLandlordController::class, 'show'])->name('landlords.show');
                 Route::post('landlords/{user}/status', [\App\Http\Controllers\Admin\AdminLandlordController::class, 'updateStatus'])->name('landlords.update-status');
                 
                 Route::resource('packages', \App\Http\Controllers\Admin\AdminPackageController::class)->except(['show']);
-                Route::get('revenue', [\App\Http\Controllers\Admin\AdminRevenueController::class, 'index'])->name('revenue.index');
                 Route::resource('feedbacks', \App\Http\Controllers\Admin\AdminFeedbackController::class)->only(['index', 'update']);
+                
+                Route::get('settings', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'index'])->name('settings.index');
+                Route::post('settings', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('settings.update');
             });
 
         // ✅ Landlord Dashboard (landlord + staff)

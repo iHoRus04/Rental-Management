@@ -33,8 +33,15 @@ const ChatIcon = () => (
     </svg>
 );
 
+const SettingsIcon = () => (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+);
+
 export default function AdminLayout({ children, title }) {
-    const { auth } = usePage().props;
+    const { auth, pendingFeedbacksCount, systemSettings } = usePage().props;
     const user = auth.user;
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [profileOpen, setProfileOpen] = useState(false);
@@ -90,8 +97,8 @@ export default function AdminLayout({ children, title }) {
         { id: 'dashboard', name: 'Tổng quan', href: route('admin.dashboard'), icon: HomeIcon, active: currentRoute === 'admin.dashboard' },
         { id: 'landlords', name: 'Quản lý Chủ trọ', href: route('admin.landlords.index'), icon: UsersIcon, active: currentRoute?.startsWith('admin.landlords') },
         { id: 'packages', name: 'Quản lý Gói cước', href: route('admin.packages.index'), icon: BriefcaseIcon, active: currentRoute?.startsWith('admin.packages') },
-        { id: 'revenue', name: 'Báo cáo Doanh thu', href: route('admin.revenue.index'), icon: ChartIcon, active: currentRoute?.startsWith('admin.revenue') },
-        { id: 'feedbacks', name: 'Góp ý từ Landlord', href: route('admin.feedbacks.index'), icon: ChatIcon, active: currentRoute?.startsWith('admin.feedbacks') },
+        { id: 'feedbacks', name: 'Góp ý từ Landlord', href: route('admin.feedbacks.index'), icon: ChatIcon, active: currentRoute?.startsWith('admin.feedbacks'), badge: pendingFeedbacksCount },
+        { id: 'settings', name: 'Cài đặt hệ thống', href: route('admin.settings.index'), icon: SettingsIcon, active: currentRoute?.startsWith('admin.settings') },
     ];
 
     return (
@@ -105,12 +112,18 @@ export default function AdminLayout({ children, title }) {
                 {/* Logo Section */}
                 <div className="p-6 flex items-center justify-center border-b border-emerald-50/50 h-24">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 flex-shrink-0">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                        </div>
+                        {systemSettings?.logo ? (
+                            <img src={systemSettings.logo} alt="Logo" className="w-10 h-10 object-contain rounded-xl shadow-md flex-shrink-0" />
+                        ) : (
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 flex-shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            </div>
+                        )}
                         {sidebarOpen && (
                             <div className="animate-fade-in">
-                                <span className="font-extrabold text-xl text-teal-900 tracking-tight block">DreamHouses</span>
+                                <span className="font-extrabold text-xl text-teal-900 tracking-tight block">
+                                    {systemSettings?.app_name || 'DreamHouses'}
+                                </span>
                                 <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest block -mt-1">Super Admin</span>
                             </div>
                         )}
@@ -129,11 +142,29 @@ export default function AdminLayout({ children, title }) {
                                 : 'text-gray-500 hover:bg-emerald-50 hover:text-emerald-700'
                             }`}
                         >
-                            <span className={`flex-shrink-0 transition-transform duration-300 ${!item.active && 'group-hover:scale-110'}`}>
+                            {/* Icon + Badge (khi sidebar thu gọn) */}
+                            <span className={`flex-shrink-0 relative transition-transform duration-300 ${!item.active && 'group-hover:scale-110'}`}>
                                 <item.icon />
+                                {!sidebarOpen && item.badge > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center shadow-sm animate-pulse">
+                                        {item.badge > 99 ? '99+' : item.badge}
+                                    </span>
+                                )}
                             </span>
 
-                            {sidebarOpen && <span className="font-bold text-sm whitespace-nowrap">{item.name}</span>}
+                            {/* Tên + Badge (khi sidebar mở rộng) */}
+                            {sidebarOpen && (
+                                <span className="flex-1 flex items-center justify-between">
+                                    <span className="font-bold text-sm whitespace-nowrap">{item.name}</span>
+                                    {item.badge > 0 && (
+                                        <span className={`min-w-[20px] h-5 px-1.5 text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-sm ${
+                                            item.active ? 'bg-white/30 text-white' : 'bg-rose-500 text-white animate-pulse'
+                                        }`}>
+                                            {item.badge > 99 ? '99+' : item.badge}
+                                        </span>
+                                    )}
+                                </span>
+                            )}
                         </Link>
                     ))}
                 </nav>

@@ -50,8 +50,8 @@ export default function TenantRequestsIndex({ auth, requests = [], houses = [] }
         ? requests.filter(r => r.room && r.room.house_id === selectedHouse.id)
         : [];
 
-    const filteredRequests = filterStatus === 'all' 
-        ? houseRequests 
+    const filteredRequests = filterStatus === 'all'
+        ? houseRequests
         : houseRequests.filter(req => req.status === filterStatus);
 
     const houseStats = {
@@ -65,8 +65,8 @@ export default function TenantRequestsIndex({ auth, requests = [], houses = [] }
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title="Yêu cầu từ người thuê" />
 
-            <div className="max-w-[1200px] mx-auto">
-                
+            <div className="max-w-[1400px] mx-auto">
+
                 {/* HOUSE LIST GRID VIEW */}
                 {!selectedHouse ? (
                     <>
@@ -197,37 +197,37 @@ export default function TenantRequestsIndex({ auth, requests = [], houses = [] }
                             <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100 w-full md:w-auto overflow-x-auto">
                                 <button
                                     onClick={() => setFilterStatus('all')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === 'all' 
-                                            ? 'bg-white text-emerald-700 shadow-sm' 
-                                            : 'text-gray-500 hover:text-gray-800'
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === 'all'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
+                                        }`}
                                 >
                                     Tất cả ({houseStats.total})
                                 </button>
                                 <button
                                     onClick={() => setFilterStatus('pending')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === 'pending' 
-                                            ? 'bg-white text-yellow-700 shadow-sm' 
-                                            : 'text-gray-500 hover:text-gray-800'
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === 'pending'
+                                        ? 'bg-white text-yellow-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
+                                        }`}
                                 >
                                     Chờ xử lý ({houseStats.pending})
                                 </button>
                                 <button
                                     onClick={() => setFilterStatus('in_progress')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === 'in_progress' 
-                                            ? 'bg-white text-blue-700 shadow-sm' 
-                                            : 'text-gray-500 hover:text-gray-800'
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === 'in_progress'
+                                        ? 'bg-white text-blue-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
+                                        }`}
                                 >
                                     Đang xử lý ({houseStats.in_progress})
                                 </button>
                                 <button
                                     onClick={() => setFilterStatus('resolved')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === 'resolved' 
-                                            ? 'bg-white text-emerald-700 shadow-sm' 
-                                            : 'text-gray-500 hover:text-gray-800'
-                                    }`}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterStatus === 'resolved'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
+                                        }`}
                                 >
                                     Đã giải quyết ({houseStats.resolved})
                                 </button>

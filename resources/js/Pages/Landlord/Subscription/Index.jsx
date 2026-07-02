@@ -170,7 +170,7 @@ export default function Index({ auth, currentSubscription, roomCount, roomLimit,
                                         <p className="text-slate-400 text-[10px] mt-0.5 font-bold uppercase tracking-wider">
                                             Thời hạn:{' '}
                                             {pkg.duration_type === 'onetime' 
-                                                ? 'Sài 1 lần' 
+                                                ? `Dùng thử ${pkg.duration_value} ngày (1 lần)` 
                                                 : `${pkg.duration_value || pkg.duration_months} ${pkg.duration_type === 'week' ? 'tuần' : pkg.duration_type === 'year' ? 'năm' : 'tháng'}`}
                                         </p>
                                     </div>

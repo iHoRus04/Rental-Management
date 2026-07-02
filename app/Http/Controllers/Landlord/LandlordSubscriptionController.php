@@ -37,8 +37,20 @@ class LandlordSubscriptionController extends Controller
         $roomCount = $user->getCurrentRoomCount();
         $roomLimit = $user->getRoomLimit();
 
-        // 3. Danh sách các gói cước đang mở bán
-        $availablePackages = Package::where('is_active', true)->get();
+        // 3. Danh sách các gói cước đang mở bán (Loại trừ gói sài 1 lần/dùng thử đã từng đăng ký)
+        $registeredOnetimePackageIds = Subscription::where('user_id', $user->id)
+            ->whereHas('package', function ($query) {
+                $query->where('duration_type', 'onetime');
+            })
+            ->pluck('package_id')
+            ->toArray();
+
+        $availablePackages = Package::where('is_active', true)
+            ->where(function ($query) use ($registeredOnetimePackageIds) {
+                $query->whereNotIn('id', $registeredOnetimePackageIds)
+                      ->orWhere('duration_type', '!=', 'onetime');
+            })
+            ->get();
 
         // 4. Lịch sử giao dịch
         $history = Subscription::where('user_id', $user->id)
@@ -162,7 +174,9 @@ class LandlordSubscriptionController extends Controller
         $durationValue = $package->duration_value ?? 1;
         $durationType = $package->duration_type ?? 'month';
         
-        if ($durationType === 'lifetime' || $durationType === 'onetime') {
+        if ($durationType === 'onetime') {
+            return $endDate->addDays($durationValue);
+        } elseif ($durationType === 'lifetime') {
             return $endDate->addYears(100);
         } elseif ($durationType === 'week') {
             return $endDate->addWeeks($durationValue);

@@ -33,8 +33,8 @@ class AdminPackageController extends Controller
         $durationType = $validated['duration_type'];
         
         if ($durationType === 'onetime') {
-            $validated['duration_value'] = 1;
-            $validated['duration_months'] = 1200; // 100 years
+            $validated['duration_value'] = $durationValue;
+            $validated['duration_months'] = ceil($durationValue / 30);
         } elseif ($durationType === 'week') {
             $validated['duration_months'] = ceil($durationValue / 4);
         } elseif ($durationType === 'year') {
@@ -64,8 +64,8 @@ class AdminPackageController extends Controller
         $durationType = $validated['duration_type'];
         
         if ($durationType === 'onetime') {
-            $validated['duration_value'] = 1;
-            $validated['duration_months'] = 1200; // 100 years
+            $validated['duration_value'] = $durationValue;
+            $validated['duration_months'] = ceil($durationValue / 30);
         } elseif ($durationType === 'week') {
             $validated['duration_months'] = ceil($durationValue / 4);
         } elseif ($durationType === 'year') {

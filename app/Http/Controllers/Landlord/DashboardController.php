@@ -212,7 +212,20 @@ class DashboardController extends Controller
             return redirect()->route('landlord.dashboard');
         }
 
-        $packages = \App\Models\Package::where('is_active', true)->orderBy('price', 'asc')->get();
+        $registeredOnetimePackageIds = \App\Models\Subscription::where('user_id', $user->id)
+            ->whereHas('package', function ($query) {
+                $query->where('duration_type', 'onetime');
+            })
+            ->pluck('package_id')
+            ->toArray();
+
+        $packages = \App\Models\Package::where('is_active', true)
+            ->where(function ($query) use ($registeredOnetimePackageIds) {
+                $query->whereNotIn('id', $registeredOnetimePackageIds)
+                      ->orWhere('duration_type', '!=', 'onetime');
+            })
+            ->orderBy('price', 'asc')
+            ->get();
 
         return Inertia::render('Landlord/SetupWizard', [
             'packages' => $packages,
@@ -253,7 +266,9 @@ class DashboardController extends Controller
         $durationValue = $package->duration_value ?? 1;
         $durationType = $package->duration_type ?? 'month';
         
-        if ($durationType === 'lifetime' || $durationType === 'onetime') {
+        if ($durationType === 'onetime') {
+            $endDate->addDays($durationValue);
+        } elseif ($durationType === 'lifetime') {
             $endDate->addYears(100);
         } elseif ($durationType === 'week') {
             $endDate->addWeeks($durationValue);

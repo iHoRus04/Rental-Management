@@ -200,7 +200,7 @@ export default function SetupWizard({ auth, packages = [] }) {
                                                             {pkg.duration_type === 'lifetime' 
                                                                 ? 'Không giới hạn' 
                                                                 : (pkg.duration_type === 'onetime' 
-                                                                    ? 'Sài 1 lần' 
+                                                                    ? `Dùng thử ${pkg.duration_value} ngày` 
                                                                     : `${pkg.duration_value || pkg.duration_months} ${pkg.duration_type === 'week' ? 'tuần' : pkg.duration_type === 'year' ? 'năm' : 'tháng'}`)}
                                                         </span>
                                                     </div>

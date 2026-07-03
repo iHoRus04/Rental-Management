@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import TenantLayout from '@/Layouts/TenantLayout';
 import { Head, Link } from '@inertiajs/react';
 
 export default function TenantRequestsIndex({ auth, requests = [] }) {
@@ -48,7 +48,7 @@ export default function TenantRequestsIndex({ auth, requests = [] }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <TenantLayout
             user={auth.user}
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Yêu cầu & Sự cố phòng</h2>}
         >
@@ -213,6 +213,6 @@ export default function TenantRequestsIndex({ auth, requests = [] }) {
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </TenantLayout>
     );
 }

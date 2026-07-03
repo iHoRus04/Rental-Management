@@ -45,7 +45,43 @@ class RoomController extends Controller
     {
         $this->authorizeHouseOwnership($house);
         
-        $rooms = $house->rooms()->get();
+        $rooms = $house->rooms()
+            ->with(['contracts' => function ($q) {
+                $q->where('status', 'active')->with('renterRequest');
+            }])
+            ->get()
+            ->map(function ($room) {
+                $activeContract = $room->contracts->first();
+                $hasActiveContract = !empty($activeContract);
+                
+                $hasUnpaidBills = \App\Models\Bill::where('room_id', $room->id)
+                    ->whereIn('status', ['pending', 'overdue', 'partial'])
+                    ->exists();
+                
+                $isExpiringSoon = false;
+                if ($hasActiveContract && $activeContract->end_date) {
+                    $daysLeft = (int) ceil(now()->diffInDays($activeContract->end_date, false));
+                    $isExpiringSoon = ($daysLeft >= 0 && $daysLeft <= 15);
+                }
+
+                return [
+                    'id' => $room->id,
+                    'house_id' => $room->house_id,
+                    'name' => $room->name,
+                    'price' => (float) $room->price,
+                    'status' => $room->status,
+                    'floor' => $room->floor,
+                    'area' => $room->area,
+                    'description' => $room->description,
+                    'images' => $room->images,
+                    'has_active_contract' => $hasActiveContract,
+                    'has_unpaid_bills' => $hasUnpaidBills,
+                    'is_expiring_soon' => $isExpiringSoon,
+                    'renter_name' => $hasActiveContract ? ($activeContract->renterRequest->name ?? 'Người thuê') : null,
+                    'contract_id' => $hasActiveContract ? $activeContract->id : null,
+                ];
+            });
+            
         $user = Auth::user();
 
         return Inertia::render('Landlord/Rooms/Index', [

@@ -8,6 +8,27 @@ export default function Index() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all'); // all, unpaid, paid, overdue
 
+    const [showBankModal, setShowBankModal] = useState(false);
+    const [bankNameInput, setBankNameInput] = useState('');
+    const [accountNoInput, setAccountNoInput] = useState('');
+    const [accountNameInput, setAccountNameInput] = useState('');
+    const [savingBank, setSavingBank] = useState(false);
+
+    const VIETNAM_BANKS = [
+        { code: 'vietcombank', name: 'Vietcombank' },
+        { code: 'techcombank', name: 'Techcombank' },
+        { code: 'mbbank', name: 'MB Bank' },
+        { code: 'bidv', name: 'BIDV' },
+        { code: 'vietinbank', name: 'VietinBank' },
+        { code: 'agribank', name: 'Agribank' },
+        { code: 'vpbank', name: 'VPBank' },
+        { code: 'acb', name: 'ACB' },
+        { code: 'sacombank', name: 'Sacombank' },
+        { code: 'tpbank', name: 'TPBank' },
+        { code: 'shb', name: 'SHB' },
+        { code: 'ocb', name: 'OCB' },
+    ];
+
     const getStatusBadge = (status) => {
         const styles = {
             pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Chờ thanh toán', icon: '⏳' },
@@ -207,6 +228,17 @@ export default function Index() {
 
                                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                                         <button
+                                            onClick={() => {
+                                                setBankNameInput(selectedHouse.bank_name || '');
+                                                setAccountNoInput(selectedHouse.account_no || '');
+                                                setAccountNameInput(selectedHouse.account_name || '');
+                                                setShowBankModal(true);
+                                            }}
+                                            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-white border border-teal-100 text-teal-700 rounded-xl font-bold text-xs hover:bg-teal-50 hover:border-teal-200 transition-all shadow-sm"
+                                        >
+                                            ⚙️ Cấu hình ngân hàng
+                                        </button>
+                                        <button
                                             onClick={handleGenerateMonthly}
                                             className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-white border border-emerald-100 text-emerald-700 rounded-xl font-bold text-xs hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm"
                                         >
@@ -359,6 +391,107 @@ export default function Index() {
                     </>
                 )}
             </div>
+
+            {/* Modal Thiết lập tài khoản ngân hàng */}
+            {showBankModal && selectedHouse && (
+                <div className="fixed inset-0 bg-gray-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[24px] shadow-xl max-w-md w-full border border-gray-100 p-6 relative overflow-hidden">
+                        <button
+                            onClick={() => setShowBankModal(false)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-655 font-bold text-lg p-1.5 transition-colors"
+                        >
+                            ✕
+                        </button>
+                        <h3 className="text-lg font-extrabold text-teal-900 mb-2 flex items-center gap-2">
+                            <span>⚙️</span> Thiết lập tài khoản VietQR
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-6">
+                            Cấu hình tài khoản ngân hàng nhận tiền cho nhà trọ <strong>{selectedHouse.name}</strong>.
+                        </p>
+                        
+                        <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Ngân hàng</label>
+                                <select
+                                    value={bankNameInput}
+                                    onChange={e => setBankNameInput(e.target.value)}
+                                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-semibold text-gray-700 text-xs cursor-pointer bg-white"
+                                >
+                                    <option value="">-- Chọn ngân hàng nhận tiền --</option>
+                                    {VIETNAM_BANKS.map(bank => (
+                                        <option key={bank.code} value={bank.code}>{bank.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Số tài khoản</label>
+                                <input
+                                    type="text"
+                                    value={accountNoInput}
+                                    onChange={e => setAccountNoInput(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-semibold text-gray-850 text-xs"
+                                    placeholder="Số tài khoản ngân hàng"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Tên chủ tài khoản</label>
+                                <input
+                                    type="text"
+                                    value={accountNameInput}
+                                    onChange={e => setAccountNameInput(e.target.value.toUpperCase())}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-semibold text-gray-850 text-xs"
+                                    placeholder="VIET GIAY HOA HOAC IN HOA"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowBankModal(false)}
+                                disabled={savingBank}
+                                className="px-5 py-2.5 rounded-xl text-gray-500 font-bold hover:bg-gray-100 transition-colors text-xs"
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (!bankNameInput || !accountNoInput || !accountNameInput) {
+                                        alert('Vui lòng điền đầy đủ thông tin tài khoản ngân hàng!');
+                                        return;
+                                    }
+                                    setSavingBank(true);
+                                    router.put(route('landlord.houses.update-utility-prices', selectedHouse.id), {
+                                        electric_price: selectedHouse.electric_price || 0,
+                                        water_price: selectedHouse.water_price || 0,
+                                        bank_name: bankNameInput,
+                                        account_no: accountNoInput,
+                                        account_name: accountNameInput,
+                                    }, {
+                                        onSuccess: (page) => {
+                                            setSavingBank(false);
+                                            setShowBankModal(false);
+                                            // Update details locally so the UI updates
+                                            const updatedHouse = page.props.houses.find(h => h.id === selectedHouse.id);
+                                            if (updatedHouse) {
+                                                setSelectedHouse(updatedHouse);
+                                            }
+                                        },
+                                        onError: () => {
+                                            setSavingBank(false);
+                                        }
+                                    });
+                                }}
+                                disabled={savingBank}
+                                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-6 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
+                            >
+                                {savingBank ? 'Đang lưu...' : 'Lưu tài khoản'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -106,8 +106,12 @@ class BillController extends Controller
                         'name' => $contract->room->name,
                         'house' => $contract->room->house ? [
                             'id' => $contract->room->house->id,
+                            'name' => $contract->room->house->name,
                             'electric_price' => $contract->room->house->electric_price,
                             'water_price' => $contract->room->house->water_price,
+                            'bank_name' => $contract->room->house->bank_name,
+                            'account_no' => $contract->room->house->account_no,
+                            'account_name' => $contract->room->house->account_name,
                         ] : null,
                     ],
                     'renterRequest' => $contract->renterRequest ? [
@@ -153,9 +157,17 @@ class BillController extends Controller
         ]);
 
         // Lấy thông tin hợp đồng
-        $contract = Contract::findOrFail($validated['contract_id']);
+        $contract = Contract::with('room.house')->findOrFail($validated['contract_id']);
         if (!$user->managesHouse($contract->room->house_id)) {
             abort(403, 'Bạn không có quyền tạo hóa đơn cho phòng này.');
+        }
+
+        // Ràng buộc nghiêm ngặt: Phải cấu hình tài khoản ngân hàng VietQR của nhà trọ mới cho tạo hóa đơn
+        $house = $contract->room->house;
+        if (empty($house->bank_name) || empty($house->account_no) || empty($house->account_name)) {
+            return redirect()->back()->withErrors([
+                'contract_id' => 'Nhà trọ ' . $house->name . ' chưa được thiết lập tài khoản ngân hàng (VietQR). Vui lòng cấu hình tài khoản trước khi tạo hóa đơn.'
+            ]);
         }
 
         // Tạo price snapshot (đóng băng biểu giá)

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import TenantLayout from '@/Layouts/TenantLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 
 export default function TenantRequestShow({ auth, request }) {
@@ -72,7 +72,7 @@ export default function TenantRequestShow({ auth, request }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <TenantLayout
             user={auth.user}
             header={
                 <div className="flex items-center justify-between">
@@ -287,6 +287,6 @@ export default function TenantRequestShow({ auth, request }) {
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </TenantLayout>
     );
 }

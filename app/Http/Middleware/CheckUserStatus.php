@@ -17,8 +17,8 @@ class CheckUserStatus
         if (Auth::check()) {
             $user = Auth::user();
             
-            // Bỏ qua kiểm tra đối với tài khoản Admin
-            if ($user->role === 'admin') {
+            // Bỏ qua kiểm tra đối với tài khoản Admin hoặc Tenant (Khách thuê)
+            if ($user->role === 'admin' || $user->role === 'tenant') {
                 return $next($request);
             }
 

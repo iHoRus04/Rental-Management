@@ -170,12 +170,15 @@ class HouseController extends Controller
         $validated = $request->validate([
             'electric_price' => 'required|numeric|min:0',
             'water_price' => 'required|numeric|min:0',
+            'bank_name' => 'nullable|string|max:255',
+            'account_no' => 'nullable|string|max:255',
+            'account_name' => 'nullable|string|max:255',
         ]);
 
         $house->update($validated);
 
         return redirect()->back()
-            ->with('success', 'Cập nhật giá điện nước thành công!');
+            ->with('success', 'Cập nhật thiết lập thành công!');
     }
 
     public function destroy(House $house)

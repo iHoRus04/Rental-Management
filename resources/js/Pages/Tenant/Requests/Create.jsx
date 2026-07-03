@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import TenantLayout from '@/Layouts/TenantLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 
 export default function CreateTenantRequest({ auth, room, landlord }) {
@@ -38,7 +38,7 @@ export default function CreateTenantRequest({ auth, room, landlord }) {
     };
 
     return (
-        <AuthenticatedLayout
+        <TenantLayout
             user={auth.user}
             header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Tạo yêu cầu mới</h2>}
         >
@@ -230,6 +230,6 @@ export default function CreateTenantRequest({ auth, room, landlord }) {
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </TenantLayout>
     );
 }

@@ -105,6 +105,50 @@ class MeterLogController extends Controller
     }
 
     /**
+     * Store bulk meter logs
+     */
+    public function bulkStore(Request $request)
+    {
+        $validated = $request->validate([
+            'month' => 'required|integer|min:1|max:12',
+            'year' => 'required|integer|min:2020',
+            'readings' => 'required|array',
+            'readings.*.room_id' => 'required|exists:rooms,id',
+            'readings.*.electric_reading' => 'required|integer|min:0',
+            'readings.*.water_reading' => 'required|integer|min:0',
+            'readings.*.notes' => 'nullable|string',
+        ]);
+
+        $month = $validated['month'];
+        $year = $validated['year'];
+        $count = 0;
+
+        foreach ($validated['readings'] as $item) {
+            $meterLog = MeterLog::where('room_id', $item['room_id'])
+                ->where('month', $month)
+                ->where('year', $year)
+                ->first();
+
+            if (!$meterLog) {
+                $meterLog = new MeterLog();
+                $meterLog->room_id = $item['room_id'];
+                $meterLog->month = $month;
+                $meterLog->year = $year;
+            }
+
+            $meterLog->electric_reading = $item['electric_reading'];
+            $meterLog->water_reading = $item['water_reading'];
+            $meterLog->notes = $item['notes'] ?? null;
+            $meterLog->calculateUsage();
+            $meterLog->save();
+            $count++;
+        }
+
+        return redirect()->route('landlord.meter-logs.index')
+            ->with('success', "Đã ghi nhận thành công chỉ số điện nước cho {$count} phòng.");
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show(MeterLog $meterLog)

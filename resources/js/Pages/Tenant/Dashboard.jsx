@@ -1,152 +1,283 @@
-import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import React, { useState } from 'react';
+import TenantLayout from '@/Layouts/TenantLayout';
 import { Head, Link } from '@inertiajs/react';
 
-export default function TenantDashboard({ auth, contract, room, landlord, recentRequests, requestsStats }) {
+export default function TenantDashboard({ auth, contract, room, landlord, recentRequests = [], requestsStats }) {
+    const user = auth.user;
+    const [copiedPhone, setCopiedPhone] = useState(false);
+
+    const fmt = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v ?? 0);
+
+    const handleCopyPhone = (phone) => {
+        if (!phone) return;
+        navigator.clipboard.writeText(phone);
+        setCopiedPhone(true);
+        setTimeout(() => setCopiedPhone(false), 2000);
+    };
+
+    const getStatusConfig = (status) => {
+        const configs = {
+            pending: { label: 'Chờ xử lý', bg: 'bg-amber-50 border-amber-100 text-amber-700', icon: '⏳' },
+            in_progress: { label: 'Đang xử lý', bg: 'bg-blue-50 border-blue-100 text-blue-700', icon: '🛠️' },
+            resolved: { label: 'Đã giải quyết', bg: 'bg-emerald-50 border-emerald-100 text-emerald-700', icon: '✓' },
+            closed: { label: 'Đã đóng', bg: 'bg-gray-50 border-gray-100 text-gray-500', icon: '🔒' },
+        };
+        return configs[status] || configs.pending;
+    };
+
+    const currentDateString = new Date().toLocaleDateString('vi-VN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Dashboard Người Thuê</h2>}
-        >
-            <Head title="Dashboard Người Thuê" />
+        <TenantLayout user={user}>
+            <Head title="Bảng điều khiển khách thuê" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="space-y-6">
-                        {/* Thông tin hợp đồng */}
-                        {contract && room && landlord ? (
-                            <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Thông tin phòng trọ của bạn</h3>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-sm text-gray-500">Nhà trọ</p>
-                                        <p className="text-base font-medium text-gray-900">{room.house.name}</p>
+            <div className="max-w-[1400px] mx-auto py-8 px-4 sm:px-6 lg:px-8 font-sans space-y-8">
+
+                {/* ── BANNER CHÀO MỪNG CHUYÊN NGHIỆP ── */}
+                <div className="relative bg-gradient-to-r from-teal-900 via-emerald-800 to-teal-700 rounded-[32px] p-8 sm:p-10 shadow-xl overflow-hidden border border-emerald-700/30">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 w-80 h-80 bg-teal-500/10 rounded-full blur-[80px] -ml-32 -mb-32 pointer-events-none"></div>
+
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="space-y-2">
+                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                Cổng thông tin cư dân
+                            </span>
+                            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+                                Xin chào, {user.name}! 👋
+                            </h1>
+                            <p className="text-emerald-100/80 text-sm max-w-xl font-medium">
+                                Chào mừng bạn quay trở lại. Hôm nay là {currentDateString}. Hãy xem nhanh các thông tin phòng trọ và hóa đơn của bạn bên dưới.
+                            </p>
+                        </div>
+
+                        {contract && (
+                            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10 shrink-0 text-white min-w-[220px]">
+                                <p className="text-emerald-300 text-[10px] font-bold uppercase tracking-wider">Mã phòng của bạn</p>
+                                <p className="text-2xl font-black tracking-tight mt-0.5">{room?.name || 'Chưa cập nhật'}</p>
+                                <div className="mt-3 pt-3 border-t border-white/10 flex justify-between items-center text-xs">
+                                    <span className="text-white/70">Tiền phòng:</span>
+                                    <span className="font-bold text-emerald-300">{fmt(contract.monthly_rent)}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── CHI TIẾT PHÒNG THUÊ & HỢP ĐỒNG ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                    {/* Left: Your Home card */}
+                    <div className="lg:col-span-2 bg-white rounded-[24px] border border-gray-100 p-6 sm:p-8 shadow-sm flex flex-col justify-between relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-full blur-2xl pointer-events-none"></div>
+
+                        <div>
+                            <div className="flex items-center justify-between pb-6 border-b border-slate-50 mb-6">
+                                <h2 className="text-xl font-extrabold text-teal-950 flex items-center gap-2">
+                                    <span className="p-2 bg-emerald-50 rounded-lg text-emerald-600">🏠</span>
+                                    Thông tin thuê phòng
+                                </h2>
+                                {contract && (
+                                    <span className="px-3 py-1 bg-emerald-100/65 text-emerald-800 rounded-full text-xs font-bold">
+                                        Hợp đồng hoạt động
+                                    </span>
+                                )}
+                            </div>
+
+                            {contract && room && landlord ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Tòa nhà / Nhà trọ</p>
+                                        <p className="text-base font-extrabold text-slate-800">{room.house.name}</p>
+                                        <p className="text-xs text-slate-500 leading-relaxed">{room.house.address || 'Chưa cập nhật địa chỉ'}</p>
                                     </div>
 
-                                    <div>
-                                        <p className="text-sm text-gray-500">Phòng</p>
-                                        <p className="text-base font-medium text-gray-900">{room.name}</p>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Chi tiết phòng</p>
+                                        <p className="text-base font-extrabold text-slate-800">Phòng {room.name}</p>
+                                        <p className="text-xs text-slate-500">Tầng: {room.floor || 1} • Trạng thái: Đang ở</p>
                                     </div>
 
-                                    <div>
-                                        <p className="text-sm text-gray-500">Giá thuê</p>
-                                        <p className="text-base font-medium text-gray-900">
-                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(contract.monthly_rent)}
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Chủ nhà trọ</p>
+                                        <p className="text-base font-extrabold text-slate-800">{landlord.name}</p>
+                                        <p className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
+                                            {landlord.phone && (
+                                                <>
+                                                    <span>📞 {landlord.phone}</span>
+                                                    <button
+                                                        onClick={() => handleCopyPhone(landlord.phone)}
+                                                        className="text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded transition-colors"
+                                                    >
+                                                        {copiedPhone ? 'Đã sao chép!' : 'Chép'}
+                                                    </button>
+                                                </>
+                                            )}
                                         </p>
                                     </div>
 
-                                    <div>
-                                        <p className="text-sm text-gray-500">Chủ nhà</p>
-                                        <p className="text-base font-medium text-gray-900">{landlord.name}</p>
-                                    </div>
-
-                                    <div>
-                                        <p className="text-sm text-gray-500">Ngày bắt đầu</p>
-                                        <p className="text-base font-medium text-gray-900">{contract.start_date}</p>
-                                    </div>
-
-                                    <div>
-                                        <p className="text-sm text-gray-500">Ngày kết thúc</p>
-                                        <p className="text-base font-medium text-gray-900">{contract.end_date || 'Không xác định'}</p>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Chu kỳ thuê hợp đồng</p>
+                                        <p className="text-base font-extrabold text-slate-800">
+                                            {new Date(contract.start_date).toLocaleDateString('vi-VN')}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            Đến ngày: {contract.end_date ? new Date(contract.end_date).toLocaleDateString('vi-VN') : 'Vô thời hạn'}
+                                        </p>
                                     </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                                <p className="text-yellow-800">Bạn chưa có hợp đồng thuê phòng nào đang hoạt động.</p>
+                            ) : (
+                                <div className="py-10 text-center flex flex-col items-center justify-center">
+                                    <span className="text-3xl mb-3">📭</span>
+                                    <p className="text-slate-500 font-medium">Bạn chưa liên kết với bất kỳ phòng trọ nào.</p>
+                                    <p className="text-xs text-slate-400 mt-1 max-w-sm">Liên hệ chủ nhà của bạn để được thêm vào danh sách thuê phòng.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {contract && (
+                            <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400">
+                                <span>Ký kết ngày: {new Date(contract.created_at || contract.start_date).toLocaleDateString('vi-VN')}</span>
+                                <span className="font-semibold text-teal-800">Mã HĐ: #CON-{contract.id}</span>
                             </div>
                         )}
+                    </div>
 
-                        {/* Thống kê yêu cầu */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-yellow-50 overflow-hidden shadow-sm sm:rounded-lg p-6">
-                                <div className="text-center">
-                                    <p className="text-3xl font-bold text-yellow-600">{requestsStats.pending}</p>
-                                    <p className="text-sm text-gray-600 mt-2">Yêu cầu đang chờ</p>
-                                </div>
-                            </div>
+                    {/* Right: Quick Utilities Card */}
+                    <div className="bg-gradient-to-br from-teal-900 to-emerald-800 rounded-[24px] p-6 sm:p-8 text-white flex flex-col justify-between shadow-lg relative overflow-hidden">
+                        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/5 rounded-full pointer-events-none"></div>
 
-                            <div className="bg-blue-50 overflow-hidden shadow-sm sm:rounded-lg p-6">
-                                <div className="text-center">
-                                    <p className="text-3xl font-bold text-blue-600">{requestsStats.in_progress}</p>
-                                    <p className="text-sm text-gray-600 mt-2">Đang xử lý</p>
-                                </div>
-                            </div>
+                        <div>
+                            <h3 className="text-lg font-extrabold text-emerald-300 mb-2 tracking-wide uppercase text-[10px]">Tiện ích nhanh</h3>
+                            <h2 className="text-2xl font-black leading-tight mb-4">Các lối tắt tiện lợi cho bạn</h2>
+                            <p className="text-emerald-100/70 text-xs mb-6">Bạn có thể tạo nhanh yêu cầu sửa chữa cơ sở vật chất hoặc xem toàn bộ danh sách hóa đơn thanh toán tại đây.</p>
+                        </div>
 
-                            <div className="bg-green-50 overflow-hidden shadow-sm sm:rounded-lg p-6">
-                                <div className="text-center">
-                                    <p className="text-3xl font-bold text-green-600">{requestsStats.resolved}</p>
-                                    <p className="text-sm text-gray-600 mt-2">Đã giải quyết</p>
-                                </div>
+                        <div className="space-y-3">
+                            <Link
+                                href={route('tenant.requests.create')}
+                                className="w-full flex items-center justify-center gap-2 py-3 bg-white text-teal-900 hover:bg-emerald-50 rounded-xl font-bold text-xs transition-all hover:scale-[1.02] shadow-md shadow-emerald-950/20"
+                            >
+                                🛠️ Báo cáo sự cố phòng trọ
+                            </Link>
+
+                            <Link
+                                href={route('tenant.bills.index')}
+                                className="w-full flex items-center justify-center gap-2 py-3 bg-teal-800/60 hover:bg-teal-800/80 text-white rounded-xl font-bold text-xs border border-white/10 transition-all hover:scale-[1.02]"
+                            >
+                                🧾 Xem lịch sử hóa đơn
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── THỐNG KÊ YÊU CẦU / BÁO CÁO ── */}
+                <div className="space-y-4">
+                    <h3 className="text-lg font-extrabold text-teal-950">Tiến độ xử lý sự cố</h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-2xl border border-amber-100 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-xl text-amber-500">⏳</div>
+                            <div>
+                                <p className="text-2xl font-extrabold text-slate-800">{requestsStats.pending}</p>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Đang chờ tiếp nhận</p>
                             </div>
                         </div>
 
-                        {/* Nút tạo yêu cầu mới */}
-                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-lg font-bold text-gray-900">Yêu cầu / Báo cáo</h3>
-                                <Link
-                                    href={route('tenant.requests.create')}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                                >
-                                    Tạo yêu cầu mới
-                                </Link>
+                        <div className="bg-white rounded-2xl border border-blue-100 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-xl text-blue-500">🛠️</div>
+                            <div>
+                                <p className="text-2xl font-extrabold text-slate-800">{requestsStats.in_progress}</p>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Đang được sửa chữa</p>
                             </div>
                         </div>
 
-                        {/* Yêu cầu gần đây */}
-                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div className="p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Yêu cầu gần đây</h3>
-                                
-                                {recentRequests && recentRequests.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {recentRequests.map((request) => (
-                                            <Link
-                                                key={request.id}
-                                                href={route('tenant.requests.show', request.id)}
-                                                className="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
-                                            >
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <p className="font-medium text-gray-900">{request.title}</p>
-                                                        <p className="text-sm text-gray-500 mt-1">{request.type}</p>
-                                                    </div>
-                                                    <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
-                                                        request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                        request.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                                                        request.status === 'resolved' ? 'bg-green-100 text-green-700' :
-                                                        'bg-gray-100 text-gray-700'
-                                                    }`}>
-                                                        {request.status === 'pending' ? 'Chờ xử lý' :
-                                                         request.status === 'in_progress' ? 'Đang xử lý' :
-                                                         request.status === 'resolved' ? 'Đã giải quyết' :
-                                                         request.status === 'closed' ? 'Đã đóng' : request.status}
-                                                    </span>
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-500">Chưa có yêu cầu nào.</p>
-                                )}
-
-                                {recentRequests && recentRequests.length > 0 && (
-                                    <div className="mt-4">
-                                        <Link
-                                            href={route('tenant.requests.index')}
-                                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                        >
-                                            Xem tất cả yêu cầu →
-                                        </Link>
-                                    </div>
-                                )}
+                        <div className="bg-white rounded-2xl border border-emerald-100 p-6 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-xl text-emerald-500">✓</div>
+                            <div>
+                                <p className="text-2xl font-extrabold text-slate-800">{requestsStats.resolved}</p>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Sự cố đã khắc phục</p>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {/* ── YÊU CẦU MỚI GỬI / TIẾN ĐỘ CHI TIẾT ── */}
+                <div className="bg-white rounded-[24px] border border-gray-100 p-6 sm:p-8 shadow-sm">
+                    <div className="flex justify-between items-center pb-6 border-b border-slate-50 mb-6">
+                        <h3 className="text-lg font-extrabold text-teal-950 flex items-center gap-2">
+                            <span>📋</span> Báo cáo sự cố gần đây
+                        </h3>
+                        {recentRequests.length > 0 && (
+                            <Link
+                                href={route('tenant.requests.index')}
+                                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                            >
+                                Xem tất cả yêu cầu →
+                            </Link>
+                        )}
+                    </div>
+
+                    {recentRequests.length > 0 ? (
+                        <div className="space-y-4">
+                            {recentRequests.map((request) => {
+                                const cfg = getStatusConfig(request.status);
+                                return (
+                                    <Link
+                                        key={request.id}
+                                        href={route('tenant.requests.show', request.id)}
+                                        className="block p-5 border border-gray-50 rounded-2xl hover:border-emerald-200 hover:bg-emerald-50/5 transition-all duration-300"
+                                    >
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div className="space-y-1.5 flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold">
+                                                        Phòng {room?.name}
+                                                    </span>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span className="text-xs text-slate-500 font-medium">
+                                                        Gửi ngày: {new Date(request.created_at).toLocaleDateString('vi-VN')}
+                                                    </span>
+                                                </div>
+                                                <h4 className="text-base font-extrabold text-teal-950 truncate">{request.title}</h4>
+                                                <p className="text-xs text-slate-400 line-clamp-1 font-medium">{request.description}</p>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 self-start sm:self-auto">
+                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 border rounded-full text-xs font-bold ${cfg.bg}`}>
+                                                    <span>{cfg.icon}</span>
+                                                    {cfg.label}
+                                                </span>
+                                                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="py-14 text-center flex flex-col items-center justify-center bg-gray-50/30 rounded-2xl border border-dashed border-slate-200">
+                            <span className="text-3xl mb-2">🍃</span>
+                            <p className="text-slate-500 font-bold text-sm">Chưa ghi nhận sự cố hay báo cáo nào</p>
+                            <p className="text-xs text-slate-400 mt-1 max-w-sm">Mọi báo cáo về hư hỏng bóng đèn, điện nước, thiết bị sẽ xuất hiện tại đây.</p>
+                            <Link
+                                href={route('tenant.requests.create')}
+                                className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-md shadow-emerald-600/10 transition-all active:scale-95"
+                            >
+                                Báo cáo sự cố ngay
+                            </Link>
+                        </div>
+                    )}
+                </div>
             </div>
-        </AuthenticatedLayout>
+        </TenantLayout>
     );
 }

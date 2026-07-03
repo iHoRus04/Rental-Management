@@ -53,10 +53,52 @@ class BillController extends Controller
             abort(403, 'Bạn không có quyền xem hóa đơn này.');
         }
 
-        $bill->load(['room', 'payments.verifiedByUser']);
+        $bill->load(['room.house', 'payments.verifiedByUser']);
 
         return Inertia::render('Tenant/Bills/Show', [
             'bill' => $bill,
         ]);
+    }
+
+    /**
+     * Nút thanh toán giả lập để test
+     */
+    public function payTest(Bill $bill)
+    {
+        $user = Auth::user();
+
+        // Kiểm tra quyền: chỉ thanh toán hóa đơn của mình
+        if ($bill->renter_request_id !== $user->renter_request_id) {
+            abort(403, 'Bạn không có quyền thanh toán hóa đơn này.');
+        }
+
+        if ($bill->status === 'paid') {
+            return redirect()->back()->with('error', 'Hóa đơn này đã được thanh toán rồi.');
+        }
+
+        $remaining = $bill->amount - $bill->paid_amount;
+
+        if ($remaining <= 0) {
+            return redirect()->back()->with('error', 'Hóa đơn này đã được thanh toán đầy đủ.');
+        }
+
+        // Tạo bản ghi Payment giả lập để lưu lại lịch sử thanh toán
+        \App\Models\Payment::create([
+            'bill_id' => $bill->id,
+            'amount' => $remaining,
+            'payment_date' => now(),
+            'payment_method' => 'bank_transfer',
+            'reference' => 'Thanh toán giả lập (Tenant Test)',
+            'notes' => 'Thực hiện thanh toán trực tiếp qua chức năng TEST từ Tenant Portal.',
+            'bank_transaction_code' => 'TESTPAY' . time(),
+            'verified_by' => null,
+        ]);
+
+        // Cập nhật paid_amount và trạng thái
+        $bill->paid_amount = $bill->amount;
+        $bill->status = 'paid';
+        $bill->save();
+
+        return redirect()->back()->with('success', 'Thanh toán giả lập hóa đơn thành công!');
     }
 }

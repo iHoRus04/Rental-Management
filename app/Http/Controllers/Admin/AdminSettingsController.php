@@ -45,6 +45,9 @@ class AdminSettingsController extends Controller
             'support_email' => 'support@dreamhouses.vn',
             'support_address' => '123 Đường Láng, Đống Đa, Hà Nội',
             'maintenance_mode' => false,
+            'bank_name' => 'vietinbank',
+            'account_no' => '10287382718',
+            'account_name' => 'CONG TY DREAMHOUSES',
         ];
     }
 
@@ -70,6 +73,9 @@ class AdminSettingsController extends Controller
             'support_email' => 'required|email|max:100',
             'support_address' => 'required|string|max:255',
             'maintenance_mode' => 'required|boolean',
+            'bank_name' => 'nullable|string|max:100',
+            'account_no' => 'nullable|string|max:100',
+            'account_name' => 'nullable|string|max:100',
         ]);
 
         $settings = $this->loadSettings();
@@ -79,6 +85,9 @@ class AdminSettingsController extends Controller
         $settings['support_email'] = $validated['support_email'];
         $settings['support_address'] = $validated['support_address'];
         $settings['maintenance_mode'] = $validated['maintenance_mode'];
+        $settings['bank_name'] = $validated['bank_name'] ?? 'vietinbank';
+        $settings['account_no'] = $validated['account_no'] ?? '10287382718';
+        $settings['account_name'] = $validated['account_name'] ?? 'CONG TY DREAMHOUSES';
 
         // Handle logo file upload
         if ($request->hasFile('logo')) {

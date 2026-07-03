@@ -18,6 +18,9 @@ class House extends Model
         'image',
         'electric_price',
         'water_price',
+        'bank_name',
+        'account_no',
+        'account_name',
     ];
 
     public function user()

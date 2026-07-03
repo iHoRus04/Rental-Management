@@ -1,7 +1,10 @@
-import { Head, Link } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head, Link, router } from '@inertiajs/react';
+import TenantLayout from '@/Layouts/TenantLayout';
+import { useState } from 'react';
 
 export default function Show({ auth, bill }) {
+    const [copiedText, setCopiedText] = useState('');
+    const [showZoomModal, setShowZoomModal] = useState(false);
     const fmt = (v) => new Intl.NumberFormat('vi-VN').format(v ?? 0);
     const snapshot = bill.price_snapshot || {};
     const serviceDetails = bill.service_details || [];
@@ -19,13 +22,29 @@ export default function Show({ auth, bill }) {
     const statusCfg = getStatusConfig(bill.status);
     const remaining = bill.amount - bill.paid_amount;
 
+    const handleCopy = (text, label) => {
+        navigator.clipboard.writeText(text);
+        setCopiedText(label);
+        setTimeout(() => setCopiedText(''), 2000);
+    };
+
+    const house = bill.room?.house || {};
+    const hasBankSetup = house.bank_name && house.account_no && house.account_name;
+    const isUnpaid = bill.status !== 'paid';
+
+    const handlePayTest = () => {
+        if (confirm('Bạn có chắc muốn thực hiện giả lập THANH TOÁN (thành Đã thanh toán) cho hóa đơn này để test?')) {
+            router.post(route('tenant.bills.payTest', bill.id));
+        }
+    };
+
     const getUnitLabel = (unit) => {
         const map = { kwh: 'kWh', m3: 'm³', month: 'Tháng', service: 'Dịch vụ' };
         return map[unit] || unit;
     };
 
     return (
-        <AuthenticatedLayout user={auth.user}>
+        <TenantLayout user={auth.user}>
             <Head title={`Hóa đơn tháng ${bill.month}/${bill.year}`} />
             <div className="p-6 md:p-10 max-w-[900px] mx-auto font-sans">
                 {/* Back Link */}
@@ -77,6 +96,99 @@ export default function Show({ auth, bill }) {
                         </div>
                     </div>
                 </div>
+
+                {/* Thanh toán VietQR */}
+                {isUnpaid && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6 p-6">
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-4 mb-4">
+                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <span className="text-lg">💸</span> Thanh toán chuyển khoản nhanh qua QR
+                            </h2>
+                            <button
+                                onClick={handlePayTest}
+                                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs shadow-md shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+                            >
+                                🧪 Thanh toán (Test)
+                            </button>
+                        </div>
+                        
+                        {!hasBankSetup ? (
+                            <div className="p-4 bg-amber-50/50 text-amber-800 rounded-xl border border-amber-100 text-xs font-semibold leading-normal">
+                                💡 Chủ nhà chưa thiết lập tài khoản nhận tiền ngân hàng trên hệ thống. Vui lòng liên hệ trực tiếp chủ nhà để thanh toán tiền phòng bằng các phương thức khác.
+                            </div>
+                        ) : (
+                            <div className="flex flex-col md:flex-row gap-6 items-center">
+                                {/* Left Side: Account Info */}
+                                <div className="flex-1 space-y-4 w-full text-xs font-semibold text-slate-600">
+                                    <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                        <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                                            <span className="text-slate-400">Ngân hàng:</span>
+                                            <span className="font-extrabold text-slate-800 uppercase">{house.bank_name}</span>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                                            <span className="text-slate-400">Số tài khoản:</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-black text-slate-800">{house.account_no}</span>
+                                                <button
+                                                    onClick={() => handleCopy(house.account_no, 'stk')}
+                                                    className="px-2 py-0.5 bg-slate-200 hover:bg-emerald-50 hover:text-emerald-700 rounded text-[10px] font-bold transition-colors"
+                                                >
+                                                    {copiedText === 'stk' ? 'Đã chép!' : 'Chép'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                                            <span className="text-slate-400">Chủ tài khoản:</span>
+                                            <span className="font-black text-slate-850 uppercase">{house.account_name}</span>
+                                        </div>
+
+                                        <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                                            <span className="text-slate-400">Số tiền:</span>
+                                            <span className="font-extrabold text-rose-600 text-sm">{fmt(remaining)}₫</span>
+                                        </div>
+
+                                        <div className="flex justify-col md:flex-row justify-between items-start md:items-center py-2 gap-2">
+                                            <span className="text-slate-400">Nội dung CK:</span>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-black text-slate-800 text-[10px] bg-slate-200/50 px-2 py-0.5 rounded border border-slate-300/40 select-all">
+                                                    {`THANH TOAN HD T${bill.month} PHONG ${bill.room?.name || ''}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, "")}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleCopy(`THANH TOAN HD T${bill.month} PHONG ${bill.room?.name || ''}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, ""), 'nd')}
+                                                    className="px-2 py-0.5 bg-slate-200 hover:bg-emerald-50 hover:text-emerald-700 rounded text-[10px] font-bold transition-colors"
+                                                >
+                                                    {copiedText === 'nd' ? 'Đã chép!' : 'Chép'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 leading-normal font-medium">
+                                        * Lưu ý: Hãy quét mã QR bên phải bằng app ngân hàng của bạn để thông tin ngân hàng, số tiền và nội dung chuyển khoản được nhập tự động và chính xác 100%.
+                                    </p>
+                                </div>
+
+                                {/* Right Side: QR Code Image */}
+                                <div className="w-52 shrink-0 flex flex-col items-center justify-center p-4 bg-emerald-55/10 border border-emerald-100 rounded-2xl">
+                                    <div className="w-40 h-40 bg-white rounded-xl border border-slate-100 p-1 flex items-center justify-center shadow-inner-sm overflow-hidden">
+                                        <img
+                                            src={`https://img.vietqr.io/image/${house.bank_name}-${house.account_no}-compact2.png?amount=${remaining}&addInfo=${encodeURIComponent(`THANH TOAN HD T${bill.month} PHONG ${bill.room?.name || ''}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, ""))}&accountName=${encodeURIComponent(house.account_name)}`}
+                                            alt="VietQR code"
+                                            className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-all duration-200"
+                                            onClick={() => setShowZoomModal(true)}
+                                            title="Bấm để phóng to và tải về"
+                                        />
+                                    </div>
+                                    <span className="text-[9px] font-extrabold text-emerald-700 uppercase tracking-widest mt-3 flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        Quét VietQR tự động
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Bảng kê chi tiết */}
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
@@ -286,6 +398,63 @@ export default function Show({ auth, bill }) {
                     </div>
                 )}
             </div>
-        </AuthenticatedLayout>
+
+            {/* Lightbox phóng to QR */}
+            {showZoomModal && (
+                <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
+                    <div className="relative max-w-sm w-full bg-white rounded-3xl p-6 flex flex-col items-center shadow-2xl border border-slate-100/10">
+                        <button
+                            onClick={() => setShowZoomModal(false)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-655 font-bold text-lg p-1.5 transition-colors"
+                        >
+                            ✕
+                        </button>
+                        
+                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-4">
+                            Quét mã thanh toán phòng
+                        </h3>
+                        
+                        <div className="w-72 h-72 bg-white rounded-2xl border border-slate-100 p-2 flex items-center justify-center shadow-inner-sm overflow-hidden mb-6">
+                            <img
+                                src={`https://img.vietqr.io/image/${house.bank_name}-${house.account_no}-compact2.png?amount=${remaining}&addInfo=${encodeURIComponent(`THANH TOAN HD T${bill.month} PHONG ${bill.room?.name || ''}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, ""))}&accountName=${encodeURIComponent(house.account_name)}`}
+                                alt="VietQR code enlarged"
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
+                        
+                        <div className="flex gap-3 w-full">
+                            <button
+                                onClick={async () => {
+                                    const url = `https://img.vietqr.io/image/${house.bank_name}-${house.account_no}-compact2.png?amount=${remaining}&addInfo=${encodeURIComponent(`THANH TOAN HD T${bill.month} PHONG ${bill.room?.name || ''}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, ""))}&accountName=${encodeURIComponent(house.account_name)}`;
+                                    try {
+                                        const response = await fetch(url);
+                                        const blob = await response.blob();
+                                        const blobUrl = window.URL.createObjectURL(blob);
+                                        const link = document.createElement('a');
+                                        link.href = blobUrl;
+                                        link.download = `vietqr-phong-${bill.room?.name || 'room'}-t${bill.month}.png`;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                        window.URL.revokeObjectURL(blobUrl);
+                                    } catch (e) {
+                                        window.open(url, '_blank');
+                                    }
+                                }}
+                                className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 text-center flex items-center justify-center gap-1.5"
+                            >
+                                📥 Tải ảnh mã QR
+                            </button>
+                            <button
+                                onClick={() => setShowZoomModal(false)}
+                                className="px-5 py-3 border border-slate-200 text-slate-500 hover:text-slate-800 font-bold rounded-xl text-xs transition-all active:scale-95"
+                            >
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </TenantLayout>
     );
 }

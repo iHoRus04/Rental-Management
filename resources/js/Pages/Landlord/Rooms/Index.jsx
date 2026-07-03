@@ -1,13 +1,46 @@
 import { Link, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { useState, useMemo } from 'react';
 
 export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
+    const [viewMode, setViewMode] = useState('map'); // Default to Visual Map view as requested
+
     const handleCreateClick = (e) => {
         if (currentRoomCount >= roomLimit) {
             e.preventDefault();
             alert(`Không thể thêm phòng! Bạn đã đạt giới hạn tối đa của gói cước hiện hành (${roomLimit} phòng). Vui lòng nâng cấp hoặc gia hạn gói cước tại mục Gói Dịch Vụ để tạo thêm phòng!`);
         }
     };
+
+    // Group rooms by floor
+    const roomsByFloor = useMemo(() => {
+        const grouped = {};
+        rooms.forEach((room) => {
+            const floorKey = room.floor !== null && room.floor !== undefined ? `Tầng ${room.floor}` : 'Khác';
+            if (!grouped[floorKey]) {
+                grouped[floorKey] = [];
+            }
+            grouped[floorKey].push(room);
+        });
+
+        // Sort floors: highest floor first, push "Khác" to bottom
+        return Object.keys(grouped)
+            .sort((a, b) => {
+                if (a === 'Khác') return 1;
+                if (b === 'Khác') return -1;
+                const numA = parseInt(a.replace('Tầng ', ''));
+                const numB = parseInt(b.replace('Tầng ', ''));
+                return numB - numA;
+            })
+            .reduce((obj, key) => {
+                obj[key] = grouped[key].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+                return obj;
+            }, {});
+    }, [rooms]);
+
+    // Format currency
+    const formatVND = (price) =>
+        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(price);
 
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans relative">
@@ -18,44 +51,69 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
 
             <div className="max-w-[1600px] mx-auto">
                 {/* --- HEADER SECTION --- */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 pb-6 border-b border-gray-100">
                     <div>
-                        <div className="mb-4">
+                        <div className="mb-3">
                             <Link
                                 href={route('landlord.houses.index')}
-                                className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-emerald-600 transition-colors"
+                                className="inline-flex items-center text-xs font-bold text-gray-400 hover:text-emerald-600 transition-colors"
                             >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                                 Quay lại danh sách nhà trọ
                             </Link>
                         </div>
                         
-                        <p className="text-emerald-600 font-bold text-xs uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            Quản lý phòng
+                        <p className="text-emerald-600 font-extrabold text-[10px] uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Quản lý phòng trọ
                         </p>
-                        <h1 className="text-3xl font-extrabold text-teal-900 tracking-tight">
+                        <h1 className="text-2xl font-black text-teal-900 tracking-tight">
                             {house.name}
                         </h1>
-                        <p className="text-gray-500 mt-1 text-sm flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <p className="text-gray-400 mt-1 text-xs flex items-center gap-1 font-medium">
+                            <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             {house.address}
                         </p>
                     </div>
 
-                    <Link
-                        href={route('landlord.houses.rooms.create', house.id)}
-                        onClick={handleCreateClick}
-                        className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-6 py-3 rounded-full font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                        Thêm phòng mới
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                        {/* View Mode Toggle Switch */}
+                        <div className="flex bg-slate-100/80 p-1 rounded-xl shrink-0">
+                            <button
+                                onClick={() => setViewMode('map')}
+                                className={`px-4 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all border-0 ${
+                                    viewMode === 'map'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                                }`}
+                            >
+                                Sơ đồ phòng
+                            </button>
+                            <button
+                                onClick={() => setViewMode('list')}
+                                className={`px-4 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all border-0 ${
+                                    viewMode === 'list'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                                }`}
+                            >
+                                Danh sách thẻ
+                            </button>
+                        </div>
+
+                        <Link
+                            href={route('landlord.houses.rooms.create', house.id)}
+                            onClick={handleCreateClick}
+                            className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/10 transition-all active:scale-[0.98]"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                            Thêm phòng
+                        </Link>
+                    </div>
                 </div>
 
-                {/* --- ROOM GRID --- */}
+                {/* --- EMPTY STATE --- */}
                 {rooms.length === 0 ? (
-                    /* Empty State */
                     <div className="flex flex-col items-center justify-center py-24 bg-white/60 backdrop-blur-sm rounded-[32px] border-2 border-dashed border-emerald-100">
                         <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
                             <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
@@ -70,13 +128,107 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                             + Thêm phòng ngay
                         </Link>
                     </div>
+                ) : viewMode === 'map' ? (
+                    /* --- VIEW 1: VISUAL ROOM MAP (GROUPED BY FLOOR) --- */
+                    <div className="space-y-8">
+                        {/* Room Status Legend Card */}
+                        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-x-6 gap-y-3 justify-center sm:justify-start items-center text-xs font-bold text-slate-500">
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider mr-2">Chú thích trạng thái:</span>
+                            <div className="flex items-center gap-2">
+                                <span className="w-3.5 h-3.5 rounded-lg bg-emerald-50 border border-emerald-200 flex-shrink-0"></span>
+                                <span>Còn trống</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-3.5 h-3.5 rounded-lg bg-blue-50 border border-blue-200 flex-shrink-0"></span>
+                                <span>Đã thuê (Bình thường)</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-3.5 h-3.5 rounded-lg bg-amber-50 border border-amber-200 flex-shrink-0"></span>
+                                <span>Sắp hết hạn hợp đồng (≤15 ngày)</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-rose-600">
+                                <span className="w-3.5 h-3.5 rounded-lg bg-rose-50 border border-rose-200 flex-shrink-0 animate-pulse"></span>
+                                <span>Nợ tiền phòng/hóa đơn</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-3.5 h-3.5 rounded-lg bg-slate-100 border border-slate-200 flex-shrink-0"></span>
+                                <span>Đang bảo trì</span>
+                            </div>
+                        </div>
+
+                        {/* Floor-by-floor container */}
+                        <div className="space-y-6">
+                            {Object.keys(roomsByFloor).map((floorName) => (
+                                <div key={floorName} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[100px]">
+                                    {/* Left: Floor Label Header */}
+                                    <div className="md:w-32 bg-slate-50/50 border-b md:border-b-0 md:border-r border-slate-100 flex items-center justify-center p-4 shrink-0">
+                                        <span className="font-extrabold text-teal-900 text-sm tracking-tight">{floorName}</span>
+                                    </div>
+
+                                    {/* Right: Room Grid Blocks */}
+                                    <div className="flex-1 p-6 flex flex-wrap gap-4 items-center">
+                                        {roomsByFloor[floorName].map((room) => {
+                                            // Determine theme configuration based on status, unpaid bill, and contract expiration
+                                            let bgClass = 'bg-emerald-50/60 hover:bg-emerald-50 text-emerald-800 border-emerald-150';
+                                            let textDesc = 'Sẵn sàng cho thuê';
+                                            let statusDot = 'bg-emerald-500';
+
+                                            if (room.status === 'maintenance') {
+                                                bgClass = 'bg-slate-100 hover:bg-slate-200/80 text-slate-500 border-slate-200';
+                                                textDesc = 'Đang bảo trì/Sửa chữa';
+                                                statusDot = 'bg-slate-400';
+                                            } else if (room.status === 'occupied') {
+                                                if (room.has_unpaid_bills) {
+                                                    bgClass = 'bg-rose-50/80 hover:bg-rose-50 text-rose-700 border-rose-200';
+                                                    textDesc = `Hóa đơn chưa đóng (${room.renter_name})`;
+                                                    statusDot = 'bg-rose-500';
+                                                } else if (room.is_expiring_soon) {
+                                                    bgClass = 'bg-amber-50/80 hover:bg-amber-50 text-amber-700 border-amber-200';
+                                                    textDesc = `Hợp đồng sắp hết hạn (${room.renter_name})`;
+                                                    statusDot = 'bg-amber-500';
+                                                } else {
+                                                    bgClass = 'bg-blue-50/80 hover:bg-blue-50 text-blue-700 border-blue-200';
+                                                    textDesc = `Đang thuê (${room.renter_name})`;
+                                                    statusDot = 'bg-blue-500';
+                                                }
+                                            }
+
+                                            return (
+                                                <Link
+                                                    key={room.id}
+                                                    href={route('landlord.houses.rooms.show', [house.id, room.id])}
+                                                    className={`w-32 h-24 border rounded-2xl flex flex-col justify-between p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md cursor-pointer relative group ${bgClass}`}
+                                                >
+                                                    {/* Room Name */}
+                                                    <span className="font-extrabold text-sm tracking-tight">{room.name}</span>
+
+                                                    {/* Specs & Info */}
+                                                    <div className="flex justify-between items-end">
+                                                        <span className="text-[10px] opacity-75 font-semibold">{room.area ? `${room.area}m²` : ''}</span>
+                                                        <span className={`w-2 h-2 rounded-full ${statusDot}`}></span>
+                                                    </div>
+
+                                                    {/* Premium Hover Card details overlay */}
+                                                    <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 translate-y-full opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 bg-slate-900 text-white text-[10px] font-semibold py-2 px-3.5 rounded-xl shadow-xl z-20 whitespace-nowrap">
+                                                        <p className="font-black text-emerald-400">{room.name} - {formatVND(room.price)}</p>
+                                                        <p className="mt-1 text-slate-300 font-medium">{textDesc}</p>
+                                                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full border-4 border-transparent border-b-slate-900"></div>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 ) : (
+                    /* --- VIEW 2: ORIGINAL CARD GRID LISTING --- */
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                         {rooms.map((room) => {
                             const roomImages = room.images ? JSON.parse(room.images) : [];
                             const firstImage = roomImages.length > 0 ? roomImages[0] : null;
 
-                            // Cấu hình màu sắc cho trạng thái
                             const statusConfig = {
                                 available: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Còn trống', dot: 'bg-emerald-500' },
                                 occupied: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Đã thuê', dot: 'bg-blue-500' },
@@ -87,7 +239,7 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                             return (
                                 <div key={room.id} className="group bg-white rounded-[24px] border border-gray-100 overflow-hidden shadow-sm hover:shadow-[0_20px_40px_-15px_rgba(16,185,129,0.15)] hover:border-emerald-200 transition-all duration-300 flex flex-col">
                                     
-                                    {/* 1. IMAGE AREA */}
+                                    {/* Image area */}
                                     <div className="relative h-56 bg-gray-100 overflow-hidden">
                                         {firstImage ? (
                                             <img
@@ -101,35 +253,28 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                                             </div>
                                         )}
                                         
-                                        {/* Status Badge */}
                                         <div className={`absolute top-4 left-4 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md shadow-sm flex items-center gap-1.5 ${status.bg} ${status.text}`}>
                                             <span className={`w-2 h-2 rounded-full ${status.dot} animate-pulse`}></span>
                                             {status.label}
                                         </div>
 
-                                        {/* Image Count Badge */}
                                         {roomImages.length > 1 && (
                                             <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1">
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                                 {roomImages.length}
                                             </div>
                                         )}
-                                        
-                                        {/* Overlay Gradient */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-teal-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                     </div>
 
-                                    {/* 2. CONTENT */}
+                                    {/* Content */}
                                     <div className="p-6 flex flex-col flex-grow">
                                         <div className="flex justify-between items-start mb-2">
                                             <h3 className="text-xl font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{room.name}</h3>
                                             <p className="text-emerald-600 font-extrabold text-lg">
-                                                {new Intl.NumberFormat('vi-VN').format(room.price)} 
-                                                <span className="text-xs text-gray-400 font-normal ml-1">₫/tháng</span>
+                                                {formatVND(room.price)}
                                             </p>
                                         </div>
 
-                                        {/* Specs Row */}
                                         <div className="flex items-center gap-4 text-sm text-gray-500 mb-4 border-b border-gray-100 pb-4">
                                             {room.floor && (
                                                 <div className="flex items-center gap-1.5">
@@ -149,7 +294,7 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                                             <p className="text-sm text-gray-400 mb-6 line-clamp-2 flex-grow">{room.description}</p>
                                         )}
 
-                                        {/* 3. ACTIONS FOOTER */}
+                                        {/* Actions footer */}
                                         <div className="grid grid-cols-4 gap-2 mt-auto">
                                             <Link
                                                 href={route('landlord.houses.rooms.show', [house.id, room.id])}

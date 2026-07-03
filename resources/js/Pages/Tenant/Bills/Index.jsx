@@ -1,10 +1,10 @@
 import { Head, Link } from '@inertiajs/react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import TenantLayout from '@/Layouts/TenantLayout';
 
 export default function Index({ auth, bills }) {
     const getStatusConfig = (status) => {
         const configs = {
-            paid:    { label: 'Đã thanh toán', bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+            paid: { label: 'Đã thanh toán', bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
             pending: { label: 'Chưa thanh toán', bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500' },
             partial: { label: 'Thanh toán một phần', bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500' },
             overdue: { label: 'Quá hạn', bg: 'bg-red-100', text: 'text-red-700', dot: 'bg-red-500' },
@@ -19,7 +19,7 @@ export default function Index({ auth, bills }) {
         .reduce((sum, b) => sum + (b.amount - b.paid_amount), 0);
 
     return (
-        <AuthenticatedLayout user={auth.user}>
+        <TenantLayout user={auth.user}>
             <Head title="Hóa đơn của tôi" />
             <div className="p-6 md:p-10 max-w-[1200px] mx-auto font-sans">
                 {/* Header */}
@@ -34,7 +34,7 @@ export default function Index({ auth, bills }) {
 
                 {/* Summary Card */}
                 {totalUnpaid > 0 && (
-                    <div className="mb-6 bg-gradient-to-r from-red-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg shadow-red-500/20">
+                    <div className="mb-6 bg-gradient-to-r from-green-700 to-green-500 rounded-2xl p-6 text-white shadow-lg shadow-red-500/20">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-white/80 text-sm font-medium">Tổng nợ chưa thanh toán</p>
@@ -111,6 +111,6 @@ export default function Index({ auth, bills }) {
                     </div>
                 )}
             </div>
-        </AuthenticatedLayout>
+        </TenantLayout>
     );
 }

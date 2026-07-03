@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 
 // --- UTILS ---
-const formatCurrency = (value) => 
+const formatCurrency = (value) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
 
 export default function Index() {
@@ -40,7 +40,7 @@ export default function Index() {
         ? payments.filter(p => p.bill && p.bill.room && p.bill.room.house_id === selectedHouse.id)
         : [];
 
-    const filteredPayments = housePayments.filter(p => 
+    const filteredPayments = housePayments.filter(p =>
         p.bill.room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.bill.renter_request?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -48,9 +48,9 @@ export default function Index() {
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title="Lịch sử thanh toán" />
-            
+
             <div className="max-w-[1600px] mx-auto">
-                
+
                 {/* HOUSE LIST GRID VIEW */}
                 {!selectedHouse ? (
                     <>
@@ -64,13 +64,7 @@ export default function Index() {
                                 <p className="text-gray-500 mt-1 text-sm">Chọn nhà trọ/căn hộ để xem lịch sử giao dịch và thống kê tiền đã thu</p>
                             </div>
 
-                            <Link
-                                href={route('landlord.payments.create')}
-                                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                Ghi nhận thanh toán
-                            </Link>
+
                         </div>
 
                         {houses.length === 0 ? (
@@ -179,9 +173,9 @@ export default function Index() {
                         {/* SEARCH CONTROLS */}
                         <div className="bg-white rounded-2xl p-4 mb-6 border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="relative w-full md:w-72">
-                                <input 
-                                    type="text" 
-                                    placeholder="Tìm theo số phòng, người thuê..." 
+                                <input
+                                    type="text"
+                                    placeholder="Tìm theo số phòng, người thuê..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="w-full pl-9 pr-4 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all shadow-none"
@@ -201,8 +195,8 @@ export default function Index() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                                 {filteredPayments.map((payment) => (
-                                    <div 
-                                        key={payment.id} 
+                                    <div
+                                        key={payment.id}
                                         className="group bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 hover:border-emerald-200 hover:shadow-md transition-all duration-300 relative overflow-hidden"
                                     >
                                         {/* Top Info */}

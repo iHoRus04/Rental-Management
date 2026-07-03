@@ -346,6 +346,7 @@ class RenterRequestController extends Controller
             'email' => $email,  // Email dùng để đăng nhập
             'password' => bcrypt($password),
             'role' => 'tenant',
+            'status' => 'active',
             'renter_request_id' => $renterRequest->id,
         ]);
 

@@ -122,6 +122,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             
             Route::resource('bills', BillController::class);
             Route::resource('payments', PaymentController::class);
+            Route::post('meter-logs/bulk', [MeterLogController::class, 'bulkStore'])->name('meter-logs.bulk-store');
             Route::resource('meter-logs', MeterLogController::class);
             
             // Get pending reminders count - MUST BE BEFORE resource route
@@ -194,6 +195,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // Tenant Bills
             Route::get('bills', [\App\Http\Controllers\Tenant\BillController::class, 'index'])->name('bills.index');
             Route::get('bills/{bill}', [\App\Http\Controllers\Tenant\BillController::class, 'show'])->name('bills.show');
+            Route::post('bills/{bill}/pay-test', [\App\Http\Controllers\Tenant\BillController::class, 'payTest'])->name('bills.payTest');
         });
 
 

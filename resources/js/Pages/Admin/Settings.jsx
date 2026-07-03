@@ -6,6 +6,21 @@ export default function Settings({ settings }) {
     const fileInputRef = useRef(null);
     const [logoPreview, setLogoPreview] = useState(settings.logo || null);
 
+    const VIETNAM_BANKS = [
+        { code: 'vietcombank', name: 'Vietcombank' },
+        { code: 'techcombank', name: 'Techcombank' },
+        { code: 'mbbank', name: 'MB Bank' },
+        { code: 'bidv', name: 'BIDV' },
+        { code: 'vietinbank', name: 'VietinBank' },
+        { code: 'agribank', name: 'Agribank' },
+        { code: 'vpbank', name: 'VPBank' },
+        { code: 'acb', name: 'ACB' },
+        { code: 'sacombank', name: 'Sacombank' },
+        { code: 'tpbank', name: 'TPBank' },
+        { code: 'shb', name: 'SHB' },
+        { code: 'ocb', name: 'OCB' },
+    ];
+
     const { data, setData, post, processing, errors, recentlySuccessful } = useForm({
         app_name: settings.app_name || 'DreamHouses',
         logo: null,
@@ -13,6 +28,9 @@ export default function Settings({ settings }) {
         support_email: settings.support_email || '',
         support_address: settings.support_address || '',
         maintenance_mode: settings.maintenance_mode ? 1 : 0,
+        bank_name: settings.bank_name || 'vietinbank',
+        account_no: settings.account_no || '10287382718',
+        account_name: settings.account_name || 'CONG TY DREAMHOUSES',
         _method: 'POST' // Handle multipart file upload via POST
     });
 
@@ -153,6 +171,45 @@ export default function Settings({ settings }) {
                                     {errors.support_address && (
                                         <p className="text-xs text-rose-500 font-semibold mt-1.5">{errors.support_address}</p>
                                     )}
+                                </div>
+
+                                {/* BANK DETAILS SECTION */}
+                                <div className="border-t border-slate-150 pt-5 space-y-4">
+                                    <h4 className="text-xs font-extrabold text-emerald-800 uppercase tracking-wider">Tài khoản nhận thanh toán dịch vụ (VietQR)</h4>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Ngân hàng</label>
+                                        <select
+                                            value={data.bank_name}
+                                            onChange={(e) => setData('bank_name', e.target.value)}
+                                            className="w-full bg-slate-50/50 border border-slate-100 focus:bg-white text-xs rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-slate-600 cursor-pointer"
+                                        >
+                                            {VIETNAM_BANKS.map(bank => (
+                                                <option key={bank.code} value={bank.code}>{bank.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Số tài khoản</label>
+                                            <input
+                                                type="text"
+                                                value={data.account_no}
+                                                onChange={(e) => setData('account_no', e.target.value)}
+                                                className="w-full bg-slate-50/50 border border-slate-100 focus:bg-white text-xs rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-slate-700"
+                                                placeholder="Số tài khoản nhận tiền"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tên chủ tài khoản</label>
+                                            <input
+                                                type="text"
+                                                value={data.account_name}
+                                                onChange={(e) => setData('account_name', e.target.value.toUpperCase())}
+                                                className="w-full bg-slate-50/50 border border-slate-100 focus:bg-white text-xs rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-slate-700"
+                                                placeholder="VIET IN HOA KHONG DAU"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Maintenance Mode */}

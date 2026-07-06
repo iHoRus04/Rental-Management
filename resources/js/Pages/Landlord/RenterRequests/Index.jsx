@@ -4,9 +4,8 @@ import { Head, Link } from '@inertiajs/react';
 
 export default function RenterRequestsIndex({ auth, requests = [], houses = [] }) {
     const [selectedHouse, setSelectedHouse] = useState(null);
-    const [filterStatus, setFilterStatus] = useState('all');
-    const [filterContract, setFilterContract] = useState('all'); // Add contract filter
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('all'); // 'all' | 'new' | 'renting' | 'former' | 'archived'
 
     const requestsArray = Array.isArray(requests) ? requests : [];
 
@@ -23,10 +22,10 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
     // Calculate house statistics
     const getHouseStats = (houseId) => {
         const houseRequests = requestsArray.filter(r => r.room && r.room.house_id === houseId);
-        const total = houseRequests.length;
-        const newCount = houseRequests.filter(r => r.status === 'new').length;
-        const approved = houseRequests.filter(r => r.status === 'approved').length;
-        return { total, newCount, approved };
+        const total = houseRequests.filter(r => !r.is_archived).length;
+        const newCount = houseRequests.filter(r => r.status === 'new' && !r.is_archived && !r.has_active_contract).length;
+        const rentingCount = houseRequests.filter(r => r.has_active_contract && !r.is_archived).length;
+        return { total, newCount, rentingCount };
     };
 
     // Filter logic for selected house
@@ -34,23 +33,47 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
         ? requestsArray.filter(r => r.room && r.room.house_id === selectedHouse.id)
         : [];
 
+    // Categorized lists for counts
+    const countAll = houseRequests.filter(r => !r.is_archived).length;
+    const countNew = houseRequests.filter(r => !r.is_archived && !r.has_active_contract && !r.is_former_tenant).length;
+    const countRenting = houseRequests.filter(r => !r.is_archived && r.has_active_contract).length;
+    const countFormer = houseRequests.filter(r => !r.is_archived && r.is_former_tenant).length;
+    const countArchived = houseRequests.filter(r => r.is_archived).length;
+
     const filteredRequests = houseRequests.filter(request => {
-        const matchesStatus = filterStatus === 'all' || request.status === filterStatus;
-        const matchesContract = filterContract === 'all' ||
-            (filterContract === 'renting' && request.has_active_contract) ||
-            (filterContract === 'not_renting' && !request.has_active_contract);
+        // Search filter
         const matchesSearch = (request.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (request.phone || '').includes(searchTerm) ||
             (request.room?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesStatus && matchesContract && matchesSearch;
+
+        if (!matchesSearch) return false;
+
+        // Tab filter
+        if (activeTab === 'all') {
+            return !request.is_archived;
+        }
+        if (activeTab === 'new') {
+            return !request.is_archived && !request.has_active_contract && !request.is_former_tenant;
+        }
+        if (activeTab === 'renting') {
+            return !request.is_archived && request.has_active_contract;
+        }
+        if (activeTab === 'former') {
+            return !request.is_archived && request.is_former_tenant;
+        }
+        if (activeTab === 'archived') {
+            return request.is_archived;
+        }
+
+        return true;
     });
 
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title="Yêu cầu thuê phòng" />
 
-            <div className="max-w-[1200px] mx-auto">
-                
+            <div className="max-w-[1400px] mx-auto">
+
                 {/* HOUSE LIST GRID VIEW */}
                 {!selectedHouse ? (
                     <>
@@ -63,14 +86,6 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                                 <h1 className="text-3xl font-extrabold text-teal-900 tracking-tight">Yêu cầu thuê phòng</h1>
                                 <p className="text-gray-500 mt-1 text-sm">Chọn nhà trọ/căn hộ để xem các yêu cầu thuê phòng từ khách hàng</p>
                             </div>
-
-                            <Link
-                                href={route('landlord.renter-requests.create')}
-                                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 whitespace-nowrap"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                Tạo yêu cầu mới
-                            </Link>
                         </div>
 
                         {houses.length === 0 ? (
@@ -83,7 +98,7 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {houses.map((house) => {
-                                    const { total, newCount, approved } = getHouseStats(house.id);
+                                    const { total, newCount, rentingCount } = getHouseStats(house.id);
 
                                     return (
                                         <div
@@ -112,12 +127,15 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                                                 <span className="truncate">{house.address || 'Chưa cập nhật địa chỉ'}</span>
                                             </p>
 
-                                            <div className="pt-4 border-t border-gray-50 flex items-center justify-between relative z-10">
-                                                <span className="text-xs text-gray-400 font-bold uppercase">Yêu cầu mới:</span>
-                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${newCount > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${newCount > 0 ? 'bg-blue-500' : 'bg-gray-400'}`}></span>
-                                                    {newCount} mới / {total} tổng
-                                                </span>
+                                            <div className="pt-4 border-t border-gray-50 flex flex-col gap-2 relative z-10 text-xs font-semibold text-gray-600">
+                                                <div className="flex justify-between">
+                                                    <span>🆕 Yêu cầu chưa thuê:</span>
+                                                    <span className="text-blue-600 font-bold">{newCount} khách</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>🏠 Đang thuê:</span>
+                                                    <span className="text-emerald-600 font-bold">{rentingCount} khách</span>
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -133,8 +151,7 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                                 onClick={() => {
                                     setSelectedHouse(null);
                                     setSearchTerm('');
-                                    setFilterStatus('all');
-                                    setFilterContract('all');
+                                    setActiveTab('all');
                                 }}
                                 className="inline-flex items-center text-sm font-semibold text-gray-500 hover:text-emerald-600 mb-4 transition-colors group"
                             >
@@ -174,43 +191,49 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                             </div>
                         </div>
 
-                        {/* DRILL-DOWN CONTROLS */}
-                        <div className="bg-white rounded-2xl p-4 mb-6 border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-                            {/* Search */}
-                            <div className="relative w-full md:w-72">
+                        {/* TAB BAR FOR SEGMENTATION */}
+                        <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-2 text-sm font-bold">
+                            <button
+                                onClick={() => setActiveTab('all')}
+                                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${activeTab === 'all' ? 'bg-teal-800 text-white shadow-sm' : 'text-gray-500 hover:text-teal-800'}`}
+                            >
+                                👥 Tất cả <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>{countAll}</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('new')}
+                                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${activeTab === 'new' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-blue-600'}`}
+                            >
+                                🆕 Yêu cầu mới <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'new' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>{countNew}</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('renting')}
+                                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${activeTab === 'renting' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:text-emerald-600'}`}
+                            >
+                                🏠 Khách đang thuê <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'renting' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'}`}>{countRenting}</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('former')}
+                                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${activeTab === 'former' ? 'bg-amber-600 text-white shadow-sm' : 'text-gray-500 hover:text-amber-600'}`}
+                            >
+                                ⏳ Khách thuê cũ <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'former' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-600'}`}>{countFormer}</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('archived')}
+                                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${activeTab === 'archived' ? 'bg-slate-600 text-white shadow-sm' : 'text-gray-500 hover:text-slate-600'}`}
+                            >
+                                📁 Đã lưu trữ <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'archived' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>{countArchived}</span>
+                            </button>
+
+                            {/* Search bar insideSelectedHouse */}
+                            <div className="relative w-full sm:w-64 ml-auto self-center">
                                 <input
                                     type="text"
-                                    placeholder="Tìm kiếm theo tên, phòng, SĐT..."
+                                    placeholder="Tìm kiếm..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 focus:bg-white transition-all shadow-none"
+                                    className="w-full pl-9 pr-4 py-1.5 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-none"
                                 />
                                 <svg className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                            </div>
-
-                            {/* Filters */}
-                            <div className="flex flex-wrap gap-2 w-full md:w-auto justify-end">
-                                <select
-                                    value={filterStatus}
-                                    onChange={(e) => setFilterStatus(e.target.value)}
-                                    className="py-2 pl-3 pr-8 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-none cursor-pointer"
-                                >
-                                    <option value="all">Tất cả trạng thái</option>
-                                    <option value="new">Mới</option>
-                                    <option value="contacted">Đã liên hệ</option>
-                                    <option value="approved">Đã duyệt</option>
-                                    <option value="rejected">Đã từ chối</option>
-                                </select>
-
-                                <select
-                                    value={filterContract}
-                                    onChange={(e) => setFilterContract(e.target.value)}
-                                    className="py-2 pl-3 pr-8 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-none cursor-pointer"
-                                >
-                                    <option value="all">Tất cả hợp đồng</option>
-                                    <option value="renting">Đang thuê</option>
-                                    <option value="not_renting">Chưa thuê</option>
-                                </select>
                             </div>
                         </div>
 
@@ -220,7 +243,7 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300">
                                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                                 </div>
-                                <p className="text-gray-500 font-medium">Không tìm thấy yêu cầu nào.</p>
+                                <p className="text-gray-500 font-medium">Không tìm thấy yêu cầu hoặc khách thuê nào thuộc tab này.</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -233,7 +256,10 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                                             className="group relative bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all duration-300 flex flex-col md:flex-row items-center gap-6"
                                         >
                                             {/* Left Status Strip */}
-                                            <div className={`absolute left-0 top-3 bottom-3 w-1 rounded-r-full ${status.bg.replace('50', '500')}`}></div>
+                                            <div className={`absolute left-0 top-3 bottom-3 w-1 rounded-r-full ${request.is_archived ? 'bg-slate-400' :
+                                                request.has_active_contract ? 'bg-emerald-500' :
+                                                    request.is_former_tenant ? 'bg-amber-500' : 'bg-blue-500'
+                                                }`}></div>
 
                                             {/* 1. Identity Section */}
                                             <div className="flex items-center gap-4 w-full md:w-auto md:min-w-[220px]">
@@ -264,7 +290,7 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
 
                                                 <div className="flex items-center gap-2.5 text-sm text-gray-600">
                                                     <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-purple-500">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 00-2.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                                                     </div>
                                                     <span className="truncate" title={request.email}>{request.email || '---'}</span>
                                                 </div>
@@ -275,7 +301,7 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                                                     </div>
                                                     <div className="flex flex-col leading-tight">
-                                                        <span className="text-xs text-gray-400 font-bold uppercase">Quan tâm</span>
+                                                        <span className="text-xs text-gray-400 font-bold uppercase">Phòng thuê</span>
                                                         <span className="font-bold text-gray-900 truncate max-w-[150px]">Phòng {request.room?.name || '---'}</span>
                                                     </div>
                                                 </div>
@@ -284,48 +310,79 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                                             {/* 3. Status & Action Section (Right) */}
                                             <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-3 w-full md:w-auto md:pl-6 md:border-l md:border-dashed md:border-gray-200">
                                                 <div className="flex flex-col items-end gap-2">
+                                                    {/* Trạng thái yêu cầu ban đầu */}
                                                     <div className={`px-3 py-1 rounded-full text-xs font-bold border ${status.bg} ${status.text} ${status.border} flex items-center gap-1.5`}>
                                                         <span>{status.icon}</span> {status.label}
                                                     </div>
 
-                                                    {/* Show "Đang thuê" badge if has active contract */}
-                                                    {request.has_active_contract && (
-                                                        <div className="px-3 py-1 rounded-full text-xs font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1.5">
+                                                    {/* Phân loại cụ thể */}
+                                                    {request.has_active_contract && !request.is_archived && (
+                                                        <div className="px-3 py-1 rounded-full text-xs font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1.5">
                                                             <span>🏠</span> Đang thuê
+                                                        </div>
+                                                    )}
+                                                    {request.is_former_tenant && !request.is_archived && (
+                                                        <div className="px-3 py-1 rounded-full text-xs font-bold border bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1.5">
+                                                            <span>⏳</span> Khách cũ
+                                                        </div>
+                                                    )}
+                                                    {request.is_archived && (
+                                                        <div className="px-3 py-1 rounded-full text-xs font-bold border bg-slate-100 text-slate-600 border-slate-200 flex items-center gap-1.5">
+                                                            <span>📁</span> Đã lưu trữ
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 <div className="flex gap-2">
-                                                    {/* Create Account button */}
-                                                    {request.status === 'approved' && request.has_active_contract && !request.has_user_account && (
+                                                    {request.is_archived ? (
                                                         <Link
-                                                            href={route('landlord.renter-requests.create-account', request.id)}
+                                                            href={route('landlord.renter-requests.restore', request.id)}
                                                             method="post"
                                                             as="button"
-                                                            className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
-                                                            title="Tạo tài khoản đăng nhập"
+                                                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-emerald-600/10"
                                                         >
-                                                            Tạo TK
+                                                            Khôi phục
                                                         </Link>
-                                                    )}
+                                                    ) : (
+                                                        <>
+                                                            {/* Create Account button */}
+                                                            {request.status === 'approved' && request.has_active_contract && !request.has_user_account && (
+                                                                <Link
+                                                                    href={route('landlord.renter-requests.create-account', request.id)}
+                                                                    method="post"
+                                                                    as="button"
+                                                                    className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                                                                    title="Tạo tài khoản đăng nhập"
+                                                                >
+                                                                    Tạo TK
+                                                                </Link>
+                                                            )}
 
-                                                    {/* Services button */}
-                                                    {request.status === 'approved' && request.has_active_contract && (
-                                                        <Link
-                                                            href={route('landlord.renter-requests.services', request.id)}
-                                                            className="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
-                                                        >
-                                                            Dịch vụ
-                                                        </Link>
-                                                    )}
 
-                                                    <Link
-                                                        href={route('landlord.renter-requests.show', request.id)}
-                                                        className="px-3 py-1.5 bg-white text-gray-700 text-xs font-bold rounded-xl border border-gray-200 hover:border-emerald-500 hover:text-emerald-600 transition-all flex items-center gap-1.5"
-                                                    >
-                                                        Chi tiết
-                                                    </Link>
+                                                            <Link
+                                                                href={route('landlord.renter-requests.show', request.id)}
+                                                                className="px-3 py-1.5 bg-white text-gray-700 text-xs font-bold rounded-xl border border-gray-200 hover:border-emerald-500 hover:text-emerald-600 transition-all flex items-center gap-1.5"
+                                                            >
+                                                                Chi tiết
+                                                            </Link>
+
+                                                            {/* Archive Button */}
+                                                            <Link
+                                                                href={route('landlord.renter-requests.destroy', request.id)}
+                                                                method="delete"
+                                                                as="button"
+                                                                onClick={(e) => {
+                                                                    if (!confirm('Bạn có chắc chắn muốn di chuyển khách thuê/yêu cầu này vào mục lưu trữ không?')) {
+                                                                        e.preventDefault();
+                                                                    }
+                                                                }}
+                                                                className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                                                                title="Lưu trữ khách hàng"
+                                                            >
+                                                                Lưu trữ
+                                                            </Link>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

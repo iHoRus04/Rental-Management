@@ -27,18 +27,26 @@ class RenterRequestController extends Controller
 
         $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
 
-        $requests = RenterRequest::with(['room.house', 'contracts' => function ($query) {
-                $query->where('end_date', '>=', now())
-                       ->orWhereNull('end_date');
-            }])
+        // Luôn load cả bản ghi đã xóa mềm để hỗ trợ phân loại tab Đã lưu trữ/Khách cũ
+        $requests = RenterRequest::withTrashed()
+            ->with(['room.house', 'contracts'])
             ->whereHas('room', function ($query) use ($houseIds) {
                 $query->whereIn('house_id', $houseIds);
             })
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($renterRequest) {
-                $renterRequest->has_active_contract = $renterRequest->contracts->count() > 0;
+                // Hợp đồng đang hoạt động
+                $hasActiveContract = $renterRequest->contracts->where('status', 'active')->count() > 0;
+                
+                // Có lịch sử hợp đồng nhưng tất cả đã kết thúc (expired hoặc terminated)
+                $hasContracts = $renterRequest->contracts->count() > 0;
+                $isFormerTenant = $hasContracts && !$hasActiveContract;
+
+                $renterRequest->has_active_contract = $hasActiveContract;
+                $renterRequest->is_former_tenant    = $isFormerTenant;
                 $renterRequest->has_user_account    = \App\Models\User::where('renter_request_id', $renterRequest->id)->exists();
+                $renterRequest->is_archived         = $renterRequest->trashed();
                 return $renterRequest;
             });
 
@@ -52,6 +60,9 @@ class RenterRequestController extends Controller
         return Inertia::render('Landlord/RenterRequests/Index', [
             'requests' => $requests,
             'houses'   => $houses,
+            'filters'  => [
+                'show_archived' => $request->get('show_archived') === 'true',
+            ]
         ]);
     }
 
@@ -75,7 +86,7 @@ class RenterRequestController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user     = Auth::user();
         $houseIds = $user->getAccessibleHouseIds();
@@ -86,6 +97,8 @@ class RenterRequestController extends Controller
 
         return Inertia::render('Landlord/RenterRequests/Create', [
             'rooms' => $rooms,
+            'selected_room_id' => $request->get('room_id'),
+            'redirect_to_contract' => $request->get('redirect_to_contract') === 'true',
         ]);
     }
 
@@ -95,10 +108,17 @@ class RenterRequestController extends Controller
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:20',
+            'phone' => ['required', 'string', 'regex:/^(03|05|07|08|09)\d{8}$/'],
             'email' => 'nullable|email|max:255',
             'room_id' => 'required|exists:rooms,id',
             'message' => 'nullable|string',
+            'id_card' => ['nullable', 'string', 'regex:/^(\d{9}|\d{12})$/'],
+            'address' => 'nullable|string|max:500',
+            'move_in_date' => 'nullable|date',
+        ], [
+            'phone.regex' => 'Số điện thoại không đúng định dạng Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).',
+            'id_card.regex' => 'Số CCCD/CMND không hợp lệ (phải gồm đúng 9 hoặc 12 chữ số).',
+            'email.email' => 'Địa chỉ email không đúng định dạng.',
         ]);
 
         // Đảm bảo user có quyền chọn phòng này
@@ -107,12 +127,17 @@ class RenterRequestController extends Controller
             return back()->withErrors(['room_id' => 'Bạn không có quyền chọn phòng này!']);
         }
 
-        // Set default status to 'new' and create
-        $validated['status'] = 'new';
-        RenterRequest::create($validated);
+        // Set default status to 'approved' for requests created directly by the landlord
+        $validated['status'] = 'approved';
+        $renterRequest = RenterRequest::create($validated);
+        
+        if ($request->get('redirect_to_contract') === 'true') {
+            return redirect()->route('landlord.rooms.contracts.create', $room->id)
+                ->with('success', 'Tạo thông tin khách thuê thành công! Tiến hành tạo hợp đồng.');
+        }
 
         return redirect()->route('landlord.renter-requests.index')
-                        ->with('success', 'Táº¡o yÃªu cáº§u thuÃª phÃ²ng thÃ nh cÃ´ng!');
+                        ->with('success', 'Tạo yêu cầu thuê phòng thành công và tự động duyệt!');
     }
 
     public function updateStatus(Request $httpRequest, RenterRequest $renterRequest, $status)
@@ -132,13 +157,25 @@ class RenterRequestController extends Controller
         $validStatuses = ['new', 'contacted', 'approved', 'rejected'];
         
         if (!in_array($status, $validStatuses)) {
-            return redirect()->back()->with('error', 'Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡!');
+            return redirect()->back()->with('error', 'Trạng thái không hợp lệ!');
         }
 
-        // Simply update status
+        // Nếu từ chối, xóa vĩnh viễn luôn khỏi database
+        if ($status === 'rejected') {
+            // Ràng buộc bảo mật: Không cho phép xóa nếu đã từng làm hợp đồng
+            if ($renterRequest->contracts()->exists()) {
+                return redirect()->back()->with('error', 'Không thể xóa khách thuê này vì họ đã có lịch sử hợp đồng. Vui lòng chấm dứt hợp đồng thay vì xóa.');
+            }
+
+            $renterRequest->forceDelete();
+            return redirect()->route('landlord.renter-requests.index')
+                ->with('success', 'Đã từ chối và xóa vĩnh viễn yêu cầu thuê phòng.');
+        }
+
+        // Cập nhật các trạng thái khác bình thường
         $renterRequest->update(['status' => $status]);
 
-        return redirect()->back()->with('success', 'Cáº­p nháº­t tráº¡ng thÃ¡i yÃªu cáº§u thÃ nh cÃ´ng!');
+        return redirect()->back()->with('success', 'Cập nhật trạng thái yêu cầu thành công!');
     }
     
     /**
@@ -351,5 +388,122 @@ class RenterRequestController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Tài khoản đã được tạo! Đăng nhập bằng Email: ' . $email . ' | Mật khẩu: ' . $password . ' (Số điện thoại)');
+    }
+
+    /**
+     * Lưu trữ (Xóa mềm) yêu cầu thuê phòng
+     */
+    public function destroy(RenterRequest $renterRequest)
+    {
+        $user = Auth::user();
+
+        // Kiểm tra quyền sở hữu
+        if ($renterRequest->room && $renterRequest->room->house && !$user->managesHouse($renterRequest->room->house)) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Ràng buộc bảo mật: Không cho phép xóa nếu đã từng có hợp đồng
+        if ($renterRequest->contracts()->exists()) {
+            return redirect()->back()->with('error', 'Không thể xóa khách thuê này vì họ đã có lịch sử hợp đồng. Vui lòng chấm dứt hợp đồng thay vì xóa.');
+        }
+
+        // Thực hiện xóa mềm
+        $renterRequest->delete();
+
+        // Khóa tài khoản tenant liên kết nếu có
+        \App\Models\User::where('renter_request_id', $renterRequest->id)
+            ->where('role', 'tenant')
+            ->update(['status' => 'inactive']);
+
+        return redirect()->route('landlord.renter-requests.index')
+            ->with('success', 'Đã di chuyển yêu cầu thuê phòng vào mục lưu trữ.');
+    }
+
+    /**
+     * Khôi phục yêu cầu thuê phòng đã lưu trữ
+     */
+    public function restore($id)
+    {
+        $user = Auth::user();
+        $renterRequest = RenterRequest::onlyTrashed()->findOrFail($id);
+
+        // Kiểm tra quyền sở hữu
+        if ($renterRequest->room && $renterRequest->room->house && !$user->managesHouse($renterRequest->room->house)) {
+            abort(403, 'Unauthorized');
+        }
+
+        $renterRequest->restore();
+
+        return redirect()->back()->with('success', 'Đã khôi phục yêu cầu thuê phòng.');
+    }
+
+    /**
+     * Hiển thị trang chỉnh sửa thông tin khách thuê
+     */
+    public function edit(RenterRequest $renterRequest)
+    {
+        $user     = Auth::user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        // Kiểm tra quyền sở hữu
+        if ($renterRequest->room && $renterRequest->room->house && !$user->managesHouse($renterRequest->room->house)) {
+            abort(403, 'Unauthorized');
+        }
+
+        $rooms = \App\Models\Room::with('house')
+            ->whereIn('house_id', $houseIds)
+            ->get();
+
+        return Inertia::render('Landlord/RenterRequests/Edit', [
+            'renterRequest' => $renterRequest,
+            'rooms' => $rooms,
+        ]);
+    }
+
+    /**
+     * Cập nhật thông tin khách thuê
+     */
+    public function update(Request $request, RenterRequest $renterRequest)
+    {
+        $user = Auth::user();
+        
+        // Kiểm tra quyền sở hữu
+        if ($renterRequest->room && $renterRequest->room->house && !$user->managesHouse($renterRequest->room->house)) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => ['required', 'string', 'regex:/^(03|05|07|08|09)\d{8}$/'],
+            'email' => 'nullable|email|max:255',
+            'room_id' => 'required|exists:rooms,id',
+            'message' => 'nullable|string',
+            'id_card' => ['nullable', 'string', 'regex:/^(\d{9}|\d{12})$/'],
+            'address' => 'nullable|string|max:500',
+            'move_in_date' => 'nullable|date',
+        ], [
+            'phone.regex' => 'Số điện thoại không đúng định dạng Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08 hoặc 09).',
+            'id_card.regex' => 'Số CCCD/CMND không hợp lệ (phải gồm đúng 9 hoặc 12 chữ số).',
+            'email.email' => 'Địa chỉ email không đúng định dạng.',
+        ]);
+
+        // Đảm bảo user có quyền chọn phòng này
+        $room = \App\Models\Room::findOrFail($validated['room_id']);
+        if (!$user->managesHouse($room->house_id)) {
+            return back()->withErrors(['room_id' => 'Bạn không có quyền chọn phòng này!']);
+        }
+
+        $renterRequest->update($validated);
+
+        // Đồng bộ thông tin tài khoản đăng nhập nếu có
+        \App\Models\User::where('renter_request_id', $renterRequest->id)
+            ->where('role', 'tenant')
+            ->update([
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? $renterRequest->email,
+            ]);
+
+        return redirect()->route('landlord.renter-requests.show', $renterRequest->id)
+            ->with('success', 'Cập nhật thông tin khách thuê thành công!');
     }
 }

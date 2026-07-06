@@ -2,45 +2,40 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-export default function CreateRenterRequest({ auth, rooms, selected_room_id = '', redirect_to_contract = false }) {
-    const { data, setData, post, processing, errors } = useForm({
-        name: '',
-        phone: '',
-        email: '',
-        room_id: selected_room_id || '',
-        message: '',
-        id_card: '',
-        address: '',
-        move_in_date: '',
-        redirect_to_contract: redirect_to_contract ? 'true' : 'false',
+export default function EditRenterRequest({ auth, rooms, renterRequest }) {
+    const { data, setData, put, processing, errors } = useForm({
+        name: renterRequest.name || '',
+        phone: renterRequest.phone || '',
+        email: renterRequest.email || '',
+        room_id: renterRequest.room_id || '',
+        message: renterRequest.message || '',
+        id_card: renterRequest.id_card || '',
+        address: renterRequest.address || '',
+        move_in_date: renterRequest.move_in_date || '',
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('landlord.renter-requests.store'));
+        put(route('landlord.renter-requests.update', renterRequest.id));
     };
 
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Tạo yêu cầu thuê phòng</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Chỉnh sửa thông tin khách thuê</h2>}
         >
-            <Head title="Tạo yêu cầu thuê phòng" />
+            <Head title={`Chỉnh sửa - ${renterRequest.name}`} />
 
             <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
                 <div className="max-w-3xl mx-auto">
                     {/* --- HEADER --- */}
                     <div className="mb-8">
                         <Link 
-                            href={
-                                redirect_to_contract 
-                                ? route('landlord.rooms.contracts.create', selected_room_id)
-                                : route('landlord.renter-requests.index')
-                            } 
+                            href={route('landlord.renter-requests.show', renterRequest.id)}
                             className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-emerald-600 mb-4 transition-colors"
                         >
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                            Quay lại
+                            Quay lại chi tiết
                         </Link>
 
                         <div className="bg-white rounded-[24px] shadow-xl shadow-emerald-900/5 border border-gray-100 p-8 relative overflow-hidden flex flex-col md:flex-row justify-between items-start gap-6">
@@ -49,13 +44,10 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
                                     <span className="w-10 h-10 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center">
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                     </span>
-                                    {redirect_to_contract ? 'Tạo nhanh khách thuê' : 'Tạo yêu cầu thuê'}
+                                    Chỉnh sửa thông tin
                                 </h1>
                                 <p className="text-gray-500 mt-2 pl-[52px]">
-                                    {redirect_to_contract 
-                                        ? 'Nhập nhanh thông tin người thuê để tiến hành lập hợp đồng.'
-                                        : 'Nhập thông tin khách hàng tiềm năng muốn thuê phòng.'
-                                    }
+                                    Cập nhật thông tin chi tiết của khách thuê <span className="font-bold text-gray-900">{renterRequest.name}</span>.
                                 </p>
                             </div>
                             {/* Decor blob */}
@@ -66,10 +58,7 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
                     <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
                         <form onSubmit={handleSubmit} className="p-8 space-y-8">
                             
-                            {/* Pass redirect parameter */}
-                            <input type="hidden" value={data.redirect_to_contract} name="redirect_to_contract" />
-
-                            {/* Section 1: Thông tin phòng & Người thuê */}
+                            {/* Section 1: Thông tin cơ bản */}
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
                                     <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-extrabold">1</span>
@@ -145,7 +134,7 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
                                 </div>
                             </div>
 
-                            {/* Section 2: Thông tin cá nhân nâng cao (CCCD, Địa chỉ, Ngày dọn vào) */}
+                            {/* Section 2: Thông tin cư trú & Pháp lý */}
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
                                     <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-extrabold">2</span>
@@ -195,7 +184,7 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
                                 </div>
                             </div>
 
-                            {/* Section 3: Tin nhắn / Ghi chú */}
+                            {/* Section 3: Ghi chú */}
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
                                     <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-extrabold">3</span>
@@ -218,11 +207,7 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
                             {/* Actions */}
                             <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-4">
                                 <Link
-                                    href={
-                                        redirect_to_contract 
-                                        ? route('landlord.rooms.contracts.create', selected_room_id)
-                                        : route('landlord.renter-requests.index')
-                                    }
+                                    href={route('landlord.renter-requests.show', renterRequest.id)}
                                     className="px-6 py-2.5 rounded-xl text-gray-700 font-bold hover:bg-gray-100 transition-colors"
                                 >
                                     Hủy bỏ
@@ -235,7 +220,7 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
                                     {processing && (
                                         <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     )}
-                                    {processing ? 'Đang lưu...' : (redirect_to_contract ? 'Lưu & Tạo HĐ' : 'Tạo Yêu Cầu')}
+                                    {processing ? 'Đang lưu...' : 'Lưu thay đổi'}
                                 </button>
                             </div>
                         </form>

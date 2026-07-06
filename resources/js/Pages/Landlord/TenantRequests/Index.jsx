@@ -172,25 +172,7 @@ export default function TenantRequestsIndex({ auth, requests = [], houses = [] }
                             </div>
                         </div>
 
-                        {/* STATISTICS */}
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
-                                <p className="text-2xl font-bold text-gray-900">{houseStats.total}</p>
-                                <p className="text-xs text-gray-500 mt-1 uppercase font-bold tracking-wide">Tổng yêu cầu</p>
-                            </div>
-                            <div className="bg-yellow-50/50 rounded-xl shadow-sm border border-yellow-100 p-4 text-center">
-                                <p className="text-2xl font-bold text-yellow-600">{houseStats.pending}</p>
-                                <p className="text-xs text-yellow-600 mt-1 uppercase font-bold tracking-wide">Chờ xử lý</p>
-                            </div>
-                            <div className="bg-blue-50/50 rounded-xl shadow-sm border border-blue-100 p-4 text-center">
-                                <p className="text-2xl font-bold text-blue-600">{houseStats.in_progress}</p>
-                                <p className="text-xs text-blue-600 mt-1 uppercase font-bold tracking-wide">Đang xử lý</p>
-                            </div>
-                            <div className="bg-emerald-50/50 rounded-xl shadow-sm border border-emerald-100 p-4 text-center">
-                                <p className="text-2xl font-bold text-emerald-600">{houseStats.resolved}</p>
-                                <p className="text-xs text-emerald-600 mt-1 uppercase font-bold tracking-wide">Đã giải quyết</p>
-                            </div>
-                        </div>
+
 
                         {/* TABS */}
                         <div className="bg-white rounded-2xl p-4 mb-6 border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">

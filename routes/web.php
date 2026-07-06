@@ -113,6 +113,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->name('houses.rooms.removeImage');
                 
             Route::resource('rooms.contracts', ContractController::class);
+            Route::post('rooms/{room}/contracts/{contract}/renew', [\App\Http\Controllers\Landlord\ContractController::class, 'renew'])->name('rooms.contracts.renew');
+            Route::get('rooms/{room}/contracts/{contract}/pdf', [\App\Http\Controllers\Landlord\ContractController::class, 'downloadPdf'])->name('rooms.contracts.pdf');
             
             // Renter Request Services management (moved from renters to renter-requests)
             Route::get('renter-requests/{renterRequest}/services', [RenterRequestController::class, 'renterRequestServices'])->name('renter-requests.services');
@@ -142,7 +144,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // Update renter request status
             Route::post('renter-requests/{renterRequest}/update-status/{status}', [RenterRequestController::class, 'updateStatus'])->name('renter-requests.update-status');
             
-            // Create tenant account
+            Route::post('renter-requests/{id}/restore', [RenterRequestController::class, 'restore'])->name('renter-requests.restore');
             Route::post('renter-requests/{renterRequest}/create-account', [RenterRequestController::class, 'createTenantAccount'])->name('renter-requests.create-account');
             
             // ✅ Staff Management (chỉ landlord mới tạo/xóa/sửa staff)

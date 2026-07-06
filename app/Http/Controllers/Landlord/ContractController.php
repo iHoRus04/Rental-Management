@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Contract;
 use App\Models\Room;
 use App\Models\RenterRequest;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -172,8 +173,20 @@ class ContractController extends Controller
             // Cập nhật trạng thái phòng dựa trên status hợp đồng
             if ($validated['status'] === 'active') {
                 $room->update(['status' => 'occupied']);
+                // Kích hoạt lại tài khoản tenant nếu có
+                if ($contract->renter_request_id) {
+                    \App\Models\User::where('renter_request_id', $contract->renter_request_id)
+                        ->where('role', 'tenant')
+                        ->update(['status' => 'active']);
+                }
             } else {
                 $room->update(['status' => 'available']);
+                // Vô hiệu hóa tài khoản tenant khi hết thuê
+                if ($contract->renter_request_id) {
+                    \App\Models\User::where('renter_request_id', $contract->renter_request_id)
+                        ->where('role', 'tenant')
+                        ->update(['status' => 'inactive']);
+                }
             }
 
             return redirect()->route('landlord.rooms.contracts.show', [
@@ -196,17 +209,69 @@ class ContractController extends Controller
 
         $contract->update($validated);
 
-        // Cập nhật trạng thái phòng dựa trên status hợp đồng
+        // Cập nhật trạng thái phòng và tài khoản dựa trên status hợp đồng
         if ($validated['status'] === 'active') {
             $room->update(['status' => 'occupied']);
+            if ($validated['renter_request_id']) {
+                \App\Models\User::where('renter_request_id', $validated['renter_request_id'])
+                    ->where('role', 'tenant')
+                    ->update(['status' => 'active']);
+            }
         } else {
             $room->update(['status' => 'available']);
+            if ($validated['renter_request_id']) {
+                \App\Models\User::where('renter_request_id', $validated['renter_request_id'])
+                    ->where('role', 'tenant')
+                    ->update(['status' => 'inactive']);
+            }
         }
 
         return redirect()->route('landlord.rooms.contracts.show', [
             'room' => $room->id,
             'contract' => $contract->id,
         ])->with('success', 'Cập nhật hợp đồng thành công!');
+    }
+
+    public function renew(Request $request, Room $room, Contract $contract)
+    {
+        $this->authorizeContractAction($room, 'edit');
+
+        $validated = $request->validate([
+            'months'       => 'nullable|integer|min:1|max:120',
+            'new_end_date' => 'nullable|date',
+        ]);
+
+        // Phải có ít nhất một trong hai
+        if (empty($validated['months']) && empty($validated['new_end_date'])) {
+            return back()->withErrors(['new_end_date' => 'Vui lòng chọn số tháng gia hạn hoặc nhập ngày kết thúc mới.']);
+        }
+
+        // Tính ngày kết thúc mới: nếu nhập tháng thì cộng từ ngày hiện tại của hợp đồng
+        if (!empty($validated['months'])) {
+            $baseDate = $contract->end_date && $contract->end_date->isFuture()
+                ? $contract->end_date
+                : now();
+            $newEndDate = $baseDate->addMonths((int) $validated['months']);
+        } else {
+            $newEndDate = \Carbon\Carbon::parse($validated['new_end_date']);
+        }
+
+        if ($newEndDate->lte(now())) {
+            return back()->withErrors(['new_end_date' => 'Ngày gia hạn phải sau ngày hôm nay.']);
+        }
+
+        $contract->update([
+            'end_date' => $newEndDate,
+            'status'   => 'active',
+        ]);
+
+        // Đảm bảo phòng chuyển về occupied
+        $room->update(['status' => 'occupied']);
+
+        return redirect()->route('landlord.rooms.contracts.show', [
+            'room'     => $room->id,
+            'contract' => $contract->id,
+        ])->with('success', "Gia hạn hợp đồng thành công! Hợp đồng có hiệu lực đến ngày {$newEndDate->format('d/m/Y')}.");
     }
 
     public function destroy(Room $room, Contract $contract)
@@ -241,5 +306,34 @@ class ContractController extends Controller
 
         return redirect()->route('landlord.rooms.contracts.index', $room->id)
             ->with('success', 'Đã xóa hợp đồng');
+    }
+
+    /**
+     * Xuất hợp đồng ra file PDF
+     */
+    public function downloadPdf(Room $room, Contract $contract)
+    {
+        $this->authorizeContractAction($room, 'view');
+
+        $contract->load('renterRequest');
+        $room->load('house.user');
+
+        $landlord = $room->house->user;
+        $renter   = $contract->renterRequest;
+
+        $pdf = Pdf::loadView('landlord.contracts.pdf', compact('contract', 'room', 'landlord', 'renter'))
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'defaultFont'  => 'DejaVu Sans',
+                'isRemoteEnabled' => true,
+                'isHtml5ParserEnabled' => true,
+                'chroot' => public_path(),
+            ]);
+
+        $filename = 'HopDong_' . str_pad($contract->id, 4, '0', STR_PAD_LEFT)
+            . '_Phong' . str_replace(' ', '', $room->name)
+            . '_' . now()->format('Ymd') . '.pdf';
+
+        return $pdf->download($filename);
     }
 }

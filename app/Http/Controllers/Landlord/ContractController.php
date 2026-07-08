@@ -8,6 +8,8 @@ use App\Models\Room;
 use App\Models\RenterRequest;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ContractCreatedMail;
 use Inertia\Inertia;
 
 /**
@@ -108,12 +110,22 @@ class ContractController extends Controller
         $room->update(['status' => 'occupied']);
 
         // Load relationship before redirect
-        $contract->load('renterRequest');
+        $contract->load(['renterRequest', 'room.house.user']);
+
+        // Gửi email hợp đồng cho khách thuê nếu có địa chỉ email
+        if ($renterRequest->email) {
+            try {
+                Mail::to($renterRequest->email)->send(new ContractCreatedMail($contract));
+            } catch (\Exception $e) {
+                // Log lỗi để tránh làm nghẽn quá trình tạo hợp đồng nếu SMTP chưa được cấu hình
+                \Log::error('Lỗi gửi email hợp đồng: ' . $e->getMessage());
+            }
+        }
 
         return redirect()->route('landlord.rooms.contracts.show', [
             'room' => $room->id,
             'contract' => $contract->id,
-        ])->with('success', 'Tạo hợp đồng thành công!');
+        ])->with('success', 'Tạo hợp đồng thành công và đã gửi email cho khách thuê!');
     }
 
     public function show(Room $room, Contract $contract)

@@ -21,6 +21,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role'     => 'admin',
             'status'   => 'active',
+            'email_verified_at' => now(),
         ]);
 
         // Tạo tài khoản Chủ trọ
@@ -30,6 +31,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role'     => 'landlord',
             'status'   => 'active',
+            'email_verified_at' => now(),
         ]);
 
         // Thêm thông tin mở rộng cho chủ trọ
@@ -48,6 +50,7 @@ class UserSeeder extends Seeder
             'status'      => 'active',
             'phone'       => '0987654321',
             'landlord_id' => $landlordUser->id,
+            'email_verified_at' => now(),
         ]);
     }
 }

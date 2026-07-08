@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, usePage } from '@inertiajs/react';
 
 export default function SetupWizard({ auth, packages = [] }) {
     const [step, setStep] = useState(1);
     const [isPaid, setIsPaid] = useState(false);
     const [checkingPayment, setCheckingPayment] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [showZoomModal, setShowZoomModal] = useState(false);
 
     const { data, setData, post, processing, errors } = useForm({
         package_id: packages.length > 0 ? packages[0].id : '',
@@ -17,6 +18,15 @@ export default function SetupWizard({ auth, packages = [] }) {
     });
 
     const selectedPackage = packages.find(pkg => pkg.id === data.package_id) || { room_limit: 5, name: 'Free Trial', price: 0 };
+
+    const { systemSettings } = usePage().props;
+    const adminBank = systemSettings?.bank_name || 'vietinbank';
+    const adminAccountNo = systemSettings?.account_no || '10287382718';
+    const adminAccountName = systemSettings?.account_name || 'CONG TY DREAMHOUSES';
+
+    const subDescription = `DH SETUP ${auth.user.email}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, "");
+    
+    const qrUrl = `https://img.vietqr.io/image/${adminBank}-${adminAccountNo}-compact2.png?amount=${selectedPackage.price}&addInfo=${encodeURIComponent(subDescription)}&accountName=${encodeURIComponent(adminAccountName)}`;
 
     const handlePackageSelect = (pkg) => {
         setData(prev => {
@@ -370,19 +380,14 @@ export default function SetupWizard({ auth, packages = [] }) {
 
                         <div className="flex flex-col items-center gap-4">
                             {/* QR Code */}
-                            <div className="w-32 h-32 bg-white border border-teal-100 rounded-2xl p-2.5 flex flex-col items-center justify-center relative overflow-hidden shadow-sm shrink-0">
-                                <svg className="w-full h-full text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <rect x="2" y="2" width="6" height="6" strokeWidth="2" />
-                                    <rect x="2" y="16" width="6" height="6" strokeWidth="2" />
-                                    <rect x="16" y="2" width="6" height="6" strokeWidth="2" />
-                                    <rect x="6" y="6" width="1" height="1" fill="currentColor" />
-                                    <rect x="17" y="6" width="1" height="1" fill="currentColor" />
-                                    <rect x="6" y="17" width="1" height="1" fill="currentColor" />
-                                    <rect x="12" y="4" width="2" height="2" strokeWidth="1.5" />
-                                    <rect x="12" y="10" width="2" height="2" strokeWidth="1.5" />
-                                    <rect x="16" y="12" width="2" height="2" strokeWidth="1.5" />
-                                    <rect x="10" y="16" width="2" height="2" strokeWidth="1.5" />
-                                </svg>
+                            <div className="w-40 h-40 bg-white border border-teal-100 rounded-2xl p-1.5 flex flex-col items-center justify-center relative overflow-hidden shadow-sm shrink-0">
+                                <img
+                                    src={qrUrl}
+                                    alt="VietQR Chuyển khoản"
+                                    className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-all duration-200"
+                                    onClick={() => setShowZoomModal(true)}
+                                    title="Bấm để phóng to và tải về"
+                                />
                                 {isPaid && (
                                     <div className="absolute inset-0 bg-emerald-500/95 backdrop-blur-xs flex items-center justify-center text-white">
                                         <svg className="w-10 h-10 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -403,15 +408,15 @@ export default function SetupWizard({ auth, packages = [] }) {
                                 <div className="h-px bg-slate-200/50 my-1"></div>
                                 <div className="flex justify-between">
                                     <span>Ngân hàng nhận:</span>
-                                    <strong className="text-slate-800 font-bold">VietinBank (Test)</strong>
+                                    <strong className="text-slate-800 font-bold uppercase">{adminBank}</strong>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Số tài khoản:</span>
-                                    <strong className="text-slate-800 font-bold">10287382718</strong>
+                                    <strong className="text-slate-800 font-bold">{adminAccountNo}</strong>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Nội dung CK:</span>
-                                    <strong className="text-teal-700 font-bold select-all">DH SETUP {auth.user.email}</strong>
+                                    <strong className="text-teal-700 font-bold select-all">{subDescription}</strong>
                                 </div>
                             </div>
                         </div>
@@ -440,6 +445,62 @@ export default function SetupWizard({ auth, packages = [] }) {
                                     )}
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Lightbox phóng to QR */}
+            {showZoomModal && (
+                <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
+                    <div className="relative max-w-sm w-full bg-white rounded-3xl p-6 flex flex-col items-center shadow-2xl border border-slate-100/10 animate-scale-up">
+                        <button
+                            onClick={() => setShowZoomModal(false)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-lg p-1.5 transition-colors"
+                        >
+                            ✕
+                        </button>
+                        
+                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-4">
+                            Quét mã thanh toán gói cước
+                        </h3>
+                        
+                        <div className="w-72 h-72 bg-white rounded-2xl border border-slate-100 p-2 flex items-center justify-center shadow-inner-sm overflow-hidden mb-6">
+                            <img
+                                src={qrUrl}
+                                alt="VietQR code enlarged"
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
+                        
+                        <div className="flex gap-3 w-full">
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const response = await fetch(qrUrl);
+                                        const blob = await response.blob();
+                                        const blobUrl = window.URL.createObjectURL(blob);
+                                        const link = document.createElement('a');
+                                        link.href = blobUrl;
+                                        link.download = `vietqr-setup-wizard.png`;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                        window.URL.revokeObjectURL(blobUrl);
+                                    } catch (e) {
+                                        window.open(qrUrl, '_blank');
+                                    }
+                                }}
+                                className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 text-center flex items-center justify-center gap-1.5"
+                            >
+                                📥 Tải ảnh mã QR
+                            </button>
+                            <button
+                                onClick={() => setShowZoomModal(false)}
+                                className="px-5 py-3 border border-slate-200 text-slate-500 hover:text-slate-800 font-bold rounded-xl text-xs transition-all active:scale-95"
+                            >
+                                Đóng
+                            </button>
                         </div>
                     </div>
                 </div>

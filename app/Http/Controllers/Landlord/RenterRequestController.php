@@ -385,6 +385,7 @@ class RenterRequestController extends Controller
             'role' => 'tenant',
             'status' => 'active',
             'renter_request_id' => $renterRequest->id,
+            'email_verified_at' => now(), // Tự động xác thực tài khoản do chủ trọ tạo trực tiếp
         ]);
 
         return redirect()->back()->with('success', 'Tài khoản đã được tạo! Đăng nhập bằng Email: ' . $email . ' | Mật khẩu: ' . $password . ' (Số điện thoại)');

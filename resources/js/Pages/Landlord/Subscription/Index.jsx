@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm, usePage, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function Index({ auth, currentSubscription, roomCount, roomLimit, packages, history }) {
@@ -31,8 +31,8 @@ export default function Index({ auth, currentSubscription, roomCount, roomLimit,
             setShowPaymentModal(false);
             
             // Gửi request thực tế lên backend
-            post(route('landlord.subscription.subscribe'), {
-                data: { package_id: selectedPkg.id },
+            router.post(route('landlord.subscription.subscribe'), {
+                package_id: selectedPkg.id,
             });
         }, 1500); // Giả lập kiểm tra giao dịch chuyển khoản trong 1.5s
     };

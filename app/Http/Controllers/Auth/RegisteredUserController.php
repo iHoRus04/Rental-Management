@@ -40,6 +40,13 @@ class RegisteredUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'name.required' => 'Vui lòng nhập họ và tên.',
+            'email.required' => 'Vui lòng nhập địa chỉ email.',
+            'email.email' => 'Email không đúng định dạng.',
+            'email.unique' => 'Email này đã được đăng ký trong hệ thống!',
+            'password.required' => 'Vui lòng nhập mật khẩu.',
+            'password.confirmed' => 'Mật khẩu xác nhận không trùng khớp.',
         ]);
 
         $user = User::create([

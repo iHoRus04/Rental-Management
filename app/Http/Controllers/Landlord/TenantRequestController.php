@@ -105,6 +105,9 @@ class TenantRequestController extends Controller
 
         $tenantRequest->update($updateData);
 
+        // Gửi email cập nhật tiến độ
+        $this->sendRequestUpdatedEmail($tenantRequest);
+
         return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
     }
 
@@ -135,6 +138,9 @@ class TenantRequestController extends Controller
             'assigned_to' => $assignedUser->id,
             'status' => 'in_progress', // Auto transition to in_progress
         ]);
+
+        // Gửi email cập nhật tiến độ
+        $this->sendRequestUpdatedEmail($tenantRequest);
 
         return redirect()->back()->with('success', 'Đã phân công người phụ trách và chuyển trạng thái sang Đang xử lý!');
     }
@@ -170,6 +176,9 @@ class TenantRequestController extends Controller
             'responded_at' => now(),
         ]);
 
+        // Gửi email cập nhật tiến độ
+        $this->sendRequestUpdatedEmail($tenantRequest);
+
         return redirect()->back()->with('success', 'Yêu cầu đã được sửa chữa thành công và chờ nghiệm thu!');
     }
 
@@ -187,6 +196,26 @@ class TenantRequestController extends Controller
             'status' => 'in_progress',
         ]);
 
+        // Gửi email cập nhật tiến độ
+        $this->sendRequestUpdatedEmail($tenantRequest);
+
         return redirect()->back()->with('success', 'Đã gửi phản hồi!');
+    }
+
+    /**
+     * Helper gửi email cập nhật sự cố cho khách thuê
+     */
+    private function sendRequestUpdatedEmail(TenantRequest $tenantRequest)
+    {
+        $tenantRequest->loadMissing(['tenant', 'landlord']);
+
+        if ($tenantRequest->tenant && !empty($tenantRequest->tenant->email)) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($tenantRequest->tenant->email)
+                    ->send(new \App\Mail\TenantRequestUpdatedMail($tenantRequest));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Lỗi gửi mail cập nhật sự cố: ' . $e->getMessage());
+            }
+        }
     }
 }

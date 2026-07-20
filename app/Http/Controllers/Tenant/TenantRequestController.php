@@ -103,7 +103,7 @@ class TenantRequestController extends Controller
             }
         }
 
-        TenantRequest::create([
+        $tenantRequest = TenantRequest::create([
             'tenant_id' => $user->id,
             'landlord_id' => $contract->room->house->user_id,
             'room_id' => $contract->room_id,
@@ -114,6 +114,16 @@ class TenantRequestController extends Controller
             'images' => $imagePaths,
             'status' => 'pending',
         ]);
+
+        // Gửi email thông báo sự cố mới cho chủ nhà
+        if ($tenantRequest->landlord && !empty($tenantRequest->landlord->email)) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($tenantRequest->landlord->email)
+                    ->send(new \App\Mail\TenantRequestCreatedMail($tenantRequest));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Lỗi gửi mail báo sự cố mới: ' . $e->getMessage());
+            }
+        }
 
         return redirect()->route('tenant.dashboard')
             ->with('success', 'Yêu cầu đã được gửi thành công!');

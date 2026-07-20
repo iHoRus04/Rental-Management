@@ -209,6 +209,16 @@ class BillController extends Controller
 
         $bill->save();
 
+        // Gửi email thông báo hóa đơn mới cho khách thuê (nếu có email)
+        if ($bill->renterRequest && !empty($bill->renterRequest->email)) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($bill->renterRequest->email)
+                    ->send(new \App\Mail\BillCreatedMail($bill));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Lỗi gửi mail thông báo hóa đơn: ' . $e->getMessage());
+            }
+        }
+
         return redirect()->route('landlord.bills.index')
             ->with('success', 'Tạo hóa đơn thành công!');
     }
@@ -268,9 +278,22 @@ class BillController extends Controller
                 'paid_amount' => 'required|numeric|min:0',
             ]);
 
+            $oldStatus = $bill->status;
             $bill->paid_amount = $validated['paid_amount'];
             $bill->updatePaymentStatus(); // Cập nhật trạng thái paid / partial / unpaid
             $bill->save();
+
+            // Gửi mail xác nhận thanh toán khi hóa đơn chuyển thành công sang trạng thái 'paid'
+            if ($bill->status === 'paid' && $oldStatus !== 'paid') {
+                if ($bill->renterRequest && !empty($bill->renterRequest->email)) {
+                    try {
+                        \Illuminate\Support\Facades\Mail::to($bill->renterRequest->email)
+                            ->send(new \App\Mail\BillPaidMail($bill));
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('Lỗi gửi mail biên nhận thanh toán: ' . $e->getMessage());
+                    }
+                }
+            }
 
             return redirect()->route('landlord.bills.show', $bill->id)
                 ->with('success', 'Cập nhật thanh toán thành công!');

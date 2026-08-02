@@ -88,4 +88,60 @@ class StaffRole extends Model
             ]);
         }
     }
+
+    /**
+     * Khởi tạo 3 vai trò mặc định chuẩn cho một Chủ trọ mới
+     */
+    public static function createDefaultRolesForLandlord(int $landlordId): void
+    {
+        // Tránh tạo trùng lặp nếu đã có vai trò
+        if (self::where('landlord_id', $landlordId)->exists()) {
+            return;
+        }
+
+        // 1. Quản lý Tòa nhà
+        $managerRole = self::create([
+            'landlord_id' => $landlordId,
+            'name'        => 'Quản lý Tòa nhà',
+            'description' => 'Có toàn quyền quản lý phòng, hợp đồng, thu tiền và tiếp nhận sự cố.',
+        ]);
+        $managerRole->syncPermissions([
+            'houses.view', 'houses.create', 'houses.edit',
+            'rooms.view', 'rooms.create', 'rooms.edit',
+            'contracts.view', 'contracts.create', 'contracts.edit',
+            'bills.view', 'bills.create', 'bills.edit',
+            'payments.view', 'payments.create',
+            'meter_logs.view', 'meter_logs.create', 'meter_logs.edit',
+            'renter_requests.view', 'renter_requests.edit',
+            'tenant_requests.view', 'tenant_requests.edit',
+            'reminders.view', 'reminders.create',
+            'services.view',
+            'reports.view',
+        ]);
+
+        // 2. Kế toán / Thu ngân
+        $accountantRole = self::create([
+            'landlord_id' => $landlordId,
+            'name'        => 'Kế toán / Thu ngân',
+            'description' => 'Phụ trách ghi chỉ số điện nước, lập hóa đơn và thu tiền.',
+        ]);
+        $accountantRole->syncPermissions([
+            'bills.view', 'bills.create', 'bills.edit',
+            'payments.view', 'payments.create',
+            'meter_logs.view', 'meter_logs.create', 'meter_logs.edit',
+            'reports.view',
+        ]);
+
+        // 3. Kỹ thuật / Bảo trì
+        $techRole = self::create([
+            'landlord_id' => $landlordId,
+            'name'        => 'Kỹ thuật / Bảo trì',
+            'description' => 'Phụ trách ghi chỉ số điện nước và xử lý các báo hỏng hóc từ khách thuê.',
+        ]);
+        $techRole->syncPermissions([
+            'meter_logs.view', 'meter_logs.create', 'meter_logs.edit',
+            'tenant_requests.view', 'tenant_requests.edit',
+            'rooms.view',
+        ]);
+    }
 }

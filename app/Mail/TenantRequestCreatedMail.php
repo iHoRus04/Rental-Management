@@ -8,9 +8,10 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Address;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\SerializesModels;
 
-class TenantRequestCreatedMail extends Mailable
+class TenantRequestCreatedMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

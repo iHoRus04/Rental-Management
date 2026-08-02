@@ -177,10 +177,14 @@ class RoomController extends Controller
             ];
         }
         
+        $room->load(['services']);
+        $allServices = \App\Models\Service::where('is_active', true)->get();
+        
         return Inertia::render('Landlord/Rooms/Show', [
             'house' => $house,
             'room' => $room,
             'activeContract' => $activeContract,
+            'allServices' => $allServices,
         ]);
     }
 

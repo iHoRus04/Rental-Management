@@ -253,4 +253,21 @@ class User extends Authenticatable implements MustVerifyEmail
             $q->where('user_id', $landlordId);
         })->count();
     }
+    public function hasVerifiedEmail(): bool
+    {
+        // Chỉ duy nhất Super Admin không cần xác thực email
+        if ($this->isAdmin() || $this->isTenant() || $this->isStaff()) {
+            return true;
+        }
+
+        return ! is_null($this->email_verified_at);
+    }
+
+    /**
+     * Gửi email xác thực tài khoản qua Queue bất đồng bộ
+     */
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new \App\Notifications\QueuedVerifyEmail);
+    }
 }

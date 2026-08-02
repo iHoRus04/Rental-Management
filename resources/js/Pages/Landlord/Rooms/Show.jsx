@@ -1,10 +1,59 @@
-import { Link, usePage, router, Head } from '@inertiajs/react';
+import { Link, usePage, router, Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function Show() {
-    const { house, room, activeContract } = usePage().props;
+    const { house, room, activeContract, allServices = [] } = usePage().props;
     const [selectedImage, setSelectedImage] = useState(null);
+    const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+
+    // Filter room services and available system services
+    const roomServices = room.services || [];
+    const attachedServiceIds = roomServices.map(s => s.id);
+    const availableServices = allServices.filter(s => !attachedServiceIds.includes(s.id));
+
+    // Form for attaching a new service
+    const { data: serviceForm, setData: setServiceForm, post: postService, processing: serviceProcessing, errors: serviceErrors, reset: resetServiceForm } = useForm({
+        service_id: '',
+        price: '',
+        note: '',
+    });
+
+    const handleSelectServiceChange = (e) => {
+        const selectedId = e.target.value;
+        const found = allServices.find(s => String(s.id) === String(selectedId));
+        setServiceForm({
+            service_id: selectedId,
+            price: found ? found.default_price : '',
+            note: '',
+        });
+    };
+
+    const handleAttachServiceSubmit = (e) => {
+        e.preventDefault();
+        postService(route('rooms.services.attach', room.id), {
+            onSuccess: () => {
+                setShowAddServiceModal(false);
+                resetServiceForm();
+            }
+        });
+    };
+
+    const handleDetachService = (pivotId) => {
+        if (confirm('Bạn có chắc muốn gỡ dịch vụ này khỏi phòng?')) {
+            router.delete(route('room-services.detach', pivotId));
+        }
+    };
+
+    const formatUnit = (unit) => {
+        const unitMap = {
+            'kwh': 'kWh',
+            'm3': 'm³',
+            'month': 'tháng',
+            'service': 'lần'
+        };
+        return unitMap[unit] || unit;
+    };
     
     // Parse images
     const images = room.images ? JSON.parse(room.images) : [];
@@ -46,7 +95,6 @@ export default function Show() {
                     
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
                         <div>
-                            {/* Nút Back nhỏ gọn thay thế Breadcrumb nếu cần */}
                             <Link href={route('landlord.houses.rooms.index', house.id)} className="inline-flex items-center text-sm font-medium text-gray-400 hover:text-emerald-600 mb-4 transition-colors">
                                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                                 Quay lại danh sách
@@ -85,7 +133,7 @@ export default function Show() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* LEFT COLUMN: Info & Contract */}
+                    {/* LEFT COLUMN: Info, Contract & Services */}
                     <div className="lg:col-span-1 space-y-8">
                         {/* Room Info Card */}
                         <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 p-6">
@@ -110,6 +158,69 @@ export default function Show() {
                                     </div>
                                 )}
                             </div>
+                        </div>
+
+                        {/* ROOM SERVICES CARD */}
+                        <div className="bg-white rounded-[24px] shadow-sm border border-emerald-100 p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg font-bold text-teal-900 flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                    </span>
+                                    Dịch vụ áp dụng ({roomServices.length})
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddServiceModal(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                                    Thêm dịch vụ
+                                </button>
+                            </div>
+
+                            {roomServices.length > 0 ? (
+                                <div className="space-y-3">
+                                    {roomServices.map((service) => (
+                                        <div key={service.id} className="p-3.5 bg-slate-50 hover:bg-emerald-50/50 rounded-2xl border border-slate-100 transition-colors flex justify-between items-center">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="font-bold text-sm text-slate-800">{service.name}</span>
+                                                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 uppercase">
+                                                        /{formatUnit(service.unit)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-emerald-700 font-extrabold text-xs">
+                                                    {parseInt(service.pivot?.price || service.default_price).toLocaleString('vi-VN')} ₫
+                                                </p>
+                                                {service.pivot?.note && (
+                                                    <p className="text-[11px] text-slate-400 mt-0.5">{service.pivot.note}</p>
+                                                )}
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDetachService(service.pivot?.id)}
+                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                title="Gỡ dịch vụ"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                    <p className="text-xs text-slate-400 font-medium mb-3">Chưa gán dịch vụ nào cho phòng này</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddServiceModal(true)}
+                                        className="text-xs font-bold text-emerald-600 hover:underline"
+                                    >
+                                        + Thêm dịch vụ ngay
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Contract / Tenant Info */}
@@ -212,7 +323,6 @@ export default function Show() {
                                             </div>
                                         </div>
                                     ))}
-                                    {/* Add Image Placeholder Button */}
                                     <Link 
                                         href={route('landlord.houses.rooms.edit', [house.id, room.id])}
                                         className="aspect-[4/3] rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-emerald-400 hover:text-emerald-500 hover:bg-emerald-50/50 transition-all cursor-pointer"
@@ -236,6 +346,113 @@ export default function Show() {
                         </div>
                     </div>
                 </div>
+
+                {/* --- ADD SERVICE MODAL --- */}
+                {showAddServiceModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+                        <div className="bg-white rounded-[24px] max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
+                            <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
+                                <h3 className="text-lg font-extrabold text-teal-900 flex items-center gap-2">
+                                    <span className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                    </span>
+                                    Thêm Dịch Vụ Cho Phòng
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddServiceModal(false)}
+                                    className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleAttachServiceSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                                        Chọn Dịch Vụ <span className="text-red-500">*</span>
+                                    </label>
+                                    {availableServices.length > 0 ? (
+                                        <select
+                                            value={serviceForm.service_id}
+                                            onChange={handleSelectServiceChange}
+                                            required
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                        >
+                                            <option value="">-- Chọn dịch vụ --</option>
+                                            {availableServices.map((s) => (
+                                                <option key={s.id} value={s.id}>
+                                                    {s.name} ({parseInt(s.default_price).toLocaleString('vi-VN')} ₫/{formatUnit(s.unit)})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-medium text-amber-800">
+                                            Tất cả các dịch vụ hệ thống đã được thêm vào phòng này!
+                                        </div>
+                                    )}
+                                    {serviceErrors.service_id && (
+                                        <p className="text-red-500 text-xs mt-1 font-medium">{serviceErrors.service_id}</p>
+                                    )}
+                                </div>
+
+                                {serviceForm.service_id && (
+                                    <>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                                                Đơn Giá Áp Dụng (VNĐ) <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={serviceForm.price}
+                                                onChange={(e) => setServiceForm('price', e.target.value)}
+                                                placeholder="Nhập đơn giá..."
+                                                required
+                                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                            />
+                                            {serviceErrors.price && (
+                                                <p className="text-red-500 text-xs mt-1 font-medium">{serviceErrors.price}</p>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                                                Ghi Chú (Tùy chọn)
+                                            </label>
+                                            <textarea
+                                                rows="2"
+                                                value={serviceForm.note}
+                                                onChange={(e) => setServiceForm('note', e.target.value)}
+                                                placeholder="Ghi chú thêm về dịch vụ này..."
+                                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddServiceModal(false)}
+                                        className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors"
+                                    >
+                                        Hủy
+                                    </button>
+                                    {availableServices.length > 0 && serviceForm.service_id && (
+                                        <button
+                                            type="submit"
+                                            disabled={serviceProcessing}
+                                            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
+                                        >
+                                            {serviceProcessing ? 'Đang thêm...' : 'Xác nhận Thêm'}
+                                        </button>
+                                    )}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
 
                 {/* --- IMAGE MODAL --- */}
                 {selectedImage && (

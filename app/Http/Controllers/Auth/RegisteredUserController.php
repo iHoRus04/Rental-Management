@@ -55,7 +55,11 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
             'role' => 'landlord',
             'status' => 'active',
+            'email_verified_at' => now(),
         ]);
+
+        // Tự động khởi tạo 3 Vai trò mặc định cho Chủ trọ mới
+        \App\Models\StaffRole::createDefaultRolesForLandlord($user->id);
 
         event(new Registered($user));
 

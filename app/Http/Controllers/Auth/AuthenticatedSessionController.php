@@ -57,6 +57,11 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
+        if ($user->role === 'tenant') {
+            return redirect()->route('tenant.dashboard');
+        }
+
+        // landlord và staff đều vào landlord dashboard
         return redirect()->route('landlord.dashboard');
     }
 

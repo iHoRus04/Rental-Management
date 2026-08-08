@@ -14,13 +14,17 @@ return new class extends Migration
         Schema::table('contracts', function (Blueprint $table) {
             // Drop foreign key constraint if exists
             try {
-                $table->dropForeign('contracts_renter_id_foreign');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    $table->dropForeign('contracts_renter_id_foreign');
+                }
             } catch (\Exception $e) {
                 // Foreign key doesn't exist
             }
             
             // Drop renter_id column
-            $table->dropColumn('renter_id');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                $table->dropColumn('renter_id');
+            }
             
             // Add renter_request_id column
             $table->unsignedBigInteger('renter_request_id')->nullable();
@@ -36,7 +40,9 @@ return new class extends Migration
         Schema::table('contracts', function (Blueprint $table) {
             // Drop foreign key
             try {
-                $table->dropForeign('contracts_renter_request_id_foreign');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    $table->dropForeign('contracts_renter_request_id_foreign');
+                }
             } catch (\Exception $e) {
                 // Foreign key doesn't exist
             }

@@ -23,9 +23,14 @@ class HouseController extends Controller
 {
     use AuthorizesRequests;
 
+    /**
+     * Hiển thị danh sách các nhà trọ thuộc quyền quản lý của chủ trọ/nhân viên
+     */
     public function index(Request $request)
     {
-        $houses = Auth::user()->houses()->latest()->get();
+        $user     = Auth::user();
+        $houseIds = $user->getAccessibleHouseIds();
+        $houses   = House::whereIn('id', $houseIds)->latest()->get();
         
         if ($request->wantsJson()) {
             return response()->json([
@@ -38,10 +43,12 @@ class HouseController extends Controller
         ]);
     }
 
+    /**
+     * Xem thông tin chi tiết của một nhà trọ
+     */
     public function show(House $house)
     {
-        // ✅ Kiểm tra ownership
-        if ($house->user_id !== Auth::id()) {
+        if (!Auth::user()->managesHouse($house)) {
             abort(403, 'Bạn không có quyền truy cập nhà trọ này.');
         }
 
@@ -50,13 +57,28 @@ class HouseController extends Controller
         ]);
     }
 
+    /**
+     * Hiển thị giao diện Form tạo mới nhà trọ
+     */
     public function create()
     {
+        $user = Auth::user();
+        if ($user->role === 'staff' && !$user->hasPermission('houses.create')) {
+            abort(403, 'Bạn không có quyền tạo nhà trọ.');
+        }
         return Inertia::render('Landlord/Houses/Create');
     }
 
+    /**
+     * Lưu thông tin nhà trọ mới vào CSDL (xử lý lưu hình ảnh đại diện)
+     */
     public function store(Request $request)
     {
+        $user = Auth::user();
+        if ($user->role === 'staff' && !$user->hasPermission('houses.create')) {
+            abort(403, 'Bạn không có quyền tạo nhà trọ.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string|max:255',
@@ -69,12 +91,24 @@ class HouseController extends Controller
             $validated['image'] = $request->file('image')->store('houses', 'public');
         }
 
-        Auth::user()->houses()->create($validated);
+        if ($user->role === 'staff') {
+            $house = new House($validated);
+            $house->user_id = $user->landlord_id;
+            $house->save();
+            
+            // Tự động gán staff vào quản lý nhà trọ vừa tạo
+            $user->staffedHouses()->attach($house->id, ['assigned_at' => now()]);
+        } else {
+            $user->houses()->create($validated);
+        }
 
         return redirect()->route('landlord.houses.index')
             ->with('success', 'Tạo nhà trọ thành công!');
     }
 
+    /**
+     * Hiển thị trang giao diện chỉnh sửa thông tin nhà trọ
+     */
     public function edit(House $house)
     {
         // ✅ Debug log
@@ -85,8 +119,10 @@ class HouseController extends Controller
             'house_data' => $house->toArray(),
         ]);
 
-        // ✅ Kiểm tra ownership
-        if ($house->user_id !== Auth::id()) {
+        $user = Auth::user();
+        
+        // ✅ Kiểm tra quyền (landlord sở hữu, staff được gán và có quyền edit)
+        if (!$user->managesHouse($house) || ($user->role === 'staff' && !$user->hasPermission('houses.edit'))) {
             Log::warning('Edit House - Access Denied', [
                 'house_user_id' => $house->user_id,
                 'current_user_id' => Auth::id(),
@@ -103,10 +139,13 @@ class HouseController extends Controller
         ]);
     }
 
+    /**
+     * Cập nhật thông tin chi tiết nhà trọ (tên, địa chỉ, loại hình, ảnh)
+     */
     public function update(Request $request, House $house)
 {
-    // Kiểm tra ownership
-    if ($house->user_id !== Auth::id()) {
+    $user = Auth::user();
+    if (!$user->managesHouse($house) || ($user->role === 'staff' && !$user->hasPermission('houses.edit'))) {
         abort(403, 'Bạn không có quyền cập nhật nhà trọ này.');
     }
 
@@ -139,11 +178,48 @@ class HouseController extends Controller
         ->with('success', 'Cập nhật thành công!');
 }
 
+    /**
+     * Cập nhật đơn giá điện, nước mặc định và cấu hình tài khoản ngân hàng VietQR của nhà trọ
+     */
+    public function updateUtilityPrices(Request $request, House $house)
+    {
+        $user = Auth::user();
+        if (!$user->managesHouse($house) || ($user->role === 'staff' && !$user->hasPermission('houses.edit'))) {
+            abort(403, 'Bạn không có quyền cập nhật nhà trọ này.');
+        }
+
+        $validated = $request->validate([
+            'electric_price' => 'required|numeric|min:0',
+            'water_price' => 'required|numeric|min:0',
+            'bank_name' => 'nullable|string|max:255',
+            'account_no' => 'nullable|string|max:255',
+            'account_name' => 'nullable|string|max:255',
+        ]);
+
+        $house->update($validated);
+
+        return redirect()->back()
+            ->with('success', 'Cập nhật thiết lập thành công!');
+    }
+
+    /**
+     * Xóa nhà trọ (xóa ảnh liên quan trong bộ nhớ storage)
+     */
     public function destroy(House $house)
     {
-        // ✅ Kiểm tra ownership
-        if ($house->user_id !== Auth::id()) {
+        $user = Auth::user();
+        // ✅ Chỉ landlord sở hữu hoặc staff được gán và có quyền delete mới được xóa
+        if (!$user->managesHouse($house) || ($user->role === 'staff' && !$user->hasPermission('houses.delete'))) {
             abort(403, 'Bạn không có quyền xóa nhà trọ này.');
+        }
+
+        // Kiểm tra bảo mật: Không cho phép xóa nhà trọ nếu đang có phòng có hợp đồng active
+        $hasActiveContracts = \App\Models\Contract::whereHas('room', function ($q) use ($house) {
+            $q->where('house_id', $house->id);
+        })->where('status', 'active')->exists();
+
+        if ($hasActiveContracts) {
+            return redirect()->back()->with('error', 'Không thể xóa nhà trọ vì đang có các phòng có người ở (hợp đồng đang hoạt động)!');
         }
 
         if ($house->image) {

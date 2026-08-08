@@ -1,12 +1,37 @@
+import { useState } from 'react';
 import { Link, useForm, usePage, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+
+const isoToVn = (isoStr) => {
+    if (!isoStr) return '';
+    const parts = isoStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return isoStr;
+};
+
+const vnToIso = (vnStr) => {
+    if (!vnStr) return '';
+    const cleanStr = vnStr.trim();
+    const parts = cleanStr.includes('/') ? cleanStr.split('/') : cleanStr.split('-');
+    if (parts.length === 3 && parts[0].length <= 2 && parts[2].length === 4) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+    }
+    return cleanStr;
+};
 
 export default function Create() {
     const { room, renterRequests } = usePage().props;
 
+    const initialStartDateIso = new Date().toISOString().split('T')[0];
+    const [startDateVn, setStartDateVn] = useState(isoToVn(initialStartDateIso));
+    const [endDateVn, setEndDateVn] = useState('');
+
     const { data, setData, post, processing, errors } = useForm({
         renter_request_id: '',
-        start_date: new Date().toISOString().split('T')[0],
+        start_date: initialStartDateIso,
         end_date: '',
         monthly_rent: room.price ? Math.floor(room.price) : '',
         deposit: '',
@@ -37,7 +62,7 @@ export default function Create() {
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title={`Tạo hợp đồng - ${room.name}`} />
-            
+
             <div className="max-w-4xl mx-auto">
                 {/* --- HEADER --- */}
                 <div className="mb-8">
@@ -68,7 +93,7 @@ export default function Create() {
 
                 <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
                     <form onSubmit={handleSubmit} className="p-8 space-y-8">
-                        
+
                         {/* Section 1: Chọn người thuê */}
                         <div>
                             <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
@@ -81,13 +106,12 @@ export default function Create() {
                                     <p className="text-sm font-medium text-gray-500 mb-2">Danh sách yêu cầu đã được duyệt:</p>
                                     <div className="grid grid-cols-1 gap-3">
                                         {renterRequests.map(request => (
-                                            <label 
-                                                key={request.id} 
-                                                className={`relative flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
-                                                    data.renter_request_id === request.id 
-                                                    ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
+                                            <label
+                                                key={request.id}
+                                                className={`relative flex items-center p-4 border rounded-xl cursor-pointer transition-all ${data.renter_request_id === request.id
+                                                    ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
                                                     : 'border-gray-200 hover:border-emerald-300 hover:bg-gray-50'
-                                                }`}
+                                                    }`}
                                             >
                                                 <input
                                                     type="radio"
@@ -112,12 +136,20 @@ export default function Create() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-                                    <svg className="w-5 h-5 text-amber-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                    <div>
-                                        <h4 className="font-bold text-amber-800 text-sm">Chưa có yêu cầu thuê nào</h4>
-                                        <p className="text-amber-700 text-sm mt-1">Vui lòng duyệt yêu cầu thuê trước khi tạo hợp đồng.</p>
+                                <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-start gap-3">
+                                        <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                        <div>
+                                            <h4 className="font-bold text-amber-800 text-sm">Chưa có thông tin khách thuê cho phòng này</h4>
+                                            <p className="text-amber-700 text-xs mt-1">Bạn cần tạo thông tin khách thuê trước khi lập hợp đồng.</p>
+                                        </div>
                                     </div>
+                                    <Link
+                                        href={route('landlord.renter-requests.create', { room_id: room.id, redirect_to_contract: 'true' })}
+                                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/10 flex-shrink-0 self-end sm:self-auto"
+                                    >
+                                        ➕ Tạo nhanh khách thuê
+                                    </Link>
                                 </div>
                             )}
                             {errors.renter_request_id && <p className="text-red-500 text-sm mt-2 font-medium flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>{errors.renter_request_id}</p>}
@@ -133,26 +165,86 @@ export default function Create() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                 {/* Ngày bắt đầu */}
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu <span className="text-red-500">*</span></label>
-                                    <input
-                                        type="date"
-                                        value={data.start_date}
-                                        onChange={e => setData('start_date', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-                                        required
-                                    />
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Ngày bắt đầu <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative flex items-center">
+                                        <input
+                                            type="text"
+                                            placeholder="DD/MM/YYYY (Ví dụ: 03/08/2026)"
+                                            value={startDateVn}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setStartDateVn(val);
+                                                const iso = vnToIso(val);
+                                                if (iso && iso.length === 10) {
+                                                    setData('start_date', iso);
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                if (data.start_date) {
+                                                    setStartDateVn(isoToVn(data.start_date));
+                                                }
+                                            }}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-medium pr-12"
+                                            required
+                                        />
+                                        <input
+                                            type="date"
+                                            value={data.start_date}
+                                            onChange={e => {
+                                                setData('start_date', e.target.value);
+                                                setStartDateVn(isoToVn(e.target.value));
+                                            }}
+                                            className="absolute right-3 w-6 h-6 opacity-0 cursor-pointer z-10"
+                                        />
+                                        <div className="absolute right-3 pointer-events-none text-emerald-600">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        </div>
+                                    </div>
                                     {errors.start_date && <p className="text-red-500 text-sm mt-1">{errors.start_date}</p>}
                                 </div>
 
                                 {/* Ngày kết thúc */}
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc</label>
-                                    <input
-                                        type="date"
-                                        value={data.end_date}
-                                        onChange={e => setData('end_date', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-                                    />
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        Ngày kết thúc
+                                    </label>
+                                    <div className="relative flex items-center">
+                                        <input
+                                            type="text"
+                                            placeholder="DD/MM/YYYY"
+                                            value={endDateVn}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setEndDateVn(val);
+                                                const iso = vnToIso(val);
+                                                if (iso && iso.length === 10) {
+                                                    setData('end_date', iso);
+                                                } else if (!val) {
+                                                    setData('end_date', '');
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                if (data.end_date) {
+                                                    setEndDateVn(isoToVn(data.end_date));
+                                                }
+                                            }}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-medium pr-12"
+                                        />
+                                        <input
+                                            type="date"
+                                            value={data.end_date}
+                                            onChange={e => {
+                                                setData('end_date', e.target.value);
+                                                setEndDateVn(isoToVn(e.target.value));
+                                            }}
+                                            className="absolute right-3 w-6 h-6 opacity-0 cursor-pointer z-10"
+                                        />
+                                        <div className="absolute right-3 pointer-events-none text-emerald-600">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        </div>
+                                    </div>
                                     {errors.end_date && <p className="text-red-500 text-sm mt-1">{errors.end_date}</p>}
                                 </div>
                             </div>

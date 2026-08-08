@@ -1,14 +1,24 @@
 import { Link, usePage, Head, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function Show() {
-    const { meterLog, history } = usePage().props;
+    const { meterLog, history, auth } = usePage().props;
+    const user = auth?.user;
+    const isLandlord = user?.role === 'landlord';
+    const userPerms = auth?.permissions || user?.permissions || [];
+    const canEdit = isLandlord || userPerms.includes('meter_logs.edit');
+    const canDelete = isLandlord || userPerms.includes('meter_logs.delete');
     const { delete: destroy } = useForm();
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
     const handleDelete = () => {
-        if (confirm('Bạn có chắc chắn muốn xóa chỉ số này không?')) {
-            destroy(route('landlord.meter-logs.destroy', meterLog.id));
-        }
+        setConfirmDelete(true);
+    };
+
+    const executeDelete = () => {
+        destroy(route('landlord.meter-logs.destroy', meterLog.id));
     };
 
     return (
@@ -45,20 +55,24 @@ export default function Show() {
 
                         {/* Actions */}
                         <div className="relative z-10 flex gap-3">
-                            <Link
-                                href={route('landlord.meter-logs.edit', meterLog.id)}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-sm hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                Chỉnh sửa
-                            </Link>
-                            <button
-                                onClick={handleDelete}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-rose-600 rounded-xl font-bold text-sm hover:bg-rose-50 hover:border-rose-200 transition-all shadow-sm"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                Xóa
-                            </button>
+                            {canEdit && (
+                                <Link
+                                    href={route('landlord.meter-logs.edit', meterLog.id)}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-sm hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    Chỉnh sửa
+                                </Link>
+                            )}
+                            {canDelete && (
+                                <button
+                                    onClick={handleDelete}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-rose-600 rounded-xl font-bold text-sm hover:bg-rose-50 hover:border-rose-200 transition-all shadow-sm"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    Xóa
+                                </button>
+                            )}
                         </div>
 
                         {/* Decor blob */}
@@ -187,6 +201,15 @@ export default function Show() {
                     </div>
                 </div>
             </div>
+            <ConfirmModal
+                show={confirmDelete}
+                onClose={() => setConfirmDelete(false)}
+                onConfirm={executeDelete}
+                title="Xóa chỉ số điện nước"
+                message="Bạn có chắc chắn muốn xóa chỉ số này không?"
+                confirmText="Xóa"
+                type="danger"
+            />
         </div>
     );
 }

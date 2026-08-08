@@ -25,11 +25,25 @@ Route::get('/meter-logs/{roomId}/{month}/{year}', [MeterLogController::class, 's
 
 // Room Services API route
 Route::get('/rooms/{roomId}/services', function ($roomId) {
-    $room = \App\Models\Room::with('services')->find($roomId);
+    $room = \App\Models\Room::with(['services', 'house'])->find($roomId);
     if (!$room) {
         return response()->json(['services' => []], 404);
     }
-    return response()->json(['services' => $room->services]);
+    
+    $services = $room->services->map(function ($service) use ($room) {
+        if ($service->unit === 'kwh' && $room->house && $room->house->electric_price > 0) {
+            if ($service->pivot) {
+                $service->pivot->price = $room->house->electric_price;
+            }
+        } elseif ($service->unit === 'm3' && $room->house && $room->house->water_price > 0) {
+            if ($service->pivot) {
+                $service->pivot->price = $room->house->water_price;
+            }
+        }
+        return $service;
+    });
+    
+    return response()->json(['services' => $services]);
 });
 
 // SSO validate route - external app calls this to validate token and retrieve user info

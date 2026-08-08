@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 
 // Inline Home icon to avoid adding lucide-react dependency
@@ -10,6 +10,8 @@ const Home = ({ className = '' }) => (
 );
 
 export default function GuestLayout({ children }) {
+    const { systemSettings } = usePage().props;
+
     return (
         <div className="min-h-screen flex flex-col justify-center items-center pt-6 sm:pt-0 bg-slate-50 relative overflow-hidden">
             
@@ -21,19 +23,19 @@ export default function GuestLayout({ children }) {
 
             {/* Logo Section */}
             <div className="w-full sm:max-w-md mt-6 px-6 z-10 flex flex-col items-center mb-6">
-                <a href="http://127.0.0.1:5174/" className="flex items-center gap-2 group transition-transform hover:scale-105">
-                    <div className="p-3 bg-white rounded-2xl shadow-lg shadow-emerald-500/10 border border-emerald-100">
-                       <ApplicationLogo className="h-20 w-20 fill-current text-gray-500" />
+                <Link href="/" className="flex items-center gap-3 group transition-transform hover:scale-105">
+                    <div className="p-2.5 bg-white rounded-2xl shadow-lg shadow-emerald-500/10 border border-emerald-100 flex items-center justify-center min-w-[4.5rem] min-h-[4.5rem]">
+                        <ApplicationLogo className="h-14 w-14 fill-current text-emerald-600 rounded-xl" />
                     </div>
                     <div className="flex flex-col">
                         <span className="text-2xl font-extrabold text-teal-900 tracking-tight leading-none">
-                            DreamHouse
+                            {systemSettings?.app_name || 'DreamHouse'}
                         </span>
-                        <span className="text-[10px] font-bold text-emerald-500 tracking-[0.2em] uppercase mt-0.5">
+                        <span className="text-[10px] font-bold text-emerald-500 tracking-[0.2em] uppercase mt-1">
                             Thuê trọ Online
                         </span>
                     </div>
-                </a>
+                </Link>
             </div>
 
             {/* Content Container */}

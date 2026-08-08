@@ -16,6 +16,8 @@ class Payment extends Model
         'payment_method',
         'reference',
         'notes',
+        'verified_by',
+        'bank_transaction_code',
     ];
 
     protected $casts = [
@@ -26,5 +28,12 @@ class Payment extends Model
     {
         return $this->belongsTo(Bill::class);
     }
-  
+
+    /**
+     * Nhân viên duyệt/xác nhận thanh toán
+     */
+    public function verifiedByUser()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
 }

@@ -1,4 +1,20 @@
+import { usePage } from '@inertiajs/react';
+
 export default function ApplicationLogo(props) {
+    const pageProps = usePage().props || {};
+    const systemSettings = pageProps.systemSettings;
+
+    if (systemSettings?.logo) {
+        return (
+            <img
+                src={systemSettings.logo}
+                alt={systemSettings.app_name || 'Logo'}
+                {...props}
+                className={`object-contain ${props.className || 'h-9 w-auto'}`}
+            />
+        );
+    }
+
     return (
         <svg
             {...props}

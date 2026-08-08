@@ -14,13 +14,15 @@ return new class extends Migration
         Schema::table('bills', function (Blueprint $table) {
             // Drop the old foreign key if it exists
             try {
-                $table->dropForeign('bills_renter_id_foreign');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    $table->dropForeign('bills_renter_id_foreign');
+                }
             } catch (\Exception $e) {
                 // Foreign key doesn't exist, continue
             }
 
             // Drop the old renter_id column
-            if (Schema::hasColumn('bills', 'renter_id')) {
+            if (Schema::hasColumn('bills', 'renter_id') && Schema::getConnection()->getDriverName() !== 'sqlite') {
                 $table->dropColumn('renter_id');
             }
 
@@ -40,7 +42,9 @@ return new class extends Migration
         Schema::table('bills', function (Blueprint $table) {
             // Drop the new foreign key if it exists
             try {
-                $table->dropForeign('bills_renter_request_id_foreign');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    $table->dropForeign('bills_renter_request_id_foreign');
+                }
             } catch (\Exception $e) {
                 // Foreign key doesn't exist, continue
             }

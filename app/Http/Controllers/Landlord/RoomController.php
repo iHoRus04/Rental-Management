@@ -26,37 +26,98 @@ class RoomController extends Controller
      * là chủ sở hữu của `House` trước khi cho phép truy cập hoặc thay đổi.
      * Nếu không, sẽ trả về lỗi 403 để ngăn người dùng thao tác vào dữ liệu của người khác.
      */
-    private function authorizeHouseOwnership(House $house)
+    private function authorizeHouseOwnership(House $house, string $action = 'view')
     {
-        if ($house->user_id !== Auth::id()) {
+        $user = Auth::user();
+        
+        if (!$user->managesHouse($house)) {
             abort(403, 'Bạn không có quyền truy cập nhà trọ này.');
+        }
+
+        if ($user->role === 'staff') {
+            if (!$user->hasPermission("rooms.{$action}")) {
+                abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+            }
         }
     }
 
+    /**
+     * Hiển thị danh sách tất cả các phòng trọ của một nhà trọ
+     */
     public function index(House $house)
     {
         $this->authorizeHouseOwnership($house);
         
-        $rooms = $house->rooms()->get();
+        $rooms = $house->rooms()
+            ->with(['contracts' => function ($q) {
+                $q->where('status', 'active')->with('renterRequest');
+            }])
+            ->get()
+            ->map(function ($room) {
+                $activeContract = $room->contracts->first();
+                $hasActiveContract = !empty($activeContract);
+                
+                $hasUnpaidBills = \App\Models\Bill::where('room_id', $room->id)
+                    ->whereIn('status', ['pending', 'overdue', 'partial'])
+                    ->exists();
+                
+                $isExpiringSoon = false;
+                if ($hasActiveContract && $activeContract->end_date) {
+                    $daysLeft = (int) ceil(now()->diffInDays($activeContract->end_date, false));
+                    $isExpiringSoon = ($daysLeft >= 0 && $daysLeft <= 15);
+                }
+
+                return [
+                    'id' => $room->id,
+                    'house_id' => $room->house_id,
+                    'name' => $room->name,
+                    'price' => (float) $room->price,
+                    'status' => $room->status,
+                    'floor' => $room->floor,
+                    'area' => $room->area,
+                    'description' => $room->description,
+                    'images' => $room->images,
+                    'has_active_contract' => $hasActiveContract,
+                    'has_unpaid_bills' => $hasUnpaidBills,
+                    'is_expiring_soon' => $isExpiringSoon,
+                    'renter_name' => $hasActiveContract ? ($activeContract->renterRequest->name ?? 'Người thuê') : null,
+                    'contract_id' => $hasActiveContract ? $activeContract->id : null,
+                ];
+            });
+            
+        $user = Auth::user();
 
         return Inertia::render('Landlord/Rooms/Index', [
             'house' => $house,
             'rooms' => $rooms,
+            'roomLimit' => $user->getRoomLimit(),
+            'currentRoomCount' => $user->getCurrentRoomCount(),
         ]);
     }
 
+    /**
+     * Hiển thị giao diện Form tạo mới phòng trọ
+     */
     public function create(House $house)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'create');
         
         return Inertia::render('Landlord/Rooms/Create', [
             'house' => $house,
         ]);
     }
 
+    /**
+     * Lưu thông tin phòng trọ mới vào CSDL (kiểm tra hạn hạn mức gói cước và upload ảnh)
+     */
     public function store(Request $request, House $house)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'create');
+        
+        $user = Auth::user();
+        if ($user->getCurrentRoomCount() >= $user->getRoomLimit()) {
+            return redirect()->back()->withErrors(['name' => 'Bạn đã đạt giới hạn tối đa của gói cước (' . $user->getRoomLimit() . ' phòng). Vui lòng nâng cấp gói cước để tạo thêm phòng!']);
+        }
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -92,9 +153,12 @@ class RoomController extends Controller
                          ->with('success', 'Thêm phòng thành công!');
     }
 
+    /**
+     * Xem chi tiết thông tin phòng trọ (hợp đồng đang chạy, dịch vụ đi kèm)
+     */
     public function show(House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'view');
         
         // Kiểm tra room có thuộc house không
         if ($room->house_id !== $house->id) {
@@ -125,16 +189,23 @@ class RoomController extends Controller
             ];
         }
         
+        $room->load(['services']);
+        $allServices = \App\Models\Service::where('is_active', true)->get();
+        
         return Inertia::render('Landlord/Rooms/Show', [
             'house' => $house,
             'room' => $room,
             'activeContract' => $activeContract,
+            'allServices' => $allServices,
         ]);
     }
 
+    /**
+     * Hiển thị trang giao diện chỉnh sửa thông tin phòng trọ
+     */
     public function edit(House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'edit');
         
         if ($room->house_id !== $house->id) {
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');
@@ -146,9 +217,12 @@ class RoomController extends Controller
         ]);
     }
 
+    /**
+     * Cập nhật thông tin phòng trọ (tên, giá, diện tích, trạng thái, ảnh)
+     */
     public function update(Request $request, House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'edit');
         
         if ($room->house_id !== $house->id) {
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');
@@ -200,12 +274,20 @@ class RoomController extends Controller
                         ->with('success', 'Cập nhật phòng thành công!');
     }
 
+    /**
+     * Xóa phòng trọ (xóa tất cả các hình ảnh liên quan trong bộ nhớ storage)
+     */
     public function destroy(House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'delete');
         
         if ($room->house_id !== $house->id) {
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');
+        }
+
+        // Kiểm tra bảo mật: Không cho phép xóa phòng đang có hợp đồng active
+        if ($room->contracts()->where('status', 'active')->exists()) {
+            return redirect()->back()->with('error', 'Không thể xóa phòng đang có người thuê (hợp đồng đang hoạt động). Vui lòng chấm dứt hợp đồng trước khi xóa!');
         }
 
         // ✅ Xóa tất cả ảnh trước khi xóa room
@@ -223,11 +305,11 @@ class RoomController extends Controller
     }
 
     /**
-     * Remove an image from a room
+     * Xóa 1 hình ảnh cụ thể của phòng trọ theo index vị trí
      */
     public function removeImage(Request $request, House $house, Room $room)
     {
-        $this->authorizeHouseOwnership($house);
+        $this->authorizeHouseOwnership($house, 'edit');
         
         if ($room->house_id !== $house->id) {
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');

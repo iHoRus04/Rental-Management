@@ -13,9 +13,14 @@ return new class extends Migration
     public function up(): void
     {
         // Check if column exists before renaming
-        if (Schema::hasColumn('contracts', 'renter_id')) {
-            // Simply rename the column - no need to drop/recreate foreign keys
-            DB::statement('ALTER TABLE contracts CHANGE renter_id renter_request_id BIGINT UNSIGNED NOT NULL');
+        if (Schema::hasColumn('contracts', 'renter_id') && !Schema::hasColumn('contracts', 'renter_request_id')) {
+            if (DB::connection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE contracts CHANGE renter_id renter_request_id BIGINT UNSIGNED NOT NULL');
+            } else {
+                Schema::table('contracts', function (Blueprint $table) {
+                    $table->renameColumn('renter_id', 'renter_request_id');
+                });
+            }
         }
     }
 
@@ -26,7 +31,13 @@ return new class extends Migration
     {
         // Reverse the rename
         if (Schema::hasColumn('contracts', 'renter_request_id')) {
-            DB::statement('ALTER TABLE contracts CHANGE renter_request_id renter_id BIGINT UNSIGNED NOT NULL');
+            if (DB::connection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE contracts CHANGE renter_request_id renter_id BIGINT UNSIGNED NOT NULL');
+            } else {
+                Schema::table('contracts', function (Blueprint $table) {
+                    $table->renameColumn('renter_request_id', 'renter_id');
+                });
+            }
         }
     }
 };

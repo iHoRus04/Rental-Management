@@ -16,9 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
     $middleware->alias([
-            'role' => \App\Http\Middleware\RoleMiddleware::class,
-            'landlord' => \App\Http\Middleware\EnsureUserIsLandlord::class,
-            'tenant' => \App\Http\Middleware\EnsureUserIsTenant::class,
+            'role'       => \App\Http\Middleware\RoleMiddleware::class,
+            'landlord'   => \App\Http\Middleware\EnsureUserIsLandlord::class,
+            'tenant'     => \App\Http\Middleware\EnsureUserIsTenant::class,
+            'permission' => \App\Http\Middleware\PermissionMiddleware::class,
+            'user.status'=> \App\Http\Middleware\CheckUserStatus::class,
         ]);
 
         //

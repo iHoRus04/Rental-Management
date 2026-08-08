@@ -18,19 +18,32 @@ use Illuminate\Support\Facades\Auth;
 class ServiceController extends Controller
 {
     /**
-     * Display a listing of services
+     * Hiển thị danh sách các dịch vụ tiện ích hiện có và dịch vụ gán theo phòng
      */
-    public function index()
+    public function index(Request $request)
     {
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
+
         $services = Service::where('is_active', true)->get();
+
+        $rooms = Room::whereIn('house_id', $houseIds)
+            ->with(['services' => function ($q) {
+                $q->where('room_services.is_active', true);
+            }])
+            ->get();
 
         return Inertia::render('Landlord/Services/Index', [
             'services' => $services,
+            'houses'   => $houses,
+            'rooms'    => $rooms,
         ]);
     }
 
     /**
-     * Show the form for creating a new service
+     * Hiển thị giao diện Form tạo dịch vụ mới
      */
     public function create()
     {
@@ -38,7 +51,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Store a newly created service
+     * Lưu dịch vụ tiện ích mới vào CSDL
      */
     public function store(Request $request)
     {
@@ -57,7 +70,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Show the form for editing a service
+     * Hiển thị trang chỉnh sửa thông tin dịch vụ
      */
     public function edit(Service $service)
     {
@@ -67,7 +80,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Update the specified service
+     * Cập nhật thông tin dịch vụ (tự động đồng bộ đơn giá mới cho tất cả các phòng đang gán dịch vụ này)
      */
     public function update(Request $request, Service $service)
     {
@@ -77,27 +90,47 @@ class ServiceController extends Controller
             'default_price' => 'required|numeric|min:0',
             'unit' => 'required|in:kwh,m3,month,service',
             'is_active' => 'boolean',
+            'sync_to_rooms' => 'nullable|boolean', // Tùy chọn đồng bộ hàng loạt
         ]);
 
         $service->update($validated);
 
+        // ✅ Tự động đồng bộ đơn giá mới cho tất cả các phòng trọ đang gán dịch vụ này
+        $updatedRoomsCount = RoomService::where('service_id', $service->id)
+            ->update(['price' => $validated['default_price']]);
+
+        $message = "Dịch vụ đã được cập nhật thành công!";
+        if ($updatedRoomsCount > 0) {
+            $message .= " Đã tự động đồng bộ đơn giá mới ({$validated['default_price']} ₫) cho {$updatedRoomsCount} phòng trọ.";
+        }
+
         return redirect()->route('landlord.services.index')
-            ->with('success', 'Dịch vụ đã được cập nhật thành công!');
+            ->with('success', $message);
     }
 
     /**
-     * Remove the specified service
+     * Xóa dịch vụ tiện ích (có kiểm tra an toàn)
      */
     public function destroy(Service $service)
     {
+        // Kiểm tra xem dịch vụ này có đang được gán cho phòng nào không
+        $assignedRoomsCount = RoomService::where('service_id', $service->id)->count();
+
+        if ($assignedRoomsCount > 0) {
+            return redirect()->back()->with('error', 
+                "Không thể xóa! Dịch vụ \"{$service->name}\" đang được gán cho {$assignedRoomsCount} phòng trọ. Vui lòng gỡ dịch vụ khỏi các phòng hoặc tắt kích hoạt (ẩn) dịch vụ này."
+            );
+        }
+
         $service->delete();
 
         return redirect()->route('landlord.services.index')
-            ->with('success', 'Dịch vụ đã được xóa thành công!');
+            ->with('success', 'Đã xóa dịch vụ thành công!');
     }
 
+
     /**
-     * Show services for a specific room
+     * Xem danh sách các dịch vụ được gán cho một phòng cụ thể
      */
     public function roomServices(Room $room)
     {
@@ -112,7 +145,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Attach service to room
+     * Gán dịch vụ tiện ích cho phòng trọ kèm giá tùy chỉnh
      */
     public function attachToRoom(Request $request, Room $room)
     {
@@ -143,7 +176,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Update room service
+     * Cập nhật thông tin dịch vụ được gán trong phòng (đơn giá, bật/tắt, ghi chú)
      */
     public function updateRoomService(Request $request, RoomService $roomService)
     {
@@ -159,7 +192,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Detach service from room
+     * Gỡ dịch vụ ra khỏi phòng trọ
      */
     public function detachFromRoom(RoomService $roomService)
     {

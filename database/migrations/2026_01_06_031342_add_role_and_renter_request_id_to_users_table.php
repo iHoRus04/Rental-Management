@@ -27,8 +27,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['renter_request_id']);
-            $table->dropColumn(['role', 'renter_request_id']);
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                $table->dropForeign(['renter_request_id']);
+                $table->dropColumn(['role', 'renter_request_id']);
+            }
         });
     }
 };

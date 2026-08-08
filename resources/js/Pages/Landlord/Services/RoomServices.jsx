@@ -1,10 +1,12 @@
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function RoomServices({ auth, room, roomServices, allServices }) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingService, setEditingService] = useState(null);
+    const [confirmDetach, setConfirmDetach] = useState({ show: false, id: null });
 
     const { data, setData, post, reset, processing, errors } = useForm({
         service_id: '',
@@ -38,9 +40,13 @@ export default function RoomServices({ auth, room, roomServices, allServices }) 
     };
 
     const handleDeleteService = (roomServiceId) => {
-        if (confirm('Bạn có chắc chắn muốn gỡ dịch vụ này khỏi phòng?')) {
-            router.delete(route('landlord.room-services.detach', roomServiceId));
-        }
+        setConfirmDetach({ show: true, id: roomServiceId });
+    };
+
+    const executeDetach = () => {
+        router.delete(route('landlord.room-services.detach', confirmDetach.id), {
+            onFinish: () => setConfirmDetach({ show: false, id: null }),
+        });
     };
 
     const getUnitLabel = (unit) => {
@@ -331,6 +337,15 @@ export default function RoomServices({ auth, room, roomServices, allServices }) 
                         </div>
                     </div>
                 )}
+                <ConfirmModal
+                    show={confirmDetach.show}
+                    onClose={() => setConfirmDetach({ show: false, id: null })}
+                    onConfirm={executeDetach}
+                    title="Gỡ dịch vụ"
+                    message="Bạn có chắc chắn muốn gỡ dịch vụ này khỏi phòng?"
+                    confirmText="Gỡ dịch vụ"
+                    type="danger"
+                />
             </div>
         </AuthenticatedLayout>
     );

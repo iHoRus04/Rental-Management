@@ -2,13 +2,17 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-export default function CreateRenterRequest({ auth, rooms }) {
+export default function CreateRenterRequest({ auth, rooms, selected_room_id = '', redirect_to_contract = false }) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         phone: '',
         email: '',
-        room_id: '',
+        room_id: selected_room_id || '',
         message: '',
+        id_card: '',
+        address: '',
+        move_in_date: '',
+        redirect_to_contract: redirect_to_contract ? 'true' : 'false',
     });
 
     const handleSubmit = (e) => {
@@ -27,12 +31,16 @@ export default function CreateRenterRequest({ auth, rooms }) {
                 <div className="max-w-3xl mx-auto">
                     {/* --- HEADER --- */}
                     <div className="mb-8">
-                        <Link 
-                            href={route('landlord.renter-requests.index')} 
+                        <Link
+                            href={
+                                redirect_to_contract
+                                    ? route('landlord.rooms.contracts.create', selected_room_id)
+                                    : route('landlord.renter-requests.index')
+                            }
                             className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-emerald-600 mb-4 transition-colors"
                         >
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                            Quay lại danh sách
+                            Quay lại
                         </Link>
 
                         <div className="bg-white rounded-[24px] shadow-xl shadow-emerald-900/5 border border-gray-100 p-8 relative overflow-hidden flex flex-col md:flex-row justify-between items-start gap-6">
@@ -41,10 +49,13 @@ export default function CreateRenterRequest({ auth, rooms }) {
                                     <span className="w-10 h-10 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center">
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                     </span>
-                                    Tạo yêu cầu thuê
+                                    {redirect_to_contract ? 'Tạo nhanh khách thuê' : 'Tạo yêu cầu thuê'}
                                 </h1>
                                 <p className="text-gray-500 mt-2 pl-[52px]">
-                                    Nhập thông tin khách hàng tiềm năng muốn thuê phòng.
+                                    {redirect_to_contract
+                                        ? 'Nhập nhanh thông tin người thuê để tiến hành lập hợp đồng.'
+                                        : 'Nhập thông tin khách hàng tiềm năng muốn thuê phòng.'
+                                    }
                                 </p>
                             </div>
                             {/* Decor blob */}
@@ -54,7 +65,10 @@ export default function CreateRenterRequest({ auth, rooms }) {
 
                     <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
                         <form onSubmit={handleSubmit} className="p-8 space-y-8">
-                            
+
+                            {/* Pass redirect parameter */}
+                            <input type="hidden" value={data.redirect_to_contract} name="redirect_to_contract" />
+
                             {/* Section 1: Thông tin phòng & Người thuê */}
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
@@ -65,12 +79,13 @@ export default function CreateRenterRequest({ auth, rooms }) {
                                 <div className="space-y-6">
                                     {/* Chọn phòng */}
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Chọn phòng quan tâm</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Chọn phòng quan tâm <span className="text-red-500">*</span></label>
                                         <div className="relative">
                                             <select
                                                 value={data.room_id}
                                                 onChange={e => setData('room_id', e.target.value)}
                                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none bg-white appearance-none"
+                                                required
                                             >
                                                 <option value="">-- Chọn phòng --</option>
                                                 {rooms.map(room => (
@@ -130,19 +145,69 @@ export default function CreateRenterRequest({ auth, rooms }) {
                                 </div>
                             </div>
 
-                            {/* Section 2: Tin nhắn */}
+                            {/* Section 2: Thông tin cá nhân nâng cao (CCCD, Địa chỉ, Ngày dọn vào) */}
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
                                     <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-extrabold">2</span>
-                                    Nội dung
+                                    Thông tin cư trú & Pháp lý
+                                </h2>
+
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* CCCD/CMND */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Số CCCD / CMND</label>
+                                            <input
+                                                type="text"
+                                                value={data.id_card}
+                                                onChange={e => setData('id_card', e.target.value)}
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
+                                                placeholder="Nhập số căn cước công dân..."
+                                            />
+                                            {errors.id_card && <p className="text-red-500 text-sm mt-1">{errors.id_card}</p>}
+                                        </div>
+
+                                        {/* Ngày dọn vào */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Ngày dự kiến dọn vào</label>
+                                            <input
+                                                type="date"
+                                                value={data.move_in_date}
+                                                onChange={e => setData('move_in_date', e.target.value)}
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
+                                            />
+                                            {errors.move_in_date && <p className="text-red-500 text-sm mt-1">{errors.move_in_date}</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* Địa chỉ thường trú */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Địa chỉ thường trú (Quê quán)</label>
+                                        <input
+                                            type="text"
+                                            value={data.address}
+                                            onChange={e => setData('address', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
+                                            placeholder="Tỉnh/Thành phố, Quận/Huyện, Xã/Phường..."
+                                        />
+                                        {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section 3: Tin nhắn / Ghi chú */}
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
+                                    <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-extrabold">3</span>
+                                    Ghi chú bổ sung
                                 </h2>
 
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Tin nhắn / Ghi chú</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Tin nhắn / Ghi chú thêm</label>
                                     <textarea
                                         value={data.message}
                                         onChange={e => setData('message', e.target.value)}
-                                        rows={5}
+                                        rows={4}
                                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none resize-none"
                                         placeholder="Nhập ghi chú thêm hoặc yêu cầu đặc biệt..."
                                     />
@@ -153,7 +218,11 @@ export default function CreateRenterRequest({ auth, rooms }) {
                             {/* Actions */}
                             <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-4">
                                 <Link
-                                    href={route('landlord.renter-requests.index')}
+                                    href={
+                                        redirect_to_contract
+                                            ? route('landlord.rooms.contracts.create', selected_room_id)
+                                            : route('landlord.renter-requests.index')
+                                    }
                                     className="px-6 py-2.5 rounded-xl text-gray-700 font-bold hover:bg-gray-100 transition-colors"
                                 >
                                     Hủy bỏ
@@ -166,7 +235,7 @@ export default function CreateRenterRequest({ auth, rooms }) {
                                     {processing && (
                                         <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     )}
-                                    {processing ? 'Đang lưu...' : 'Tạo Yêu Cầu'}
+                                    {processing ? 'Đang lưu...' : (redirect_to_contract ? 'Lưu & Tạo HĐ' : 'Tạo Yêu Cầu')}
                                 </button>
                             </div>
                         </form>

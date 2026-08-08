@@ -49,7 +49,7 @@ class Room extends Model
     public function services()
     {
         return $this->belongsToMany(Service::class, 'room_services')
-            ->withPivot('price', 'is_active', 'note')
+            ->withPivot('id', 'price', 'is_active', 'note')
             ->withTimestamps();
     }
 

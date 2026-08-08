@@ -16,8 +16,7 @@ export default function Edit() {
         electric_price: Math.floor(bill.electric_price || 0),
         water_usage: bill.water_usage || 0,
         water_price: Math.floor(bill.water_price || 0),
-        internet_cost: Math.floor(bill.internet_cost || 0),
-        trash_cost: Math.floor(bill.trash_cost || 0),
+        service_costs: Math.floor(bill.service_costs || 0),
         other_costs: Math.floor(bill.other_costs || 0),
         due_date: formatDateForInput(bill.due_date),
         notes: bill.notes || '',
@@ -31,8 +30,7 @@ export default function Edit() {
             parseFloat(data.room_price || 0) +
             calculateElectricCost() +
             calculateWaterCost() +
-            parseFloat(data.internet_cost || 0) +
-            parseFloat(data.trash_cost || 0) +
+            parseFloat(data.service_costs || 0) +
             parseFloat(data.other_costs || 0)
         );
     };
@@ -189,20 +187,23 @@ export default function Edit() {
                                     </div>
                                 </div>
 
-                                {/* Khác */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Chi phí dịch vụ cố định (Tự động tính) */}
+                                {data.service_costs > 0 && (
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Internet</label>
-                                        <input type="number" value={data.internet_cost} onChange={e => setData('internet_cost', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm" />
+                                        <label className="block text-sm font-bold text-teal-800 mb-2">📋 Chi phí dịch vụ cố định (VNĐ)</label>
+                                        <input
+                                            type="text"
+                                            value={new Intl.NumberFormat('vi-VN').format(data.service_costs) + " ₫"}
+                                            readOnly
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-500 font-semibold outline-none cursor-not-allowed"
+                                        />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Rác & Vệ sinh</label>
-                                        <input type="number" value={data.trash_cost} onChange={e => setData('trash_cost', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Khác</label>
-                                        <input type="number" value={data.other_costs} onChange={e => setData('other_costs', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm" />
-                                    </div>
+                                )}
+
+                                {/* Chi phí khác */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">📝 Chi phí khác (VNĐ)</label>
+                                    <input type="number" value={data.other_costs} onChange={e => setData('other_costs', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm" placeholder="0" />
                                 </div>
                             </div>
                         </div>

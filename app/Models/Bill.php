@@ -22,6 +22,7 @@ class Bill extends Model
         'water_usage',
         'water_price',
         'water_cost',
+        'service_costs',
         'internet_cost',
         'trash_cost',
         'other_costs',
@@ -31,11 +32,16 @@ class Bill extends Model
         'paid_date',
         'status',
         'notes',
+        'price_snapshot',
+        'service_details',
+        'created_by',
     ];
 
     protected $casts = [
         'due_date' => 'date',
         'paid_date' => 'date',
+        'price_snapshot' => 'array',
+        'service_details' => 'array',
     ];
 
     public function contract()
@@ -56,6 +62,14 @@ class Bill extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Người tạo hóa đơn
+     */
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     // Tính tiền điện từ số lượng và đơn giá
@@ -82,6 +96,7 @@ class Bill extends Model
         $total = $this->room_price + 
                  $this->electric_cost + 
                  $this->water_cost + 
+                 $this->service_costs + 
                  $this->internet_cost + 
                  $this->trash_cost + 
                  $this->other_costs;
@@ -94,7 +109,12 @@ class Bill extends Model
     public function updatePaymentStatus()
     {
         if ($this->paid_amount == 0) {
-            $this->status = 'pending';
+            // Kiểm tra quá hạn
+            if ($this->due_date && $this->due_date->isPast()) {
+                $this->status = 'overdue';
+            } else {
+                $this->status = 'pending';
+            }
             $this->paid_date = null;
         } elseif ($this->paid_amount >= $this->amount) {
             $this->status = 'paid';

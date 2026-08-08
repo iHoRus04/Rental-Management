@@ -20,73 +20,96 @@ use Carbon\Carbon;
 class ReminderController extends Controller
 {
     /**
-     * Display a listing of reminders
+     * Hiển thị danh sách các nhắc nhở (tự động chạy command sinh nhắc nhở hợp đồng/hóa đơn)
      */
     public function index(Request $request)
     {
-        // NOTE: Hiện tại controller này gọi trực tiếp command để sinh reminder mới.
-        // Điều này có nghĩa là mỗi lần user mở trang Reminders sẽ kích hoạt quá trình
-        // sinh reminder (có thể tiêu tốn thời gian). Thay vì gọi trực tiếp ở đây,
-        // cân nhắc chạy command qua scheduler hoặc dispatch job vào queue.
+        //  Tự động chạy Artisan Command quét sinh các nhắc nhở mới nhất (hợp đồng hết hạn, hóa đơn đến hạn)
         Artisan::call('reminders:generate');
 
-        // Lấy landlord hiện tại để giới hạn dữ liệu chỉ cho nhà của họ
-        $user = auth()->user();
+        //  Lấy danh sách ID các nhà trọ thuộc quyền quản lý của người dùng hiện tại
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
 
-        // Bắt đầu build query: eager-load các relation cần thiết để tránh N+1
+        // Truy vấn danh sách nhà trọ và đếm số nhắc nhở cần xử lý (is_sent = false và đến hạn) của từng nhà
+        $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get()->map(function ($house) {
+            $house->pending_reminders_count = \App\Models\Reminder::where('is_sent', false)
+                ->where('reminder_date', '<=', now())
+                ->whereHas('contract.room', function ($q) use ($house) {
+                    $q->where('house_id', $house->id);
+                })
+                ->count();
+            return $house;
+        });
+
+        // Kiểm tra xem người dùng có chọn xem một nhà trọ cụ thể hay không (drill-down)
+        $selectedHouse = null;
+        if ($request->has('house_id') && $request->house_id !== 'all') {
+            $selectedHouse = \App\Models\House::find($request->house_id);
+        }
+
+        //  Xây dựng Query lấy danh sách nhắc nhở kèm theo thông tin quan hệ Hợp đồng, Phòng, Khách thuê
         $query = Reminder::with(['contract.renterRequest', 'contract.room.house', 'bill'])
-            ->whereHas('contract.room.house', function ($q) use ($user) {
-                // Chỉ lấy reminders thuộc về nhà của landlord đang đăng nhập
-                $q->where('user_id', $user->id);
+            ->whereHas('contract.room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
             });
 
-        // Lọc theo loại reminder (payment, contract_expiry, ...)
+        // Bộ lọc 1: Lọc theo nhà trọ được chọn
+        if ($request->has('house_id') && $request->house_id !== 'all') {
+            $query->whereHas('contract.room', function ($q) use ($request) {
+                $q->where('house_id', $request->house_id);
+            });
+        }
+
+        // Bộ lọc 2: Lọc theo loại nhắc nhở (thanh toán, hết hạn hợp đồng, tạo hóa đơn...)
         if ($request->has('type') && $request->type !== 'all') {
             $query->where('type', $request->type);
         }
 
-        // Lọc theo trạng thái: pending (chưa gửi và đến hạn), upcoming (chưa gửi và chưa đến), sent
+        // Bộ lọc 3: Lọc theo trạng thái nhắc nhở (cần xử lý, sắp tới, đã gửi/đã xong)
         if ($request->has('status')) {
             if ($request->status === 'pending') {
-                $query->where('is_sent', false)
-                      ->where('reminder_date', '<=', now());
+                $query->where('is_sent', false)->where('reminder_date', '<=', now());
             } elseif ($request->status === 'upcoming') {
-                $query->where('is_sent', false)
-                      ->where('reminder_date', '>', now());
+                $query->where('is_sent', false)->where('reminder_date', '>', now());
             } elseif ($request->status === 'sent') {
                 $query->where('is_sent', true);
             }
         }
 
-        // Sắp xếp theo ngày nhắc và phân trang
-        $reminders = $query->orderBy('reminder_date', 'desc')
-                           ->paginate(15);
+        //  Sắp xếp theo ngày nhắc nhở mới nhất và phân trang 15 bản ghi/trang
+        $reminders = $query->orderBy('reminder_date', 'desc')->paginate(15);
 
-        // Trả JSON khi client muốn, hoặc render Inertia page cho web UI
+        // Trả dữ liệu dạng JSON nếu là API request
         if ($request->wantsJson()) {
             return response()->json([
                 'reminders' => $reminders,
-                'filters' => $request->only(['type', 'status']),
+                'filters'   => $request->only(['type', 'status', 'house_id']),
+                'houses'    => $houses,
+                'selectedHouse' => $selectedHouse,
             ]);
         }
 
+        //  Trả về giao diện Inertia React
         return Inertia::render('Landlord/Reminders/Index', [
             'reminders' => $reminders,
-            'filters' => $request->only(['type', 'status']),
+            'filters'   => $request->only(['type', 'status', 'house_id']),
+            'houses'    => $houses,
+            'selectedHouse' => $selectedHouse,
         ]);
     }
 
     /**
-     * Show the form for creating a new reminder
+     * Hiển thị giao diện Form tạo mới nhắc nhở thủ công
      */
     public function create()
     {
-        // Chuẩn bị dữ liệu cho form tạo reminder: chỉ lấy hợp đồng active thuộc landlord
-        $user = auth()->user();
-        
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
         $contracts = Contract::with(['renterRequest', 'room.house'])
-            ->whereHas('room.house', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
             })
             ->where('status', 'active')
             ->get();
@@ -97,7 +120,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Store a newly created reminder
+     * Lưu thông tin nhắc nhở mới vào CSDL
      */
     public function store(Request $request)
     {
@@ -117,7 +140,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Display the specified reminder
+     * Xem thông tin chi tiết một nhắc nhở
      */
     public function show(Reminder $reminder)
     {
@@ -133,7 +156,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Show the form for editing the specified reminder
+     * Hiển thị giao diện Form chỉnh sửa nhắc nhở
      */
     public function edit(Reminder $reminder)
     {
@@ -143,9 +166,11 @@ class ReminderController extends Controller
         // Lấy danh sách hợp đồng để có thể chuyển reminder sang hợp đồng khác khi edit
         $user = auth()->user();
         
+        $houseIds = $user->getAccessibleHouseIds();
+        
         $contracts = Contract::with(['renterRequest', 'room.house'])
-            ->whereHas('room.house', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
             })
             ->where('status', 'active')
             ->get();
@@ -160,7 +185,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Update the specified reminder
+     * Cập nhật thông tin nhắc nhở
      */
     public function update(Request $request, Reminder $reminder)
     {
@@ -182,7 +207,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Mark reminder as sent
+     * Đánh dấu nhắc nhở là đã xử lý/đã gửi
      */
     public function markAsSent(Reminder $reminder)
     {
@@ -194,7 +219,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Remove the specified reminder
+     * Xóa nhắc nhở
      */
     public function destroy(Reminder $reminder)
     {
@@ -208,35 +233,104 @@ class ReminderController extends Controller
     }
 
     /**
-     * Get pending reminders count for dashboard
+     * API trả về số lượng các nhắc nhở & thông báo hết hạn gói cước hiển thị ở biểu tượng Chuông
      */
     public function getPendingCount()
     {
-        $user = auth()->user();
-        
-        // Count reminders that have not been sent yet (is_sent = false)
-        // Do not filter by reminder_date so badge shows all unsent notifications
-        $count = Reminder::whereHas('contract.room.house', function ($q) use ($user) {
-            $q->where('user_id', $user->id);
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        // 1. Số lượng nhắc nhở chưa gửi từ database
+        $remindersCount = Reminder::whereHas('contract.room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
             })
             ->where('is_sent', false)
+            ->where('reminder_date', '<=', now())
             ->count();
 
-        return response()->json(['count' => $count]);
+        $notifications = [];
+        $totalCount = $remindersCount;
+
+        // 2. Kiểm tra hạn gói cước của Landlord
+        if ($user->role === 'landlord') {
+            $activeSub = $user->activeSubscription()->with('package')->first();
+            if ($activeSub) {
+                $daysLeft = (int) ceil(now()->diffInDays($activeSub->end_date, false));
+                if ($daysLeft <= 7) {
+                    $totalCount++;
+                    $notifications[] = [
+                        'type' => 'subscription',
+                        'title' => 'Gói cước sắp hết hạn',
+                        'message' => $daysLeft <= 0 
+                            ? "Gói cước \"{$activeSub->package->name}\" của bạn sẽ hết hạn vào hôm nay! Hãy gia hạn ngay."
+                            : "Gói cước \"{$activeSub->package->name}\" của bạn sẽ hết hạn trong {$daysLeft} ngày nữa ({$activeSub->end_date->format('d/m/Y')}). Vui lòng gia hạn.",
+                        'is_warning' => true,
+                        'url' => route('landlord.subscription.index'),
+                    ];
+                }
+            } else {
+                // Kiểm tra xem có gói cước nào đã hết hạn trong lịch sử không
+                $lastSub = \App\Models\Subscription::where('user_id', $user->id)
+                    ->with('package')
+                    ->orderBy('end_date', 'desc')
+                    ->first();
+                
+                if ($lastSub) {
+                    $totalCount++;
+                    $notifications[] = [
+                        'type' => 'subscription',
+                        'title' => 'Gói cước đã hết hạn',
+                        'message' => "Gói cước \"{$lastSub->package->name}\" của bạn đã hết hạn vào ngày {$lastSub->end_date->format('d/m/Y')}. Hãy gia hạn để tiếp tục sử dụng.",
+                        'is_danger' => true,
+                        'url' => route('landlord.subscription.index'),
+                    ];
+                }
+            }
+        }
+
+        // Lấy 5 nhắc nhở chưa xử lý gần nhất để hiển thị nhanh dưới chuông
+        $dbReminders = Reminder::with(['contract.renterRequest', 'contract.room.house'])
+            ->whereHas('contract.room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
+            ->where('is_sent', false)
+            ->where('reminder_date', '<=', now())
+            ->orderBy('reminder_date', 'desc')
+            ->limit(5)
+            ->get();
+
+        foreach ($dbReminders as $rem) {
+            $typeLabel = 'Nhắc nhở';
+            if ($rem->type === 'contract_expiry') $typeLabel = 'Hợp đồng sắp hết hạn';
+            elseif ($rem->type === 'payment') $typeLabel = 'Thanh toán phòng';
+            elseif ($rem->type === 'bill_creation') $typeLabel = 'Tạo hóa đơn';
+            elseif ($rem->type === 'bill_payment') $typeLabel = 'Thanh toán hóa đơn';
+
+            $notifications[] = [
+                'id' => $rem->id,
+                'type' => 'reminder',
+                'title' => $typeLabel,
+                'message' => $rem->message ?? "Bạn có nhắc nhở phòng {$rem->contract->room->name}.",
+                'is_warning' => false,
+                'url' => route('landlord.reminders.index'),
+            ];
+        }
+
+        return response()->json([
+            'count' => $totalCount,
+            'notifications' => $notifications
+        ]);
     }
 
     /**
      * Authorize that the reminder belongs to the current landlord
      */
-    private function authorizeReminder(Reminder $reminder)
+    private function authorizeReminder(Reminder $reminder): void
     {
         $user = auth()->user();
-        
-        // Load relation để kiểm tra quyền sở hữu (thuộc landlord nào)
         $reminder->load('contract.room.house');
-        
-        // Nếu reminder không thuộc nhà của user đang đăng nhập => abort 403
-        if ($reminder->contract->room->house->user_id !== $user->id) {
+
+        if (!$user->managesHouse($reminder->contract->room->house)) {
             abort(403, 'Unauthorized action.');
         }
     }

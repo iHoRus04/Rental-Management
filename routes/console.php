@@ -14,3 +14,9 @@ Schedule::command('reminders:generate')
     ->at('08:00') // Thay đổi giờ ở đây: '06:00', '12:00', '18:00', v.v.
     ->description('Tự động tạo nhắc nhở thanh toán và hết hạn hợp đồng');
 
+// Schedule subscription expiry email alerts
+Schedule::command('subscription:expiry-alerts')
+    ->daily()
+    ->at('08:00')
+    ->description('Quét và gửi email cảnh báo cho các chủ trọ có gói cước sắp hết hạn');
+

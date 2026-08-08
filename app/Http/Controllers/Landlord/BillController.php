@@ -26,6 +26,22 @@ class BillController extends Controller
         $this->billService = $billService;
     }
 
+    private function authorizeBillAction(Bill $bill, string $action = 'view')
+    {
+        $user = auth()->user();
+        $bill->loadMissing('room');
+        
+        if (!$bill->room || !$user->managesHouse($bill->room->house_id)) {
+            abort(403, 'Bạn không có quyền truy cập hóa đơn này.');
+        }
+
+        if ($user->role === 'staff') {
+            if (!$user->hasPermission("bills.{$action}")) {
+                abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+            }
+        }
+    }
+
     /**
      * Danh sách hóa đơn
      * - Hỗ trợ trả về JSON (API)
@@ -33,21 +49,30 @@ class BillController extends Controller
      */
     public function index(Request $request)
     {
-        // Lấy danh sách hóa đơn + eager loading các quan hệ
-        $bills = Bill::with(['contract', 'room', 'renterRequest'])
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
+
+        $bills = Bill::with(['contract', 'room.house', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->latest()
             ->get();
 
         // Nếu request là JSON (ví dụ gọi API)
         if ($request->wantsJson()) {
             return response()->json([
-                'bills' => $bills,
+                'bills'  => $bills,
+                'houses' => $houses,
             ]);
         }
 
         // Render giao diện danh sách hóa đơn
         return Inertia::render('Landlord/Bills/Index', [
-            'bills' => $bills,
+            'bills'  => $bills,
+            'houses' => $houses,
         ]);
     }
 
@@ -56,8 +81,16 @@ class BillController extends Controller
      */
     public function create()
     {
-        // Lấy các hợp đồng đang active
-        $contracts = Contract::with(['room', 'renterRequest'])
+        $user     = auth()->user();
+        if ($user->role === 'staff' && !$user->hasPermission('bills.create')) {
+            abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+        }
+        $houseIds = $user->getAccessibleHouseIds();
+
+        $contracts = Contract::with(['room.house', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->where('status', 'active')
             ->get()
             ->map(function ($contract) {
@@ -71,6 +104,15 @@ class BillController extends Controller
                     'room' => [
                         'id' => $contract->room->id,
                         'name' => $contract->room->name,
+                        'house' => $contract->room->house ? [
+                            'id' => $contract->room->house->id,
+                            'name' => $contract->room->house->name,
+                            'electric_price' => $contract->room->house->electric_price,
+                            'water_price' => $contract->room->house->water_price,
+                            'bank_name' => $contract->room->house->bank_name,
+                            'account_no' => $contract->room->house->account_no,
+                            'account_name' => $contract->room->house->account_name,
+                        ] : null,
                     ],
                     'renterRequest' => $contract->renterRequest ? [
                         'id' => $contract->renterRequest->id,
@@ -81,8 +123,11 @@ class BillController extends Controller
                 ];
             });
 
+        $houses = \App\Models\House::whereIn('id', $houseIds)->get(['id', 'name', 'address']);
+
         return Inertia::render('Landlord/Bills/Create', [
             'contracts' => $contracts,
+            'houses'    => $houses,
         ]);
     }
 
@@ -91,6 +136,11 @@ class BillController extends Controller
      */
     public function store(Request $request)
     {
+        $user = auth()->user();
+        if ($user->role === 'staff' && !$user->hasPermission('bills.create')) {
+            abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+        }
+
         // Validate dữ liệu gửi lên
         $validated = $request->validate([
             'contract_id' => 'required|exists:contracts,id',
@@ -101,6 +151,7 @@ class BillController extends Controller
             'electric_price' => 'nullable|numeric|min:0',
             'water_usage' => 'nullable|integer|min:0',
             'water_price' => 'nullable|numeric|min:0',
+            'service_costs' => 'nullable|numeric|min:0',
             'internet_cost' => 'nullable|numeric|min:0',
             'trash_cost' => 'nullable|numeric|min:0',
             'other_costs' => 'nullable|numeric|min:0',
@@ -109,7 +160,24 @@ class BillController extends Controller
         ]);
 
         // Lấy thông tin hợp đồng
-        $contract = Contract::findOrFail($validated['contract_id']);
+        $contract = Contract::with('room.house')->findOrFail($validated['contract_id']);
+        if (!$user->managesHouse($contract->room->house_id)) {
+            abort(403, 'Bạn không có quyền tạo hóa đơn cho phòng này.');
+        }
+
+        // Ràng buộc nghiêm ngặt: Phải cấu hình tài khoản ngân hàng VietQR của nhà trọ mới cho tạo hóa đơn
+        $house = $contract->room->house;
+        if (empty($house->bank_name) || empty($house->account_no) || empty($house->account_name)) {
+            return redirect()->back()->withErrors([
+                'contract_id' => 'Nhà trọ ' . $house->name . ' chưa được thiết lập tài khoản ngân hàng (VietQR). Vui lòng cấu hình tài khoản trước khi tạo hóa đơn.'
+            ]);
+        }
+
+        // Tạo price snapshot (đóng băng biểu giá)
+        $priceSnapshot = $this->billService->createPriceSnapshot($contract->room_id);
+        $priceSnapshot['room_price'] = $validated['room_price'];
+        $priceSnapshot['electric_unit_price'] = $validated['electric_price'] ?? 0;
+        $priceSnapshot['water_unit_price'] = $validated['water_price'] ?? 0;
 
         // Tạo hóa đơn mới
         $bill = new Bill([
@@ -123,12 +191,15 @@ class BillController extends Controller
             'electric_price' => $validated['electric_price'] ?? 0,
             'water_usage' => $validated['water_usage'] ?? 0,
             'water_price' => $validated['water_price'] ?? 0,
+            'service_costs' => $validated['service_costs'] ?? 0,
             'internet_cost' => $validated['internet_cost'] ?? 0,
             'trash_cost' => $validated['trash_cost'] ?? 0,
             'other_costs' => $validated['other_costs'] ?? 0,
             'due_date' => $validated['due_date'],
             'status' => 'pending',
             'paid_amount' => 0,
+            'price_snapshot' => $priceSnapshot,
+            'created_by' => auth()->id(),
         ]);
 
         // Tính tổng tiền hóa đơn
@@ -141,6 +212,16 @@ class BillController extends Controller
 
         $bill->save();
 
+        // Gửi email thông báo hóa đơn mới cho khách thuê (nếu có email)
+        if ($bill->renterRequest && !empty($bill->renterRequest->email)) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($bill->renterRequest->email)
+                    ->send(new \App\Mail\BillCreatedMail($bill));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Lỗi gửi mail thông báo hóa đơn: ' . $e->getMessage());
+            }
+        }
+
         return redirect()->route('landlord.bills.index')
             ->with('success', 'Tạo hóa đơn thành công!');
     }
@@ -150,8 +231,10 @@ class BillController extends Controller
      */
     public function show(Bill $bill)
     {
-        // Load thêm các quan hệ cần thiết
-        $bill->load(['contract', 'room', 'renterRequest']);
+        $this->authorizeBillAction($bill, 'view');
+        
+        // Load thêm các quan hệ cần thiết + audit trail
+        $bill->load(['contract', 'room', 'renterRequest', 'createdByUser', 'payments.verifiedByUser']);
 
         return Inertia::render('Landlord/Bills/Show', [
             'bill' => $bill,
@@ -163,8 +246,16 @@ class BillController extends Controller
      */
     public function edit(Bill $bill)
     {
-        // Danh sách hợp đồng active
+        $this->authorizeBillAction($bill, 'edit');
+        
+        $user = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        // Danh sách hợp đồng active thuộc các nhà trọ được quản lý
         $contracts = Contract::with(['room', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->where('status', 'active')
             ->get();
 
@@ -181,6 +272,7 @@ class BillController extends Controller
      */
     public function update(Request $request, Bill $bill)
     {
+        $this->authorizeBillAction($bill, 'edit');
         /**
          * Trường hợp chỉ cập nhật tiền đã thanh toán
          */
@@ -189,9 +281,22 @@ class BillController extends Controller
                 'paid_amount' => 'required|numeric|min:0',
             ]);
 
+            $oldStatus = $bill->status;
             $bill->paid_amount = $validated['paid_amount'];
             $bill->updatePaymentStatus(); // Cập nhật trạng thái paid / partial / unpaid
             $bill->save();
+
+            // Gửi mail xác nhận thanh toán khi hóa đơn chuyển thành công sang trạng thái 'paid'
+            if ($bill->status === 'paid' && $oldStatus !== 'paid') {
+                if ($bill->renterRequest && !empty($bill->renterRequest->email)) {
+                    try {
+                        \Illuminate\Support\Facades\Mail::to($bill->renterRequest->email)
+                            ->send(new \App\Mail\BillPaidMail($bill));
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('Lỗi gửi mail biên nhận thanh toán: ' . $e->getMessage());
+                    }
+                }
+            }
 
             return redirect()->route('landlord.bills.show', $bill->id)
                 ->with('success', 'Cập nhật thanh toán thành công!');
@@ -208,6 +313,7 @@ class BillController extends Controller
             'electric_price' => 'nullable|numeric|min:0',
             'water_usage' => 'nullable|integer|min:0',
             'water_price' => 'nullable|numeric|min:0',
+            'service_costs' => 'nullable|numeric|min:0',
             'internet_cost' => 'nullable|numeric|min:0',
             'trash_cost' => 'nullable|numeric|min:0',
             'other_costs' => 'nullable|numeric|min:0',
@@ -224,6 +330,7 @@ class BillController extends Controller
             'electric_price' => $validated['electric_price'] ?? $bill->electric_price,
             'water_usage' => $validated['water_usage'] ?? $bill->water_usage,
             'water_price' => $validated['water_price'] ?? $bill->water_price,
+            'service_costs' => $validated['service_costs'] ?? $bill->service_costs,
             'internet_cost' => $validated['internet_cost'] ?? $bill->internet_cost,
             'trash_cost' => $validated['trash_cost'] ?? $bill->trash_cost,
             'other_costs' => $validated['other_costs'] ?? $bill->other_costs,
@@ -244,14 +351,23 @@ class BillController extends Controller
     }
 
     /**
-     * Xóa hóa đơn
+     * Xóa hóa đơn (có kiểm tra an toàn lịch sử thanh toán)
      */
     public function destroy(Bill $bill)
     {
+        $this->authorizeBillAction($bill, 'delete');
+
+        // Ngăn xóa nếu hóa đơn đã có phát sinh lượt thanh toán
+        if ($bill->payments()->count() > 0 || $bill->paid_amount > 0) {
+            return redirect()->back()->with('error', 
+                "Không thể xóa! Hóa đơn này đã có lịch sử thanh toán ({$bill->payments()->count()} lượt thu tiền). Vui lòng xóa các phiếu thanh toán liên quan trước khi xóa hóa đơn."
+            );
+        }
+
         $bill->delete();
 
         return redirect()->route('landlord.bills.index')
-            ->with('success', 'Đã xóa hóa đơn');
+            ->with('success', 'Đã xóa hóa đơn thành công!');
     }
 
     /**
@@ -259,11 +375,16 @@ class BillController extends Controller
      */
     public function generateMonthly(Request $request)
     {
+        $user = auth()->user();
+        if ($user->role === 'staff' && !$user->hasPermission('bills.create')) {
+            abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+        }
+
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
-        // Gọi service xử lý logic tạo hàng loạt
-        $count = $this->billService->generateMonthlyBills($month, $year);
+        // Gọi service xử lý logic tạo hàng loạt (truyền user hiện tại để audit)
+        $count = $this->billService->generateMonthlyBills($month, $year, auth()->id());
 
         return redirect()->route('landlord.bills.index')
             ->with('success', "Đã tạo {$count} hóa đơn cho tháng {$month}/{$year}");
@@ -274,6 +395,8 @@ class BillController extends Controller
      */
     public function exportPDF(Bill $bill)
     {
+        $this->authorizeBillAction($bill, 'view');
+        
         // Load toàn bộ dữ liệu cần cho PDF
         $bill->load(['contract', 'room', 'renterRequest', 'payments']);
 
@@ -294,5 +417,83 @@ class BillController extends Controller
             ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
             ->header('Pragma', 'no-cache')
             ->header('Expires', '0');
+    }
+
+    /**
+     * Xuất danh sách hóa đơn ra file CSV / Excel
+     */
+    public function exportExcel(Request $request)
+    {
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        $bills = Bill::with(['contract', 'room.house', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
+            ->latest()
+            ->get();
+
+        $filename = "danh_sach_hoa_don_" . date('Y_m_d_H_i') . ".csv";
+
+        $headers = [
+            "Content-Type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename=\"$filename\"",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use ($bills) {
+            $file = fopen('php://output', 'w');
+            
+            // Đặt BOM UTF-8 để Microsoft Excel mở trực tiếp không bị lỗi font Tiếng Việt
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // Tiêu đề các cột
+            fputcsv($file, [
+                'Mã Hóa Đơn',
+                'Nhà Trọ',
+                'Phòng',
+                'Khách Thuê',
+                'Tháng/Năm',
+                'Tiền Phòng (VNĐ)',
+                'Tiền Điện (VNĐ)',
+                'Tiền Nước (VNĐ)',
+                'Dịch Vụ Khác (VNĐ)',
+                'Tổng Tiền (VNĐ)',
+                'Trạng Thái',
+                'Hạn Thanh Toán'
+            ]);
+
+            foreach ($bills as $bill) {
+                $statusText = match($bill->status) {
+                    'paid' => 'Đã thanh toán',
+                    'pending' => 'Chưa thanh toán',
+                    'partial' => 'Thanh toán một phần',
+                    'overdue' => 'Quá hạn',
+                    default => $bill->status,
+                };
+
+                fputcsv($file, [
+                    'HD-' . str_pad($bill->id, 5, '0', STR_PAD_LEFT),
+                    $bill->room->house->name ?? 'N/A',
+                    $bill->room->name ?? 'N/A',
+                    $bill->renterRequest->name ?? 'N/A',
+                    $bill->month . '/' . $bill->year,
+                    number_format($bill->room_price ?? 0, 0, ',', '.'),
+                    number_format($bill->electric_cost ?? 0, 0, ',', '.'),
+                    number_format($bill->water_cost ?? 0, 0, ',', '.'),
+                    number_format(($bill->service_costs ?? 0) + ($bill->other_costs ?? 0), 0, ',', '.'),
+                    number_format($bill->amount ?? 0, 0, ',', '.'),
+                    $statusText,
+                    $bill->due_date ? date('d/m/Y', strtotime($bill->due_date)) : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

@@ -1,10 +1,11 @@
 import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import Toast from '@/Components/Toast';
+import NotificationBell from '@/Components/NotificationBell';
 
 export default function AuthenticatedLayout({ header, children }) {
     const page = usePage();
-    const { auth, flash } = page.props;
+    const { auth, flash, systemSettings } = page.props;
     const user = auth.user;
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [pendingRemindersCount, setPendingRemindersCount] = useState(0);
@@ -12,16 +13,9 @@ export default function AuthenticatedLayout({ header, children }) {
     const [profileOpen, setProfileOpen] = useState(false);
     const profileRef = useRef(null);
 
-    // Debug: Log flash messages
+    // Fetch pending reminders count (only for landlord and staff)
     useEffect(() => {
-        if (flash) {
-            console.log('AuthenticatedLayout - Flash Props:', flash);
-        }
-    }, [flash]);
-
-    // Fetch pending reminders count (only for landlord)
-    useEffect(() => {
-        if (user.role !== 'landlord') return;
+        if (user.role !== 'landlord' && user.role !== 'staff') return;
 
         const fetchPendingCount = async () => {
             try {
@@ -39,9 +33,9 @@ export default function AuthenticatedLayout({ header, children }) {
         return () => clearInterval(interval);
     }, [user.role]);
 
-    // Fetch pending renter-requests count (only for landlord)
+    // Fetch pending renter-requests count (only for landlord and staff)
     useEffect(() => {
-        if (user.role !== 'landlord') return;
+        if (user.role !== 'landlord' && user.role !== 'staff') return;
 
         // Try to use shared props if available (e.g. stats from dashboard)
         try {
@@ -67,6 +61,13 @@ export default function AuthenticatedLayout({ header, children }) {
         return () => clearInterval(interval);
     }, [user.role]);
 
+    // Debug: Log flash messages
+    useEffect(() => {
+        if (flash) {
+            console.log('AuthenticatedLayout - Flash Props:', flash);
+        }
+    }, [flash]);
+
     // Close profile dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -81,6 +82,8 @@ export default function AuthenticatedLayout({ header, children }) {
     // Determine active menu item
     const getActiveView = () => {
         const currentRoute = page.url || '';
+        if (currentRoute.includes('/subscription')) return 'subscription';
+        if (currentRoute.includes('/staff')) return 'staff';
         if (currentRoute.includes('/bills')) return 'bills';
         if (currentRoute.includes('/payments')) return 'payments';
         if (currentRoute.includes('/houses')) return 'houses';
@@ -90,7 +93,8 @@ export default function AuthenticatedLayout({ header, children }) {
         if (currentRoute.includes('/renter-requests')) return 'renter-requests';
         if (currentRoute.includes('/tenant-requests')) return 'tenant-requests';
         if (currentRoute.includes('/rooms')) return 'rooms';
-        if (currentRoute.includes('/tenant/requests')) return 'requests';
+
+        if (currentRoute.includes('/feedbacks')) return 'feedbacks';
         return 'dashboard';
     };
 
@@ -138,7 +142,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     if (attempts >= maxAttempts) {
                         clearInterval(interval);
                         // fallback: navigate popup to external site if not already
-                        try { popup.location.href = targetOrigin; } catch(e){}
+                        try { popup.location.href = targetOrigin; } catch (e) { }
                     }
                 }
             }, 200);
@@ -178,29 +182,45 @@ export default function AuthenticatedLayout({ header, children }) {
 
             // If server invalidated session, reload or redirect externally
             // Prefer external site as requested
-            window.location.href = 'http://localhost:5174/';
+            window.location.href = 'http://127.0.0.1:8000/login';
         } catch (e) {
             console.error('Logout failed', e);
             // Still redirect to external page to ensure user leaves authenticated area
-            window.location.href = 'http://localhost:5174/';
+            window.location.href = 'http://127.0.0.1:8000/login';
         }
     };
 
+    // Permissions helper — dùng shared data từ Inertia
+    const permissions = auth.permissions || [];
+    const canDo = (perm) => permissions.includes('*') || permissions.includes(perm);
+
     // Menu items based on user role
-    const getLandlordMenuItems = () => [
-        { id: 'dashboard', label: 'Dashboard', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>, route: 'landlord.dashboard' },
-        { id: 'houses', label: 'Nhà trọ', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>, route: 'landlord.houses.index' },
-        { id: 'services', label: 'Dịch vụ', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>, route: 'landlord.services.index' },
-        { id: 'renter-requests', label: 'Yêu cầu thuê', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>, route: 'landlord.renter-requests.index' },
-        { id: 'tenant-requests', label: 'Yêu cầu từ người thuê', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>, route: 'landlord.tenant-requests.index' },
-        { id: 'bills', label: 'Hóa đơn', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>, route: 'landlord.bills.index' },
-        { id: 'payments', label: 'Thanh toán', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, route: 'landlord.payments.index' },
-        { id: 'meter-logs', label: 'Chỉ số điện nước', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>, route: 'landlord.meter-logs.index' },
-        { id: 'reminders', label: 'Nhắc nhở', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>, route: 'landlord.reminders.index' },
-    ];
+    const getLandlordMenuItems = () => {
+        const all = [
+            { id: 'dashboard', perm: null, label: 'Dashboard', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>, route: 'landlord.dashboard' },
+            { id: 'houses', perm: 'houses.view', label: 'Nhà trọ', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>, route: 'landlord.houses.index' },
+            { id: 'services', perm: 'services.view', label: 'Dịch vụ', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>, route: 'landlord.services.index' },
+            { id: 'renter-requests', perm: 'renter_requests.view', label: 'Yêu cầu thuê', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>, route: 'landlord.renter-requests.index' },
+            { id: 'tenant-requests', perm: 'tenant_requests.view', label: 'Yêu cầu từ người thuê', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>, route: 'landlord.tenant-requests.index' },
+            { id: 'bills', perm: 'bills.view', label: 'Hóa đơn', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>, route: 'landlord.bills.index' },
+            { id: 'payments', perm: 'payments.view', label: 'Thanh toán', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, route: 'landlord.payments.index' },
+            { id: 'meter-logs', perm: 'meter_logs.view', label: 'Chỉ số điện nước', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>, route: 'landlord.meter-logs.index' },
+            { id: 'reminders', perm: 'reminders.view', label: 'Nhắc nhở', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>, route: 'landlord.reminders.index' },
+            // Staff & Subscription menu — chỉ hiển thị cho landlord
+            ...(user.role === 'landlord' ? [
+                { id: 'subscription', perm: null, label: 'Gói dịch vụ', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>, route: 'landlord.subscription.index' },
+                { id: 'staff', perm: null, label: 'Nhân viên', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>, route: 'landlord.staff.index' },
+                { id: 'feedbacks', perm: null, label: 'Góp ý', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>, route: 'landlord.feedbacks.index' },
+            ] : []),
+        ];
+
+        // Landlord thấy tất cả. Staff chỉ thấy menu có quyền view
+        return all.filter(item => !item.perm || canDo(item.perm));
+    };
 
     const getTenantMenuItems = () => [
         { id: 'dashboard', label: 'Dashboard', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>, route: 'tenant.dashboard' },
+        { id: 'bills', label: 'Hóa đơn', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>, route: 'tenant.bills.index' },
         { id: 'requests', label: 'Yêu cầu của tôi', icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>, route: 'tenant.requests.index' },
     ];
 
@@ -219,16 +239,22 @@ export default function AuthenticatedLayout({ header, children }) {
 
             {/* Sidebar */}
             <div className={`${sidebarOpen ? 'w-72' : 'w-24'} bg-white/80 backdrop-blur-xl border-r border-emerald-100/50 transition-all duration-300 flex flex-col fixed left-0 top-0 h-screen z-40 shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}>
-                
+
                 {/* Logo Section */}
                 <div className="p-6 flex items-center justify-center border-b border-emerald-50/50 h-24">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 flex-shrink-0">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                        </div>
+                        {systemSettings?.logo ? (
+                            <img src={systemSettings.logo} alt="Logo" className="w-10 h-10 object-contain rounded-xl shadow-md flex-shrink-0" />
+                        ) : (
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 flex-shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            </div>
+                        )}
                         {sidebarOpen && (
                             <div className="animate-fade-in">
-                                <span className="font-extrabold text-xl text-teal-900 tracking-tight block">DreamHouses</span>
+                                <span className="font-extrabold text-xl text-teal-900 tracking-tight block">
+                                    {systemSettings?.app_name || 'DreamHouses'}
+                                </span>
                                 <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest block -mt-1">Manager</span>
                             </div>
                         )}
@@ -244,18 +270,17 @@ export default function AuthenticatedLayout({ header, children }) {
                                 key={idx}
                                 onClick={() => handleMenuClick(item)}
                                 title={item.label}
-                                className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-300 group relative ${
-                                    isActive
-                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25'
-                                        : 'text-gray-500 hover:bg-emerald-50 hover:text-emerald-700'
-                                }`}
+                                className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-300 group relative ${isActive
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25'
+                                    : 'text-gray-500 hover:bg-emerald-50 hover:text-emerald-700'
+                                    }`}
                             >
                                 <span className={`flex-shrink-0 transition-transform duration-300 ${!isActive && 'group-hover:scale-110'}`}>
                                     {item.icon}
                                 </span>
-                                
+
                                 {sidebarOpen && <span className="font-bold text-sm whitespace-nowrap">{item.label}</span>}
-                                
+
                                 {/* Reminder Badge */}
                                 {item.id === 'reminders' && pendingRemindersCount > 0 && (
                                     <span className={`absolute ${sidebarOpen ? 'right-3' : 'top-2 right-2'} bg-rose-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-sm border-2 border-white`}>
@@ -288,13 +313,13 @@ export default function AuthenticatedLayout({ header, children }) {
 
             {/* Main Content Area */}
             <div className={`${sidebarOpen ? 'ml-72' : 'ml-24'} flex-1 transition-all duration-300 flex flex-col relative z-10`}>
-                
+
                 {/* Floating Top Navbar */}
                 <nav className="sticky top-0 z-30 px-6 py-4">
                     <div className="bg-white/80 backdrop-blur-xl border border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)] rounded-2xl px-6 py-3 flex items-center justify-between">
                         {/* Left: Breadcrumbs or Title (Placeholder) */}
                         <div className="flex items-center gap-2">
-                             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 text-gray-500 hover:text-emerald-600">
+                            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 text-gray-500 hover:text-emerald-600">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                             </button>
                             <h2 className="text-lg font-bold text-teal-900 capitalize hidden sm:block">
@@ -305,17 +330,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         {/* Right: Actions */}
                         <div className="flex items-center gap-5">
                             {/* Notification Bell */}
-                            <button 
-                                onClick={() => router.visit(route('landlord.reminders.index'))}
-                                className="relative p-2.5 rounded-xl hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-all group"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                </svg>
-                                {pendingRemindersCount > 0 && (
-                                    <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white animate-pulse"></span>
-                                )}
-                            </button>
+                            <NotificationBell />
 
                             {/* Divider */}
                             <div className="h-8 w-[1px] bg-gray-100"></div>
@@ -332,7 +347,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                         className="w-full h-full rounded-full bg-white flex items-center justify-center cursor-pointer"
                                         aria-expanded={profileOpen}
                                     >
-                                         {/* Fallback Avatar */}
+                                        {/* Fallback Avatar */}
                                         <span className="font-bold text-emerald-600 text-lg">{user?.name?.charAt(0) || 'A'}</span>
                                         {/* Nếu có ảnh thật thì dùng img tag ở đây */}
                                     </div>

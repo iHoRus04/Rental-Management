@@ -20,18 +20,25 @@ class PaymentController extends Controller
 {
     public function index(Request $request)
     {
-        $payments = Payment::with(['bill.room', 'bill.renterRequest'])
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
+
+        $payments = Payment::with(['bill.room.house', 'bill.renterRequest'])
             ->latest('payment_date')
             ->get();
 
         if ($request->wantsJson()) {
             return response()->json([
                 'payments' => $payments,
+                'houses'   => $houses,
             ]);
         }
 
         return Inertia::render('Landlord/Payments/Index', [
             'payments' => $payments,
+            'houses'   => $houses,
         ]);
     }
 
@@ -62,13 +69,17 @@ class PaymentController extends Controller
             'payment_method' => 'required|in:cash,bank_transfer,check,other',
             'reference' => 'nullable|string',
             'notes' => 'nullable|string',
+            'bank_transaction_code' => 'nullable|required_if:payment_method,bank_transfer|string',
         ]);
 
         $bill = Bill::findOrFail($validated['bill_id']);
 
-        // Tạo bản ghi payment
-        // Lưu record thanh toán rồi cập nhật `paid_amount` trên hóa đơn
-        Payment::create($validated);
+        // Tạo bản ghi payment với audit trail
+        // Tự động ghi nhận verified_by = nhân viên hiện tại
+        Payment::create(array_merge($validated, [
+            'verified_by' => auth()->id(),
+            'bank_transaction_code' => $validated['bank_transaction_code'] ?? null,
+        ]));
 
         // Cập nhật bill paid_amount (tổng đã thu) và trạng thái hóa đơn
         $bill->paid_amount += $validated['amount'];
@@ -81,7 +92,7 @@ class PaymentController extends Controller
 
     public function show(Payment $payment)
     {
-        $payment->load(['bill.room', 'bill.renterRequest', 'bill.contract']);
+        $payment->load(['bill.room', 'bill.renterRequest', 'bill.contract', 'verifiedByUser']);
 
         return Inertia::render('Landlord/Payments/Show', [
             'payment' => $payment,
@@ -110,6 +121,7 @@ class PaymentController extends Controller
             'payment_method' => 'required|in:cash,bank_transfer,check,other',
             'reference' => 'nullable|string',
             'notes' => 'nullable|string',
+            'bank_transaction_code' => 'nullable|required_if:payment_method,bank_transfer|string',
         ]);
 
         // Cập nhật bill paid_amount (trừ số tiền cũ, cộng số tiền mới)
@@ -118,7 +130,9 @@ class PaymentController extends Controller
         $bill->updatePaymentStatus();
         $bill->save();
 
-        $payment->update($validated);
+        $payment->update(array_merge($validated, [
+            'verified_by' => auth()->id(),
+        ]));
 
         return redirect()->route('landlord.payments.show', $payment->id)
                         ->with('success', 'Cập nhật thanh toán thành công!');

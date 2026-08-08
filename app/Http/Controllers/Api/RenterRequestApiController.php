@@ -7,8 +7,16 @@ use App\Models\RenterRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * RenterRequestApiController
+ *
+ * API tiếp nhận yêu cầu thuê phòng từ khách xem trọ bên ngoài (Public Landing Page / Form công khai).
+ */
 class RenterRequestApiController extends Controller
 {
+    /**
+     * API tiếp nhận Yêu cầu Đăng ký Thuê phòng từ khách tìm trọ (Status = 'new')
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -29,6 +37,9 @@ class RenterRequestApiController extends Controller
         ]);
     }
     
+    /**
+     * API lấy số lượng yêu cầu thuê mới chưa xử lý cho giao diện Header/Menu chủ trọ
+     */
     public function getPendingCount(Request $request)
     {
         // Check if user is authenticated and is a landlord

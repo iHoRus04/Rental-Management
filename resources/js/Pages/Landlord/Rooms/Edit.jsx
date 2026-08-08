@@ -1,10 +1,14 @@
 import { Link, useForm, usePage, router, Head } from '@inertiajs/react';
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ConfirmModal from '@/Components/ConfirmModal';
+import AlertModal from '@/Components/AlertModal';
 
 export default function Edit() {
     const { house, room } = usePage().props;
     const [newPreviews, setNewPreviews] = useState([]);
+    const [confirmRemoveImg, setConfirmRemoveImg] = useState({ show: false, index: null });
+    const [errorAlert, setErrorAlert] = useState({ show: false, message: '' });
 
     const { data, setData, post, processing, errors } = useForm({
         name: room.name,
@@ -38,17 +42,22 @@ export default function Edit() {
     };
 
     const removeExistingImage = (index) => {
-        if (confirm('Bạn có chắc chắn muốn xóa hình ảnh này không?')) {
-            router.delete(
-                route('landlord.houses.rooms.removeImage', [house.id, room.id]),
-                {
-                    data: { index },
-                    preserveScroll: true,
-                    onSuccess: () => {},
-                    onError: (errors) => alert('Có lỗi xảy ra khi xóa hình ảnh'),
-                }
-            );
-        }
+        setConfirmRemoveImg({ show: true, index });
+    };
+
+    const executeRemoveImage = () => {
+        router.delete(
+            route('landlord.houses.rooms.removeImage', [house.id, room.id]),
+            {
+                data: { index: confirmRemoveImg.index },
+                preserveScroll: true,
+                onSuccess: () => setConfirmRemoveImg({ show: false, index: null }),
+                onError: () => {
+                    setConfirmRemoveImg({ show: false, index: null });
+                    setErrorAlert({ show: true, message: 'Có lỗi xảy ra khi xóa hình ảnh' });
+                },
+            }
+        );
     };
 
     const removeNewImage = (index) => {
@@ -316,6 +325,22 @@ export default function Edit() {
                     </form>
                 </div>
             </div>
+            <ConfirmModal
+                show={confirmRemoveImg.show}
+                onClose={() => setConfirmRemoveImg({ show: false, index: null })}
+                onConfirm={executeRemoveImage}
+                title="Xóa hình ảnh"
+                message="Bạn có chắc chắn muốn xóa hình ảnh này không?"
+                confirmText="Xóa"
+                type="danger"
+            />
+            <AlertModal
+                show={errorAlert.show}
+                onClose={() => setErrorAlert({ show: false, message: '' })}
+                title="Lỗi"
+                message={errorAlert.message}
+                type="error"
+            />
         </div>
     );
 }

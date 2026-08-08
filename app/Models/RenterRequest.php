@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RenterRequest extends Model
 {
-  protected $fillable = ['name','phone','email','room_id','message','status'];
+  use SoftDeletes;
+
+  protected $fillable = ['name','phone','email','room_id','message','status', 'id_card', 'address', 'move_in_date'];
 
   public function room() { return $this->belongsTo(Room::class); }
   

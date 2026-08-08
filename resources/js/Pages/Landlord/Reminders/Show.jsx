@@ -1,8 +1,11 @@
 import { Link, router, usePage, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function Show() {
     const { reminder } = usePage().props;
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
     const handleMarkAsSent = () => {
         // Optimistic update can be added here
@@ -12,9 +15,11 @@ export default function Show() {
     };
 
     const handleDelete = () => {
-        if (confirm('Bạn có chắc muốn xóa nhắc nhở này?')) {
-            router.delete(route('landlord.reminders.destroy', reminder.id));
-        }
+        setConfirmDelete(true);
+    };
+
+    const executeDelete = () => {
+        router.delete(route('landlord.reminders.destroy', reminder.id));
     };
 
     const getTypeConfig = (type) => {
@@ -187,6 +192,15 @@ export default function Show() {
                     </div>
                 </div>
             </div>
+            <ConfirmModal
+                show={confirmDelete}
+                onClose={() => setConfirmDelete(false)}
+                onConfirm={executeDelete}
+                title="Xóa nhắc nhở"
+                message="Bạn có chắc muốn xóa nhắc nhở này?"
+                confirmText="Xóa"
+                type="danger"
+            />
         </div>
     );
 }

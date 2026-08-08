@@ -4,12 +4,26 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function Create() {
     const { rooms } = usePage().props;
-    const [selectedRoom, setSelectedRoom] = useState(null);
+
+    // Parse query parameters for pre-filling
+    const getQueryParam = (name, defaultValue) => {
+        if (typeof window === 'undefined') return defaultValue;
+        const params = new URLSearchParams(window.location.search);
+        return params.get(name) || defaultValue;
+    };
+
+    const initialRoomId = getQueryParam('room_id', '');
+    const initialMonth = parseInt(getQueryParam('month', new Date().getMonth() + 1));
+    const initialYear = parseInt(getQueryParam('year', new Date().getFullYear()));
+
+    const [selectedRoom, setSelectedRoom] = useState(() => {
+        return rooms.find(r => r.id == initialRoomId) || null;
+    });
 
     const { data, setData, post, processing, errors } = useForm({
-        room_id: '',
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
+        room_id: initialRoomId,
+        month: initialMonth,
+        year: initialYear,
         electric_reading: '',
         water_reading: '',
         notes: '',

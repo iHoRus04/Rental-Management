@@ -27,5 +27,12 @@ class AppServiceProvider extends ServiceProvider
         Inertia::share([
             'csrf_token' => fn () => csrf_token(),
         ]);
+
+        // Việt hóa và tùy biến giao diện email xác thực tài khoản của Laravel
+        \Illuminate\Auth\Notifications\VerifyEmail::toMailUsing(function ($notifiable, $url) {
+            return (new \Illuminate\Notifications\Messages\MailMessage)
+                ->subject('🔔 Kích Hoạt Tài Khoản - DreamHouse')
+                ->view('emails.verify_email', compact('notifiable', 'url'));
+        });
     }
 }

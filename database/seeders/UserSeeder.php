@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Landlord;
+use App\Models\StaffRole;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -14,43 +15,70 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Tạo tài khoản Admin
-        User::create([
-            'name'     => 'Admin',
-            'email'    => 'admin@example.com',
-            'password' => Hash::make('password'),
-            'role'     => 'admin',
-            'status'   => 'active',
-            'email_verified_at' => now(),
-        ]);
+        // 1. Tạo tài khoản Super Admin (Đã kích hoạt)
+        User::updateOrCreate(
+            ['email' => 'admin@dreamhouse.vn'],
+            [
+                'name'              => 'Super Admin',
+                'password'          => Hash::make('12345678'),
+                'role'              => 'admin',
+                'status'            => 'active',
+                'email_verified_at' => now(),
+            ]
+        );
 
-        // Tạo tài khoản Chủ trọ
-        $landlordUser = User::create([
-            'name'     => 'Chủ trọ A',
-            'email'    => 'landlord@example.com',
-            'password' => Hash::make('password'),
-            'role'     => 'landlord',
-            'status'   => 'active',
-            'email_verified_at' => now(),
-        ]);
+        // 2. Tạo tài khoản Chủ trọ (Đã kích hoạt)
+        $landlordUser = User::updateOrCreate(
+            ['email' => 'landlord@dreamhouse.vn'],
+            [
+                'name'              => 'Chủ Trọ DreamHouse',
+                'password'          => Hash::make('12345678'),
+                'role'              => 'landlord',
+                'status'            => 'active',
+                'phone'             => '0912345678',
+                'email_verified_at' => now(),
+            ]
+        );
 
-        // Thêm thông tin mở rộng cho chủ trọ
-        Landlord::create([
-            'user_id' => $landlordUser->id,
-            'phone'   => '0123456789',
-            'address' => 'Hồ Chí Minh',
-        ]);
+        // Khởi tạo 3 vai trò mặc định cho Chủ trọ
+        StaffRole::createDefaultRolesForLandlord($landlordUser->id);
 
-        // Tạo tài khoản Nhân viên mẫu
-        User::create([
-            'name'        => 'Nhân viên A',
-            'email'       => 'staff@example.com',
-            'password'    => Hash::make('password'),
-            'role'        => 'staff',
-            'status'      => 'active',
-            'phone'       => '0987654321',
-            'landlord_id' => $landlordUser->id,
-            'email_verified_at' => now(),
-        ]);
+        // Thêm thông tin mở rộng cho chủ trọ nếu có bảng landlords
+        if (class_exists(Landlord::class)) {
+            Landlord::updateOrCreate(
+                ['user_id' => $landlordUser->id],
+                [
+                    'phone'   => '0912345678',
+                    'address' => 'Hồ Chí Minh',
+                ]
+            );
+        }
+
+        // 3. Tạo tài khoản Nhân viên mẫu (Đã kích hoạt)
+        User::updateOrCreate(
+            ['email' => 'staff@dreamhouse.vn'],
+            [
+                'name'              => 'Nhân Viên Vận Hành',
+                'password'          => Hash::make('12345678'),
+                'role'              => 'staff',
+                'status'            => 'active',
+                'phone'             => '0987654321',
+                'landlord_id'       => $landlordUser->id,
+                'email_verified_at' => now(),
+            ]
+        );
+
+        // 4. Tạo tài khoản Khách thuê mẫu (Đã kích hoạt)
+        User::updateOrCreate(
+            ['email' => 'tenant@dreamhouse.vn'],
+            [
+                'name'              => 'Khách Thuê Mẫu',
+                'password'          => Hash::make('12345678'),
+                'role'              => 'tenant',
+                'status'            => 'active',
+                'phone'             => '0909090909',
+                'email_verified_at' => now(),
+            ]
+        );
     }
 }

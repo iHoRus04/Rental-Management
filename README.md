@@ -49,7 +49,7 @@
 
 ---
 
-## 🛠 TÔN GIÁO CÔNG NGHỆ (TECH STACK)
+## 🛠 CÔNG NGHỆ (TECH STACK)
 
 * **Backend Framework:** Laravel 11.x (PHP 8.2+)
 * **Frontend Framework:** React 18.x + Inertia.js (SPA không cần tạo REST API thủ công)

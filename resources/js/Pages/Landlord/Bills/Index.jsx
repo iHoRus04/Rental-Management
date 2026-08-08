@@ -1,9 +1,17 @@
 import { Link, usePage, router, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
+import AlertModal from '@/Components/AlertModal';
 
 export default function Index() {
-    const { bills = [], houses = [] } = usePage().props;
+    const { bills = [], houses = [], auth } = usePage().props;
+
+    const user = auth?.user;
+    const isLandlord = user?.role === 'landlord';
+    const userPerms = auth?.permissions || user?.permissions || [];
+    const canCreateBill = isLandlord || userPerms.includes('bills.create');
+
     const [selectedHouse, setSelectedHouse] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all'); // all, unpaid, paid, overdue
@@ -13,6 +21,8 @@ export default function Index() {
     const [accountNoInput, setAccountNoInput] = useState('');
     const [accountNameInput, setAccountNameInput] = useState('');
     const [savingBank, setSavingBank] = useState(false);
+    const [confirmGenerate, setConfirmGenerate] = useState(false);
+    const [alertModal, setAlertModal] = useState({ show: false, title: 'Thông báo', message: '', type: 'warning' });
 
     const VIETNAM_BANKS = [
         { code: 'vietcombank', name: 'Vietcombank' },
@@ -46,15 +56,17 @@ export default function Index() {
     };
 
     const handleGenerateMonthly = () => {
+        setConfirmGenerate(true);
+    };
+
+    const executeGenerateMonthly = () => {
         const currentMonth = new Date().getMonth() + 1;
         const currentYear = new Date().getFullYear();
-        
-        if (confirm(`Bạn có chắc chắn muốn tạo hóa đơn tự động cho tháng ${currentMonth}/${currentYear}?`)) {
-            router.post(route('landlord.bills.generateMonthly'), {
-                month: currentMonth,
-                year: currentYear
-            });
-        }
+        router.post(route('landlord.bills.generateMonthly'), {
+            month: currentMonth,
+            year: currentYear
+        });
+        setConfirmGenerate(false);
     };
 
     // Calculate house statistics
@@ -90,9 +102,9 @@ export default function Index() {
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title="Quản lý hóa đơn" />
-            
+
             <div className="max-w-[1600px] mx-auto">
-                
+
                 {/* HOUSE LIST GRID VIEW */}
                 {!selectedHouse ? (
                     <>
@@ -107,20 +119,37 @@ export default function Index() {
                             </div>
 
                             <div className="flex gap-3 w-full md:w-auto">
-                                <button
-                                    onClick={handleGenerateMonthly}
-                                    className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-emerald-100 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm"
+                                <a
+                                    href={route('landlord.bills.exportExcel')}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-sm hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                    title="Tải về danh sách tất cả hóa đơn dạng file Excel / CSV"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                    Tạo tự động
-                                </button>
-                                <Link
-                                    href={route('landlord.bills.create')}
-                                    className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                    Tạo hóa đơn
-                                </Link>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Xuất Excel
+                                </a>
+
+                                {canCreateBill && (
+                                    <>
+                                        <button
+                                            onClick={handleGenerateMonthly}
+                                            className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-emerald-100 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                            Tạo tự động
+                                        </button>
+                                        <Link
+                                            href={route('landlord.bills.create')}
+                                            className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                            Tạo hóa đơn
+                                        </Link>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -226,31 +255,33 @@ export default function Index() {
                                         </p>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                                        <button
-                                            onClick={() => {
-                                                setBankNameInput(selectedHouse.bank_name || '');
-                                                setAccountNoInput(selectedHouse.account_no || '');
-                                                setAccountNameInput(selectedHouse.account_name || '');
-                                                setShowBankModal(true);
-                                            }}
-                                            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-white border border-teal-100 text-teal-700 rounded-xl font-bold text-xs hover:bg-teal-50 hover:border-teal-200 transition-all shadow-sm"
-                                        >
-                                            ⚙️ Cấu hình ngân hàng
-                                        </button>
-                                        <button
-                                            onClick={handleGenerateMonthly}
-                                            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-white border border-emerald-100 text-emerald-700 rounded-xl font-bold text-xs hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm"
-                                        >
-                                            Tạo tự động
-                                        </button>
-                                        <Link
-                                            href={route('landlord.bills.create')}
-                                            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
-                                        >
-                                            Tạo hóa đơn
-                                        </Link>
-                                    </div>
+                                    {canCreateBill && (
+                                        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                                            <button
+                                                onClick={() => {
+                                                    setBankNameInput(selectedHouse.bank_name || '');
+                                                    setAccountNoInput(selectedHouse.account_no || '');
+                                                    setAccountNameInput(selectedHouse.account_name || '');
+                                                    setShowBankModal(true);
+                                                }}
+                                                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-white border border-teal-100 text-teal-700 rounded-xl font-bold text-xs hover:bg-teal-50 hover:border-teal-200 transition-all shadow-sm"
+                                            >
+                                                ⚙️ Cấu hình ngân hàng
+                                            </button>
+                                            <button
+                                                onClick={handleGenerateMonthly}
+                                                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-white border border-emerald-100 text-emerald-700 rounded-xl font-bold text-xs hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm"
+                                            >
+                                                Tạo tự động
+                                            </button>
+                                            <Link
+                                                href={route('landlord.bills.create')}
+                                                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
+                                            >
+                                                Tạo hóa đơn
+                                            </Link>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -262,8 +293,8 @@ export default function Index() {
                                 <button
                                     onClick={() => setStatusFilter('all')}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${statusFilter === 'all'
-                                            ? 'bg-white text-emerald-700 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-800'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
                                         }`}
                                 >
                                     Tất cả ({houseBills.length})
@@ -271,8 +302,8 @@ export default function Index() {
                                 <button
                                     onClick={() => setStatusFilter('unpaid')}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${statusFilter === 'unpaid'
-                                            ? 'bg-white text-emerald-700 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-800'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
                                         }`}
                                 >
                                     Chờ thanh toán ({houseBills.filter(b => b.status === 'pending' || b.status === 'partial').length})
@@ -280,8 +311,8 @@ export default function Index() {
                                 <button
                                     onClick={() => setStatusFilter('overdue')}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${statusFilter === 'overdue'
-                                            ? 'bg-white text-emerald-700 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-800'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
                                         }`}
                                 >
                                     Quá hạn ({houseBills.filter(b => b.status === 'overdue').length})
@@ -289,8 +320,8 @@ export default function Index() {
                                 <button
                                     onClick={() => setStatusFilter('paid')}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${statusFilter === 'paid'
-                                            ? 'bg-white text-emerald-700 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-800'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
                                         }`}
                                 >
                                     Đã thanh toán ({houseBills.filter(b => b.status === 'paid').length})
@@ -321,11 +352,10 @@ export default function Index() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredBills.map((bill) => (
-                                    <div 
-                                        key={bill.id} 
-                                        className={`group bg-white rounded-[20px] p-6 shadow-sm border transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${
-                                            bill.status === 'overdue' ? 'border-rose-200 bg-rose-50/30' : 'border-gray-100 hover:border-emerald-200'
-                                        }`}
+                                    <div
+                                        key={bill.id}
+                                        className={`group bg-white rounded-[20px] p-6 shadow-sm border transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${bill.status === 'overdue' ? 'border-rose-200 bg-rose-50/30' : 'border-gray-100 hover:border-emerald-200'
+                                            }`}
                                     >
                                         {/* Card Header */}
                                         <div className="flex justify-between items-start mb-4">
@@ -357,11 +387,10 @@ export default function Index() {
                                                 </span>
                                             </div>
                                             <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                                                <div 
-                                                    className={`h-full rounded-full transition-all duration-500 ${
-                                                        bill.status === 'paid' ? 'bg-emerald-500' : 
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${bill.status === 'paid' ? 'bg-emerald-500' :
                                                         bill.status === 'overdue' ? 'bg-rose-500' : 'bg-amber-400'
-                                                    }`}
+                                                        }`}
                                                     style={{ width: `${Math.min((bill.paid_amount / bill.amount) * 100, 100)}%` }}
                                                 ></div>
                                             </div>
@@ -408,7 +437,7 @@ export default function Index() {
                         <p className="text-xs text-gray-500 mb-6">
                             Cấu hình tài khoản ngân hàng nhận tiền cho nhà trọ <strong>{selectedHouse.name}</strong>.
                         </p>
-                        
+
                         <div className="space-y-4 mb-6">
                             <div>
                                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Ngân hàng</label>
@@ -458,7 +487,7 @@ export default function Index() {
                             <button
                                 onClick={() => {
                                     if (!bankNameInput || !accountNoInput || !accountNameInput) {
-                                        alert('Vui lòng điền đầy đủ thông tin tài khoản ngân hàng!');
+                                        setAlertModal({ show: true, title: 'Thiếu thông tin', message: 'Vui lòng điền đầy đủ thông tin tài khoản ngân hàng!', type: 'warning' });
                                         return;
                                     }
                                     setSavingBank(true);
@@ -492,6 +521,24 @@ export default function Index() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                show={confirmGenerate}
+                onClose={() => setConfirmGenerate(false)}
+                onConfirm={executeGenerateMonthly}
+                title="Tạo hóa đơn tự động"
+                message={`Bạn có chắc chắn muốn tạo hóa đơn tự động cho tháng ${new Date().getMonth() + 1}/${new Date().getFullYear()}?`}
+                confirmText="Tạo ngay"
+                type="info"
+            />
+
+            <AlertModal
+                show={alertModal.show}
+                onClose={() => setAlertModal({ ...alertModal, show: false })}
+                title={alertModal.title}
+                message={alertModal.message}
+                type={alertModal.type}
+            />
         </div>
     );
 }

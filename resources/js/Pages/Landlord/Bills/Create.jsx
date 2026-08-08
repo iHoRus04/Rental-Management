@@ -1,9 +1,10 @@
 import { Link, useForm, usePage, Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AlertModal from '@/Components/AlertModal';
 
 export default function Create() {
-    const { contracts } = usePage().props;
+    const { contracts = [], houses = [] } = usePage().props;
     const [selectedContract, setSelectedContract] = useState(null);
     const [meterLog, setMeterLog] = useState(null);
     const [roomServices, setRoomServices] = useState([]); // tất cả dịch vụ thô từ API
@@ -14,6 +15,7 @@ export default function Create() {
     const [accountNoInput, setAccountNoInput] = useState('');
     const [accountNameInput, setAccountNameInput] = useState('');
     const [savingBank, setSavingBank] = useState(false);
+    const [alertModal, setAlertModal] = useState({ show: false, title: 'Thông báo', message: '', type: 'warning' });
 
     const VIETNAM_BANKS = [
         { code: 'vietcombank', name: 'Vietcombank' },
@@ -49,6 +51,23 @@ export default function Create() {
         due_date: '',
         notes: '',
     });
+
+    const [selectedHouseId, setSelectedHouseId] = useState('');
+
+    // Lấy danh sách Nhà trọ trực tiếp từ tất cả các nhà trọ mà Nhân viên/Chủ trọ có quyền truy cập
+    const housesList = houses.length > 0 ? houses : Array.from(
+        new Map(
+            contracts
+                .map(c => c.room?.house)
+                .filter(Boolean)
+                .map(h => [h.id, h])
+        ).values()
+    );
+
+    // Lọc danh sách hợp đồng theo Nhà trọ được chọn
+    const filteredContracts = selectedHouseId
+        ? contracts.filter(c => c.room?.house?.id == selectedHouseId)
+        : contracts;
 
     /* ─── Chọn hợp đồng ─── */
     const handleContractChange = (e) => {
@@ -186,7 +205,7 @@ export default function Create() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         if (selectedContract) {
             const house = selectedContract.room?.house;
             const isBankMissing = !house?.bank_name || !house?.account_no || !house?.account_name;
@@ -198,7 +217,7 @@ export default function Create() {
                 return;
             }
         }
-        
+
         post(route('landlord.bills.store'));
     };
 
@@ -247,19 +266,57 @@ export default function Create() {
                             </h2>
 
                             <div className="space-y-6">
+                                {/* Chọn nhà trọ (Bộ lọc nâng cao) */}
+                                {housesList.length > 1 && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-teal-900 mb-2 flex items-center gap-1.5">
+                                            <span>🏢</span> Chọn Nhà trọ / Căn hộ <span className="text-xs text-gray-400 font-normal">(Lọc danh sách)</span>
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={selectedHouseId}
+                                                onChange={(e) => {
+                                                    setSelectedHouseId(e.target.value);
+                                                    // Reset hợp đồng đã chọn khi đổi nhà trọ
+                                                    setData('contract_id', '');
+                                                    setSelectedContract(null);
+                                                    setMeterLog(null);
+                                                    resetServices();
+                                                }}
+                                                className="w-full px-4 py-3 rounded-xl border-2 border-emerald-100 bg-emerald-50/50 text-teal-900 font-bold text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none appearance-none cursor-pointer"
+                                            >
+                                                <option value="">-- Tất cả nhà trọ ({contracts.length} phòng đang thuê) --</option>
+                                                {housesList.map(h => {
+                                                    const count = contracts.filter(c => c.room?.house?.id == h.id).length;
+                                                    return (
+                                                        <option key={h.id} value={h.id}>
+                                                            {h.name} ({count} phòng)
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-emerald-700">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Chọn hợp đồng */}
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Chọn hợp đồng <span className="text-red-500">*</span></label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Chọn phòng / khách thuê <span className="text-red-500">*</span></label>
                                     <div className="relative">
                                         <select
                                             value={data.contract_id}
                                             onChange={handleContractChange}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none bg-white appearance-none"
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none bg-white appearance-none font-semibold text-gray-800"
                                         >
-                                            <option value="">-- Chọn phòng / khách thuê --</option>
-                                            {contracts.map(c => (
+                                            <option value="">-- Chọn phòng / khách thuê ({filteredContracts.length}) --</option>
+                                            {filteredContracts.map(c => (
                                                 <option key={c.id} value={c.id}>
-                                                    Phòng {c.room.name} – {c.renterRequest?.name || 'N/A'}
+                                                    [{c.room?.house?.name || 'Nhà trọ'}] Phòng {c.room.name} – {c.renterRequest?.name || 'N/A'}
                                                 </option>
                                             ))}
                                         </select>
@@ -294,7 +351,7 @@ export default function Create() {
                                         <div className="flex-1">
                                             <h4 className="font-bold text-sm">Yêu cầu thiết lập Tài khoản thanh toán</h4>
                                             <p className="text-xs text-rose-600 mt-1 leading-relaxed">
-                                                Nhà trọ <strong>{selectedContract.room?.house?.name}</strong> chưa được cấu hình tài khoản ngân hàng (VietQR). 
+                                                Nhà trọ <strong>{selectedContract.room?.house?.name}</strong> chưa được cấu hình tài khoản ngân hàng (VietQR).
                                                 Bạn phải thiết lập tài khoản nhận tiền trước khi có thể lập hóa đơn cho khách thuê để tự động hóa VietQR.
                                             </p>
                                             <button
@@ -349,16 +406,16 @@ export default function Create() {
                                                         <label
                                                             key={service.id}
                                                             className={`flex items-center gap-3 px-3 py-3 rounded-xl border-2 cursor-pointer transition-all select-none ${service.checked
-                                                                    ? 'border-emerald-300 bg-emerald-50'
-                                                                    : 'border-gray-100 bg-gray-50 opacity-60'
+                                                                ? 'border-emerald-300 bg-emerald-50'
+                                                                : 'border-gray-100 bg-gray-50 opacity-60'
                                                                 }`}
                                                         >
                                                             {/* Custom checkbox */}
                                                             <div
                                                                 onClick={() => toggleService(service.id)}
                                                                 className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center border-2 transition-all ${service.checked
-                                                                        ? 'bg-emerald-500 border-emerald-500'
-                                                                        : 'border-gray-300 bg-white'
+                                                                    ? 'bg-emerald-500 border-emerald-500'
+                                                                    : 'border-gray-300 bg-white'
                                                                     }`}
                                                             >
                                                                 {service.checked && (
@@ -647,11 +704,10 @@ export default function Create() {
                                     <button
                                         type="submit"
                                         disabled={processing}
-                                        className={`px-8 py-2.5 rounded-xl font-bold shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
-                                            isBankMissing
-                                                ? 'bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-red-500/20'
-                                                : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-emerald-500/30'
-                                        }`}
+                                        className={`px-8 py-2.5 rounded-xl font-bold shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${isBankMissing
+                                            ? 'bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-red-500/20'
+                                            : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-emerald-500/30'
+                                            }`}
                                     >
                                         {processing && (
                                             <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -666,102 +722,111 @@ export default function Create() {
                         </div>
                     </form>
                 </div>
-            {/* Modal Thiết lập tài khoản ngân hàng nhanh */}
-            {showBankSetupModal && selectedContract && (
-                <div className="fixed inset-0 bg-gray-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[24px] shadow-xl max-w-md w-full border border-gray-100 p-6 relative overflow-hidden">
-                        <h3 className="text-lg font-extrabold text-teal-900 mb-2 flex items-center gap-2">
-                            <span>⚙️</span> Thiết lập tài khoản VietQR
-                        </h3>
-                        <p className="text-xs text-gray-500 mb-6">
-                            Cấu hình tài khoản ngân hàng nhận tiền cho nhà trọ <strong>{selectedContract.room?.house?.name}</strong>.
-                        </p>
-                        
-                        <div className="space-y-4 mb-6">
-                            <div>
-                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Ngân hàng</label>
-                                <select
-                                    value={bankNameInput}
-                                    onChange={e => setBankNameInput(e.target.value)}
-                                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-semibold text-gray-700 text-xs cursor-pointer bg-white"
+                {/* Modal Thiết lập tài khoản ngân hàng nhanh */}
+                {showBankSetupModal && selectedContract && (
+                    <div className="fixed inset-0 bg-gray-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-[24px] shadow-xl max-w-md w-full border border-gray-100 p-6 relative overflow-hidden">
+                            <h3 className="text-lg font-extrabold text-teal-900 mb-2 flex items-center gap-2">
+                                <span>⚙️</span> Thiết lập tài khoản VietQR
+                            </h3>
+                            <p className="text-xs text-gray-500 mb-6">
+                                Cấu hình tài khoản ngân hàng nhận tiền cho nhà trọ <strong>{selectedContract.room?.house?.name}</strong>.
+                            </p>
+
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Ngân hàng</label>
+                                    <select
+                                        value={bankNameInput}
+                                        onChange={e => setBankNameInput(e.target.value)}
+                                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-semibold text-gray-700 text-xs cursor-pointer bg-white"
+                                    >
+                                        <option value="">-- Chọn ngân hàng nhận tiền --</option>
+                                        {VIETNAM_BANKS.map(bank => (
+                                            <option key={bank.code} value={bank.code}>{bank.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Số tài khoản</label>
+                                    <input
+                                        type="text"
+                                        value={accountNoInput}
+                                        onChange={e => setAccountNoInput(e.target.value)}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-semibold text-gray-850 text-xs"
+                                        placeholder="Số tài khoản ngân hàng"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Tên chủ tài khoản</label>
+                                    <input
+                                        type="text"
+                                        value={accountNameInput}
+                                        onChange={e => setAccountNameInput(e.target.value.toUpperCase())}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-semibold text-gray-850 text-xs"
+                                        placeholder="VIET GIAY HOA HOAC IN HOA"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                <button
+                                    onClick={() => setShowBankSetupModal(false)}
+                                    disabled={savingBank}
+                                    className="px-5 py-2.5 rounded-xl text-gray-500 font-bold hover:bg-gray-100 transition-colors text-xs"
                                 >
-                                    <option value="">-- Chọn ngân hàng nhận tiền --</option>
-                                    {VIETNAM_BANKS.map(bank => (
-                                        <option key={bank.code} value={bank.code}>{bank.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Số tài khoản</label>
-                                <input
-                                    type="text"
-                                    value={accountNoInput}
-                                    onChange={e => setAccountNoInput(e.target.value)}
-                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-semibold text-gray-850 text-xs"
-                                    placeholder="Số tài khoản ngân hàng"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Tên chủ tài khoản</label>
-                                <input
-                                    type="text"
-                                    value={accountNameInput}
-                                    onChange={e => setAccountNameInput(e.target.value.toUpperCase())}
-                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-semibold text-gray-850 text-xs"
-                                    placeholder="VIET GIAY HOA HOAC IN HOA"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                            <button
-                                onClick={() => setShowBankSetupModal(false)}
-                                disabled={savingBank}
-                                className="px-5 py-2.5 rounded-xl text-gray-500 font-bold hover:bg-gray-100 transition-colors text-xs"
-                            >
-                                Hủy bỏ
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (!bankNameInput || !accountNoInput || !accountNameInput) {
-                                        alert('Vui lòng điền đầy đủ thông tin tài khoản ngân hàng!');
-                                        return;
-                                    }
-                                    setSavingBank(true);
-                                    router.put(route('landlord.houses.update-utility-prices', selectedContract.room.house.id), {
-                                        electric_price: selectedContract.room.house.electric_price || 0,
-                                        water_price: selectedContract.room.house.water_price || 0,
-                                        bank_name: bankNameInput,
-                                        account_no: accountNoInput,
-                                        account_name: accountNameInput,
-                                    }, {
-                                        onSuccess: (page) => {
-                                            setSavingBank(false);
-                                            setShowBankSetupModal(false);
-                                            // Update details locally so the UI updates
-                                            const house = selectedContract.room.house;
-                                            house.bank_name = bankNameInput;
-                                            house.account_no = accountNoInput;
-                                            house.account_name = accountNameInput;
-                                        },
-                                        onError: () => {
-                                            setSavingBank(false);
+                                    Hủy bỏ
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (!bankNameInput || !accountNoInput || !accountNameInput) {
+                                            setAlertModal({ show: true, title: 'Thiếu thông tin', message: 'Vui lòng điền đầy đủ thông tin tài khoản ngân hàng!', type: 'warning' });
+                                            return;
                                         }
-                                    });
-                                }}
-                                disabled={savingBank}
-                                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-6 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
-                            >
-                                {savingBank ? 'Đang lưu...' : 'Lưu tài khoản'}
-                            </button>
+                                        setSavingBank(true);
+                                        router.put(route('landlord.houses.update-utility-prices', selectedContract.room.house.id), {
+                                            electric_price: selectedContract.room.house.electric_price || 0,
+                                            water_price: selectedContract.room.house.water_price || 0,
+                                            bank_name: bankNameInput,
+                                            account_no: accountNoInput,
+                                            account_name: accountNameInput,
+                                        }, {
+                                            onSuccess: (page) => {
+                                                setSavingBank(false);
+                                                setShowBankSetupModal(false);
+                                                // Update details locally so the UI updates
+                                                const house = selectedContract.room.house;
+                                                house.bank_name = bankNameInput;
+                                                house.account_no = accountNoInput;
+                                                house.account_name = accountNameInput;
+                                            },
+                                            onError: () => {
+                                                setSavingBank(false);
+                                            }
+                                        });
+                                    }}
+                                    disabled={savingBank}
+                                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-6 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
+                                >
+                                    {savingBank ? 'Đang lưu...' : 'Lưu tài khoản'}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+
+
+                <AlertModal
+                    show={alertModal.show}
+                    onClose={() => setAlertModal({ ...alertModal, show: false })}
+                    title={alertModal.title}
+                    message={alertModal.message}
+                    type={alertModal.type}
+                />
+            </div>
         </div>
-    </div>
     );
 }
 

@@ -1,14 +1,25 @@
-import { Link, Head } from '@inertiajs/react';
+import { Link, Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState, useMemo } from 'react';
+import AlertModal from '@/Components/AlertModal';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
-    const [viewMode, setViewMode] = useState('map'); // Default to Visual Map view as requested
+    const { auth } = usePage().props;
+    const user = auth?.user;
+    const isLandlord = user?.role === 'landlord';
+    const userPerms = auth?.permissions || user?.permissions || [];
+    const canCreateRoom = isLandlord || userPerms.includes('rooms.create');
+    const canEditRoom = isLandlord || userPerms.includes('rooms.edit');
+    const canDeleteRoom = isLandlord || userPerms.includes('rooms.delete');
+    const [viewMode, setViewMode] = useState('map');
+    const [showLimitAlert, setShowLimitAlert] = useState(false);
+    const [confirmDeleteRoom, setConfirmDeleteRoom] = useState({ show: false, roomId: null });
 
     const handleCreateClick = (e) => {
         if (currentRoomCount >= roomLimit) {
             e.preventDefault();
-            alert(`Không thể thêm phòng! Bạn đã đạt giới hạn tối đa của gói cước hiện hành (${roomLimit} phòng). Vui lòng nâng cấp hoặc gia hạn gói cước tại mục Gói Dịch Vụ để tạo thêm phòng!`);
+            setShowLimitAlert(true);
         }
     };
 
@@ -101,14 +112,16 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                             </button>
                         </div>
 
-                        <Link
-                            href={route('landlord.houses.rooms.create', house.id)}
-                            onClick={handleCreateClick}
-                            className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/10 transition-all active:scale-[0.98]"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                            Thêm phòng
-                        </Link>
+                        {canCreateRoom && (
+                            <Link
+                                href={route('landlord.houses.rooms.create', house.id)}
+                                onClick={handleCreateClick}
+                                className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/10 transition-all active:scale-[0.98]"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                                Thêm phòng
+                            </Link>
+                        )}
                     </div>
                 </div>
 
@@ -320,20 +333,16 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                                                 Dịch vụ
                                             </Link>
 
-                                            <Link
-                                                method='delete'
-                                                as="button"
-                                                href={route('landlord.houses.rooms.destroy', [house.id, room.id])}
-                                                onClick={(e) => {
-                                                    if (!confirm('Bạn có chắc muốn xóa phòng này không? Dữ liệu và hình ảnh sẽ bị xóa vĩnh viễn.')) {
-                                                        e.preventDefault();
-                                                    }
-                                                }}
-                                                className="col-span-1 flex flex-col items-center justify-center py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition-colors"
-                                            >
-                                                <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                Xóa
-                                            </Link>
+                                            {canDeleteRoom && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setConfirmDeleteRoom({ show: true, roomId: room.id })}
+                                                    className="col-span-1 flex flex-col items-center justify-center py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition-colors"
+                                                >
+                                                    <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    Xóa
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -342,6 +351,26 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                     </div>
                 )}
             </div>
+            <AlertModal
+                show={showLimitAlert}
+                onClose={() => setShowLimitAlert(false)}
+                title="Đạt giới hạn phòng"
+                message={`Không thể thêm phòng! Bạn đã đạt giới hạn tối đa của gói cước hiện hành (${roomLimit} phòng). Vui lòng nâng cấp hoặc gia hạn gói cước tại mục Gói Dịch Vụ để tạo thêm phòng!`}
+                type="warning"
+            />
+            <ConfirmModal
+                show={confirmDeleteRoom.show}
+                onClose={() => setConfirmDeleteRoom({ show: false, roomId: null })}
+                onConfirm={() => {
+                    router.delete(route('landlord.houses.rooms.destroy', [house.id, confirmDeleteRoom.roomId]), {
+                        onFinish: () => setConfirmDeleteRoom({ show: false, roomId: null }),
+                    });
+                }}
+                title="Xóa phòng"
+                message="Bạn có chắc muốn xóa phòng này không? Dữ liệu và hình ảnh sẽ bị xóa vĩnh viễn."
+                confirmText="Xóa vĩnh viễn"
+                type="danger"
+            />
         </div>
     );
 }

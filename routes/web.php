@@ -122,6 +122,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('renter-request-services/{renterRequestService}', [RenterRequestController::class, 'updateRenterRequestService'])->name('renter-request-services.update');
             Route::delete('renter-request-services/{renterRequestService}', [RenterRequestController::class, 'detachService'])->name('renter-request-services.detach');
             
+            Route::get('bills/export-excel', [BillController::class, 'exportExcel'])->name('bills.exportExcel');
             Route::resource('bills', BillController::class);
             Route::resource('payments', PaymentController::class);
             Route::post('meter-logs/bulk', [MeterLogController::class, 'bulkStore'])->name('meter-logs.bulk-store');
@@ -198,6 +199,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('bills', [\App\Http\Controllers\Tenant\BillController::class, 'index'])->name('bills.index');
             Route::get('bills/{bill}', [\App\Http\Controllers\Tenant\BillController::class, 'show'])->name('bills.show');
             Route::post('bills/{bill}/pay-test', [\App\Http\Controllers\Tenant\BillController::class, 'payTest'])->name('bills.payTest');
+            Route::get('contracts/{contract}/pdf', [\App\Http\Controllers\Landlord\ContractController::class, 'downloadPdfTenant'])->name('contracts.pdf');
         });
 
 

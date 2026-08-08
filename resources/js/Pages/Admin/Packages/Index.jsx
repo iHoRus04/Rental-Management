@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 // Inline Icons
 const PlusIcon = () => (
@@ -18,6 +19,7 @@ const TrashIcon = () => (
 export default function Index({ packages }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPackage, setEditingPackage] = useState(null);
+    const [confirmDelete, setConfirmDelete] = useState({ show: false, pkg: null });
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         name: '',
@@ -86,9 +88,13 @@ export default function Index({ packages }) {
     };
 
     const handleDelete = (pkg) => {
-        if (confirm(`Bạn có chắc chắn muốn xóa gói cước "${pkg.name}"?`)) {
-            router.delete(route('admin.packages.destroy', pkg.id));
-        }
+        setConfirmDelete({ show: true, pkg });
+    };
+
+    const executeDelete = () => {
+        router.delete(route('admin.packages.destroy', confirmDelete.pkg.id), {
+            onFinish: () => setConfirmDelete({ show: false, pkg: null }),
+        });
     };
 
     const formatVND = (price) => {
@@ -340,6 +346,16 @@ export default function Index({ packages }) {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                show={confirmDelete.show}
+                onClose={() => setConfirmDelete({ show: false, pkg: null })}
+                onConfirm={executeDelete}
+                title="Xóa gói cước"
+                message={`Bạn có chắc chắn muốn xóa gói cước "${confirmDelete.pkg?.name}"?`}
+                confirmText="Xóa gói cước"
+                type="danger"
+            />
         </AdminLayout>
     );
 }

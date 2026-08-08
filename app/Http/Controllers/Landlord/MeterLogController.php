@@ -20,10 +20,31 @@ use Inertia\Inertia;
 class MeterLogController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Kiểm tra quyền sở hữu nhà trọ và phân quyền nhân viên cho MeterLog
+     */
+    private function authorizeMeterLogAction(string $action = 'view', ?MeterLog $meterLog = null)
+    {
+        $user = auth()->user();
+        if ($meterLog) {
+            $meterLog->loadMissing('room');
+            if (!$user->managesHouse($meterLog->room->house_id)) {
+                abort(403, 'Bạn không có quyền truy cập chỉ số điện nước này.');
+            }
+        }
+
+        if ($user->role === 'staff') {
+            if (!$user->hasPermission("meter_logs.{$action}")) {
+                abort(403, 'Bạn không có quyền thực hiện thao tác này.');
+            }
+        }
+    }
+
+    /**
+     * Hiển thị danh sách nhật ký chỉ số điện nước theo tháng/năm
      */
     public function index(Request $request)
     {
+        $this->authorizeMeterLogAction('view');
         $user     = auth()->user();
         $houseIds = $user->getAccessibleHouseIds();
 
@@ -57,10 +78,12 @@ class MeterLogController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Hiển thị giao diện Form nhập chỉ số điện nước mới
      */
     public function create()
     {
+        $this->authorizeMeterLogAction('create');
+
         $user     = auth()->user();
         $houseIds = $user->getAccessibleHouseIds();
         $rooms    = Room::whereIn('house_id', $houseIds)->get();
@@ -71,10 +94,29 @@ class MeterLogController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Helper lấy chỉ số điện nước của tháng liền trước
+     */
+    private function getPreviousMeterLog($roomId, $month, $year)
+    {
+        $prevMonth = $month - 1;
+        $prevYear = $year;
+        if ($month == 1) {
+            $prevMonth = 12;
+            $prevYear = $year - 1;
+        }
+
+        return MeterLog::where('room_id', $roomId)
+            ->where('month', $prevMonth)
+            ->where('year', $prevYear)
+            ->first();
+    }
+
+    /**
+     * Lưu chỉ số điện nước mới (tự động tính chênh lệch sản lượng tiêu thụ kWh/m3)
      */
     public function store(Request $request)
     {
+        $this->authorizeMeterLogAction('create');
         $validated = $request->validate([
             'room_id' => 'required|exists:rooms,id',
             'month' => 'required|integer|min:1|max:12',
@@ -94,8 +136,18 @@ class MeterLogController extends Controller
                 ->with('error', 'Chỉ số cho tháng/năm này đã tồn tại!');
         }
 
-        // Tạo MeterLog và tính mức tiêu thụ (sử dụng `calculateUsage()`
-        // để dựa trên chỉ số hiện tại và chỉ số trước đó nếu có)
+        // KIỂM TRA CHỈ SỐ THÁNG TRƯỚC: Chỉ số mới không được nhỏ hơn chỉ số tháng trước
+        $previousLog = $this->getPreviousMeterLog($validated['room_id'], $validated['month'], $validated['year']);
+        if ($previousLog) {
+            if ($validated['electric_reading'] < $previousLog->electric_reading) {
+                return redirect()->back()->withInput()->with('error', "Chỉ số điện mới ({$validated['electric_reading']} kWh) không được nhỏ hơn chỉ số tháng trước ({$previousLog->electric_reading} kWh)!");
+            }
+            if ($validated['water_reading'] < $previousLog->water_reading) {
+                return redirect()->back()->withInput()->with('error', "Chỉ số nước mới ({$validated['water_reading']} m³) không được nhỏ hơn chỉ số tháng trước ({$previousLog->water_reading} m³)!");
+            }
+        }
+
+        // Tạo MeterLog và tính mức tiêu thụ
         $meterLog = new MeterLog($validated);
         $meterLog->calculateUsage();
         $meterLog->save();
@@ -105,7 +157,7 @@ class MeterLogController extends Controller
     }
 
     /**
-     * Store bulk meter logs
+     * Nhập chỉ số điện nước hàng loạt cho tất cả các phòng cùng lúc
      */
     public function bulkStore(Request $request)
     {
@@ -121,6 +173,24 @@ class MeterLogController extends Controller
 
         $month = $validated['month'];
         $year = $validated['year'];
+
+        // KIỂM TRA HÀNG LOẠT: Chỉ số mới không được nhỏ hơn tháng trước
+        foreach ($validated['readings'] as $item) {
+            $previousLog = $this->getPreviousMeterLog($item['room_id'], $month, $year);
+            if ($previousLog) {
+                if ($item['electric_reading'] < $previousLog->electric_reading) {
+                    $room = Room::find($item['room_id']);
+                    $roomName = $room ? $room->name : 'Phòng';
+                    return redirect()->back()->withInput()->with('error', "Phòng {$roomName}: Chỉ số điện mới ({$item['electric_reading']} kWh) không được nhỏ hơn chỉ số tháng trước ({$previousLog->electric_reading} kWh)!");
+                }
+                if ($item['water_reading'] < $previousLog->water_reading) {
+                    $room = Room::find($item['room_id']);
+                    $roomName = $room ? $room->name : 'Phòng';
+                    return redirect()->back()->withInput()->with('error', "Phòng {$roomName}: Chỉ số nước mới ({$item['water_reading']} m³) không được nhỏ hơn chỉ số tháng trước ({$previousLog->water_reading} m³)!");
+                }
+            }
+        }
+
         $count = 0;
 
         foreach ($validated['readings'] as $item) {
@@ -149,10 +219,12 @@ class MeterLogController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Xem chi tiết chỉ số và lịch sử tiêu thụ điện nước của phòng qua các tháng
      */
     public function show(MeterLog $meterLog)
     {
+        $this->authorizeMeterLogAction('view', $meterLog);
+
         $meterLog->load('room');
 
         $history = MeterLog::where('room_id', $meterLog->room_id)
@@ -167,10 +239,12 @@ class MeterLogController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Hiển thị giao diện Form chỉnh sửa chỉ số điện nước
      */
     public function edit(MeterLog $meterLog)
     {
+        $this->authorizeMeterLogAction('edit', $meterLog);
+
         $meterLog->load('room');
         $rooms = Room::all();
 
@@ -181,18 +255,41 @@ class MeterLogController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Cập nhật chỉ số điện nước và tự động tính toán lại sản lượng tiêu thụ & Hóa đơn tương ứng
      */
     public function update(Request $request, MeterLog $meterLog)
     {
+        $this->authorizeMeterLogAction('edit', $meterLog);
         $validated = $request->validate([
-            'room_id' => 'required|exists:rooms,id',
-            'month' => 'required|integer|min:1|max:12',
-            'year' => 'required|integer|min:2020',
+            'room_id'          => 'required|exists:rooms,id',
+            'month'            => 'required|integer|min:1|max:12',
+            'year'             => 'required|integer|min:2020',
             'electric_reading' => 'required|integer|min:0',
-            'water_reading' => 'required|integer|min:0',
-            'notes' => 'nullable|string',
+            'water_reading'    => 'required|integer|min:0',
+            'notes'            => 'nullable|string',
         ]);
+
+        // 1. Tìm hóa đơn tương ứng với chỉ số điện nước này
+        $bill = \App\Models\Bill::where('room_id', $meterLog->room_id)
+            ->where('month', $meterLog->month)
+            ->where('year', $meterLog->year)
+            ->first();
+
+        // 2. Nếu hóa đơn đã được thanh toán ➔ BẢO VỆ DỮ LIỆU: KHÓA CHẶN KHÔNG CHO SỬA
+        if ($bill && $bill->status === 'paid') {
+            return redirect()->back()->with('error', 'Chỉ số điện nước tháng này thuộc Hóa đơn ĐÃ THANH TOÁN. Không thể chỉnh sửa!');
+        }
+
+        // KIỂM TRA CHỈ SỐ THÁNG TRƯỚC: Chỉ số mới không được nhỏ hơn chỉ số tháng trước
+        $previousLog = $this->getPreviousMeterLog($validated['room_id'], $validated['month'], $validated['year']);
+        if ($previousLog && $previousLog->id !== $meterLog->id) {
+            if ($validated['electric_reading'] < $previousLog->electric_reading) {
+                return redirect()->back()->withInput()->with('error', "Chỉ số điện mới ({$validated['electric_reading']} kWh) không được nhỏ hơn chỉ số tháng trước ({$previousLog->electric_reading} kWh)!");
+            }
+            if ($validated['water_reading'] < $previousLog->water_reading) {
+                return redirect()->back()->withInput()->with('error', "Chỉ số nước mới ({$validated['water_reading']} m³) không được nhỏ hơn chỉ số tháng trước ({$previousLog->water_reading} m³)!");
+            }
+        }
 
         // Check if another log exists with same month/year but different room
         if ($meterLog->room_id != $validated['room_id'] || 
@@ -215,18 +312,40 @@ class MeterLogController extends Controller
         $meterLog->calculateUsage();
         $meterLog->save();
 
+        // 3. Nếu hóa đơn chưa thanh toán ➔ TỰ ĐỘNG ĐỒNG BỘ & TÍNH LẠI TIỀN TRONG HÓA ĐƠN
+        if ($bill) {
+            $billService = app(\App\Services\BillService::class);
+            $billService->updateBillCosts($bill, [
+                'electric_kwh' => $meterLog->electric_usage,
+                'water_usage'  => $meterLog->water_usage,
+            ]);
+        }
+
         return redirect()->route('landlord.meter-logs.show', $meterLog->id)
-            ->with('success', 'Cập nhật chỉ số thành công!');
+            ->with('success', 'Cập nhật chỉ số thành công!' . ($bill ? ' Tiền điện nước trong Hóa đơn tương ứng đã được tự động tính lại.' : ''));
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Xóa chỉ số điện nước
      */
     public function destroy(MeterLog $meterLog)
     {
+        $this->authorizeMeterLogAction('delete', $meterLog);
+
+        // Tìm hóa đơn tương ứng với chỉ số điện nước này
+        $bill = \App\Models\Bill::where('room_id', $meterLog->room_id)
+            ->where('month', $meterLog->month)
+            ->where('year', $meterLog->year)
+            ->first();
+
+        // Nếu hóa đơn đã được thanh toán ➔ BẢO VỆ DỮ LIỆU: KHÓA CHẶN KHÔNG CHO XÓA
+        if ($bill && $bill->status === 'paid') {
+            return redirect()->back()->with('error', 'Chỉ số điện nước này thuộc Hóa đơn ĐÃ THANH TOÁN. Không thể xóa!');
+        }
+
         $meterLog->delete();
 
         return redirect()->route('landlord.meter-logs.index')
-            ->with('success', 'Đã xóa chỉ số điện nước');
+            ->with('success', 'Đã xóa chỉ số điện nước.');
     }
 }

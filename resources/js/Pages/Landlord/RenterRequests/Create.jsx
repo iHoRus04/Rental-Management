@@ -31,12 +31,12 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
                 <div className="max-w-3xl mx-auto">
                     {/* --- HEADER --- */}
                     <div className="mb-8">
-                        <Link 
+                        <Link
                             href={
-                                redirect_to_contract 
-                                ? route('landlord.rooms.contracts.create', selected_room_id)
-                                : route('landlord.renter-requests.index')
-                            } 
+                                redirect_to_contract
+                                    ? route('landlord.rooms.contracts.create', selected_room_id)
+                                    : route('landlord.renter-requests.index')
+                            }
                             className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-emerald-600 mb-4 transition-colors"
                         >
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -52,7 +52,7 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
                                     {redirect_to_contract ? 'Tạo nhanh khách thuê' : 'Tạo yêu cầu thuê'}
                                 </h1>
                                 <p className="text-gray-500 mt-2 pl-[52px]">
-                                    {redirect_to_contract 
+                                    {redirect_to_contract
                                         ? 'Nhập nhanh thông tin người thuê để tiến hành lập hợp đồng.'
                                         : 'Nhập thông tin khách hàng tiềm năng muốn thuê phòng.'
                                     }
@@ -65,7 +65,7 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
 
                     <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
                         <form onSubmit={handleSubmit} className="p-8 space-y-8">
-                            
+
                             {/* Pass redirect parameter */}
                             <input type="hidden" value={data.redirect_to_contract} name="redirect_to_contract" />
 
@@ -219,9 +219,9 @@ export default function CreateRenterRequest({ auth, rooms, selected_room_id = ''
                             <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-4">
                                 <Link
                                     href={
-                                        redirect_to_contract 
-                                        ? route('landlord.rooms.contracts.create', selected_room_id)
-                                        : route('landlord.renter-requests.index')
+                                        redirect_to_contract
+                                            ? route('landlord.rooms.contracts.create', selected_room_id)
+                                            : route('landlord.renter-requests.index')
                                     }
                                     className="px-6 py-2.5 rounded-xl text-gray-700 font-bold hover:bg-gray-100 transition-colors"
                                 >

@@ -1,12 +1,14 @@
 import { Link, Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function Index({ staffList, houses, roles }) {
     const { auth, flash } = usePage().props;
     const [search, setSearch] = useState('');
     const [assignRoleModal, setAssignRoleModal] = useState(null); // staff object
     const [selectedRoleId, setSelectedRoleId] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
 
     const filtered = staffList.filter(s =>
         s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -14,9 +16,13 @@ export default function Index({ staffList, houses, roles }) {
     );
 
     const handleDelete = (id) => {
-        if (confirm('Bạn có chắc muốn xóa nhân viên này?')) {
-            router.delete(route('landlord.staff.destroy', id));
-        }
+        setConfirmDelete({ show: true, id });
+    };
+
+    const executeDelete = () => {
+        router.delete(route('landlord.staff.destroy', confirmDelete.id), {
+            onFinish: () => setConfirmDelete({ show: false, id: null }),
+        });
     };
 
     const openAssignRole = (staff) => {
@@ -293,6 +299,15 @@ export default function Index({ staffList, houses, roles }) {
                     </div>
                 </div>
             )}
+            <ConfirmModal
+                show={confirmDelete.show}
+                onClose={() => setConfirmDelete({ show: false, id: null })}
+                onConfirm={executeDelete}
+                title="Xóa nhân viên"
+                message="Bạn có chắc muốn xóa nhân viên này?"
+                confirmText="Xóa"
+                type="danger"
+            />
         </div>
     );
 }

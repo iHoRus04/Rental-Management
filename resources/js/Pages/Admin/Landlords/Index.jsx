@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, router, Link } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 // Icons
 const SearchIcon = () => (
@@ -14,11 +15,16 @@ export default function Index({ landlords }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [packageFilter, setPackageFilter] = useState('all');
+    const [confirmStatus, setConfirmStatus] = useState({ show: false, id: null, status: null });
 
     const handleStatusChange = (id, status) => {
-        if (confirm(`Bạn có chắc chắn muốn thay đổi trạng thái tài khoản chủ trọ này?`)) {
-            router.post(route('admin.landlords.update-status', id), { status });
-        }
+        setConfirmStatus({ show: true, id, status });
+    };
+
+    const executeStatusChange = () => {
+        router.post(route('admin.landlords.update-status', confirmStatus.id), { status: confirmStatus.status }, {
+            onFinish: () => setConfirmStatus({ show: false, id: null, status: null }),
+        });
     };
 
     const filteredLandlords = useMemo(() => {
@@ -224,6 +230,16 @@ export default function Index({ landlords }) {
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                show={confirmStatus.show}
+                onClose={() => setConfirmStatus({ show: false, id: null, status: null })}
+                onConfirm={executeStatusChange}
+                title="Thay đổi trạng thái chủ trọ"
+                message="Bạn có chắc chắn muốn thay đổi trạng thái tài khoản chủ trọ này?"
+                confirmText="Xác nhận"
+                type="warning"
+            />
         </AdminLayout>
     );
 }

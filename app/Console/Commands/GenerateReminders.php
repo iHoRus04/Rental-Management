@@ -25,7 +25,8 @@ class GenerateReminders extends Command
     protected $description = 'Tự động tạo nhắc nhở thanh toán và hết hạn hợp đồng';
 
     /**
-     * Execute the console command.
+     * Hàm điều khiển chính (Execute Command)
+     * Lần lượt gọi 4 generator riêng biệt và in báo cáo kết quả ra console
      */
     public function handle()
     {
@@ -50,7 +51,8 @@ class GenerateReminders extends Command
     }
 
     /**
-     * Generate payment reminders for active contracts
+     * 1. Sinh nhắc nhở thanh toán tiền thuê phòng định kỳ (type = payment)
+     * Quét các hợp đồng active và tạo nhắc nhở trước 5 ngày đến hạn thanh toán hàng tháng
      */
     private function generatePaymentReminders()
     {
@@ -103,7 +105,8 @@ class GenerateReminders extends Command
     }
 
     /**
-     * Generate contract expiry reminders
+     * 2. Sinh nhắc nhở hợp đồng thuê sắp hết hạn (type = contract_expiry)
+     * Quét các hợp đồng có end_date trong vòng 30 ngày tới và tạo nhắc nhở (gắn mác KHẨN CẤP nếu <= 7 ngày)
      */
     private function generateContractExpiryReminders()
     {
@@ -155,8 +158,8 @@ class GenerateReminders extends Command
     }
 
     /**
-     * Generate reminders for creating monthly bills
-     * Kiểm tra phòng có contract active và chưa có hóa đơn tháng này
+     * 3. Sinh nhắc nhở yêu cầu lập/chốt hóa đơn hàng tháng (type = bill_creation)
+     * Kiểm tra các phòng trọ đang thuê nhưng chưa được chủ trọ tạo hóa đơn cho tháng hiện tại
      */
     private function generateBillCreationReminders()
     {
@@ -207,8 +210,8 @@ class GenerateReminders extends Command
     }
 
     /**
-     * Generate reminders for unpaid bills approaching due date
-     * Kiểm tra hóa đơn chưa thanh toán và sắp đến hạn
+     * 4. Sinh nhắc nhở hóa đơn chưa thanh toán / sắp đến hạn / quá hạn (type = bill_payment)
+     * Kiểm tra các hóa đơn còn nợ tiền (pending/partial) khi còn <= 3 ngày đến hạn hoặc đã quá hạn
      */
     private function generateBillPaymentReminders()
     {

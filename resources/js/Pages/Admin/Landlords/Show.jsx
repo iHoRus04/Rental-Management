@@ -1,6 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 // Icons
 const BackIcon = () => (
@@ -21,16 +22,21 @@ const formatVND = (price) =>
 
 export default function Show({ landlord, houses, subscriptions, stats }) {
     const [statusLoading, setStatusLoading] = useState(false);
+    const [confirmStatus, setConfirmStatus] = useState({ show: false, newStatus: null });
 
     const handleStatusChange = (newStatus) => {
-        if (confirm(`Bạn có chắc chắn muốn chuyển đổi trạng thái tài khoản của chủ trọ sang: ${
-            newStatus === 'active' ? 'Hoạt động' : newStatus === 'inactive' ? 'Bị khóa' : 'Chờ duyệt'
-        }?`)) {
-            setStatusLoading(true);
-            router.post(route('admin.landlords.update-status', landlord.id), { status: newStatus }, {
-                onFinish: () => setStatusLoading(false)
-            });
-        }
+        setConfirmStatus({ show: true, newStatus });
+    };
+
+    const executeStatusChange = () => {
+        const newStatus = confirmStatus.newStatus;
+        setStatusLoading(true);
+        router.post(route('admin.landlords.update-status', landlord.id), { status: newStatus }, {
+            onFinish: () => {
+                setStatusLoading(false);
+                setConfirmStatus({ show: false, newStatus: null });
+            }
+        });
     };
 
     return (
@@ -249,6 +255,18 @@ export default function Show({ landlord, houses, subscriptions, stats }) {
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                show={confirmStatus.show}
+                onClose={() => setConfirmStatus({ show: false, newStatus: null })}
+                onConfirm={executeStatusChange}
+                title="Đổi trạng thái tài khoản"
+                message={`Bạn có chắc chắn muốn chuyển đổi trạng thái tài khoản của chủ trọ sang: ${
+                    confirmStatus.newStatus === 'active' ? 'Hoạt động' : confirmStatus.newStatus === 'inactive' ? 'Bị khóa' : 'Chờ duyệt'
+                }?`}
+                confirmText="Xác nhận"
+                type="info"
+            />
         </AdminLayout>
     );
 }

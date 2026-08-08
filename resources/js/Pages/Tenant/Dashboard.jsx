@@ -107,19 +107,26 @@ export default function TenantDashboard({ auth, contract, room, landlord, recent
                                     <div className="space-y-1">
                                         <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Chủ nhà trọ</p>
                                         <p className="text-base font-extrabold text-slate-800">{landlord.name}</p>
-                                        <p className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
-                                            {landlord.phone && (
-                                                <>
-                                                    <span>📞 {landlord.phone}</span>
+                                        <div className="text-xs text-slate-500 space-y-1 mt-1">
+                                            {landlord.phone ? (
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="font-semibold text-slate-700">📞 {landlord.phone}</span>
                                                     <button
                                                         onClick={() => handleCopyPhone(landlord.phone)}
-                                                        className="text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded transition-colors"
+                                                        className="text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 font-bold rounded transition-colors"
                                                     >
-                                                        {copiedPhone ? 'Đã sao chép!' : 'Chép'}
+                                                        {copiedPhone ? '✓ Đã chép' : 'Chép'}
                                                     </button>
-                                                </>
+                                                </div>
+                                            ) : (
+                                                <p className="text-slate-400 italic">📞 Chưa cập nhật SĐT</p>
                                             )}
-                                        </p>
+                                            {landlord.email && (
+                                                <p className="flex items-center gap-1 font-medium text-slate-600 truncate">
+                                                    ✉️ <a href={`mailto:${landlord.email}`} className="hover:text-emerald-600 underline">{landlord.email}</a>
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="space-y-1">
@@ -142,9 +149,19 @@ export default function TenantDashboard({ auth, contract, room, landlord, recent
                         </div>
 
                         {contract && (
-                            <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400">
+                            <div className="mt-8 pt-6 border-t border-slate-50 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
                                 <span>Ký kết ngày: {new Date(contract.created_at || contract.start_date).toLocaleDateString('vi-VN')}</span>
-                                <span className="font-semibold text-teal-800">Mã HĐ: #CON-{contract.id}</span>
+                                <div className="flex items-center gap-3">
+                                    <a
+                                        href={route('tenant.contracts.pdf', contract.id)}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold rounded-lg transition-colors border border-emerald-200/60 shadow-sm active:scale-95"
+                                    >
+                                        📄 Tải PDF Hợp đồng
+                                    </a>
+                                    <span className="font-semibold text-teal-800">Mã HĐ: #CON-{contract.id}</span>
+                                </div>
                             </div>
                         )}
                     </div>

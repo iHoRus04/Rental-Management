@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
+import AlertModal from '@/Components/AlertModal';
 
 export default function TenantRequestShow({ auth, request, staffMembers = [] }) {
     
@@ -16,6 +17,7 @@ export default function TenantRequestShow({ auth, request, staffMembers = [] }) 
     });
 
     const [resolvedPreviews, setResolvedPreviews] = useState([]);
+    const [alertModal, setAlertModal] = useState({ show: false, title: 'Thông báo', message: '', type: 'warning' });
 
     const getStatusBadge = (status) => {
         const statusMap = {
@@ -63,7 +65,7 @@ export default function TenantRequestShow({ auth, request, staffMembers = [] }) 
     const handleAssign = (e) => {
         e.preventDefault();
         if (!assignForm.data.assigned_to) {
-            alert('Vui lòng chọn một kỹ thuật viên để phân công.');
+            setAlertModal({ show: true, title: 'Thiếu thông tin', message: 'Vui lòng chọn một kỹ thuật viên để phân công.', type: 'warning' });
             return;
         }
         assignForm.post(route('landlord.tenant-requests.assign', request.id), {
@@ -96,7 +98,7 @@ export default function TenantRequestShow({ auth, request, staffMembers = [] }) 
     const handleResolve = (e) => {
         e.preventDefault();
         if (resolveForm.data.resolved_images.length === 0) {
-            alert('Bắt buộc phải tải lên hình ảnh/video kết quả sửa chữa để nghiệm thu.');
+            setAlertModal({ show: true, title: 'Thiếu minh chứng', message: 'Bắt buộc phải tải lên hình ảnh/video kết quả sửa chữa để nghiệm thu.', type: 'warning' });
             return;
         }
         resolveForm.post(route('landlord.tenant-requests.resolve', request.id), {
@@ -429,6 +431,14 @@ export default function TenantRequestShow({ auth, request, staffMembers = [] }) 
                     )}
                 </div>
             </div>
+
+            <AlertModal
+                show={alertModal.show}
+                onClose={() => setAlertModal({ ...alertModal, show: false })}
+                title={alertModal.title}
+                message={alertModal.message}
+                type={alertModal.type}
+            />
         </AuthenticatedLayout>
     );
 }

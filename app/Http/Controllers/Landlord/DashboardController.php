@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\RenterRequest;
 use App\Models\Bill;
 use App\Models\Payment;
+use App\Models\TenantRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -125,9 +126,24 @@ class DashboardController extends Controller
             $q->whereIn('house_id', $houseIds);
         })->where('status', 'new')->count();
 
-        // Revenue chart data for last 6 months
+        // Pending Tenant Requests (Sự cố phòng trọ cần xử lý)
+        $pendingTenantRequests = TenantRequest::whereHas('room', function ($q) use ($houseIds) {
+            $q->whereIn('house_id', $houseIds);
+        })->whereIn('status', ['pending', 'in_progress'])->count();
+
+        // Recent Pending Tenant Requests
+        $recentTenantRequests = TenantRequest::with(['room.house', 'tenant'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->latest()
+            ->take(5)
+            ->get();
+
+        // Revenue chart data for last 12 months
         $revenueChart = [];
-        for ($i = 5; $i >= 0; $i--) {
+        for ($i = 11; $i >= 0; $i--) {
             $date    = Carbon::now()->subMonths($i);
             $month   = $date->month;
             $year    = $date->year;
@@ -187,6 +203,8 @@ class DashboardController extends Controller
             'activeContracts'        => $activeContracts,
             'totalRenters'           => $totalRenters,
             'newRenterRequests'      => $newRenterRequests,
+            'pendingTenantRequests'  => $pendingTenantRequests,
+            'recentTenantRequests'   => $recentTenantRequests,
             'monthlyRevenue'         => $monthlyRevenue,
             'previousMonthRevenue'   => $previousMonthRevenue,
             'revenueChangePercent'   => $revenueChangePercent,

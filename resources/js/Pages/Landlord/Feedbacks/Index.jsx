@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function Index({ feedbacks }) {
     const { systemSettings } = usePage().props;
@@ -8,6 +9,7 @@ export default function Index({ feedbacks }) {
     const [editingId, setEditingId] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [expandedId, setExpandedId] = useState(null);
+    const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
 
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
@@ -81,11 +83,14 @@ export default function Index({ feedbacks }) {
 
     const handleDeleteClick = (id, e) => {
         e.stopPropagation(); // Ngăn hành vi expand dòng khi bấm xóa
-        if (confirm('Bạn có chắc chắn muốn xóa phản hồi này không?')) {
-            router.delete(route('landlord.feedbacks.destroy', id), {
-                preserveScroll: true
-            });
-        }
+        setConfirmDelete({ show: true, id });
+    };
+
+    const executeDelete = () => {
+        router.delete(route('landlord.feedbacks.destroy', confirmDelete.id), {
+            preserveScroll: true,
+            onFinish: () => setConfirmDelete({ show: false, id: null }),
+        });
     };
 
     const handleSubmit = (e) => {
@@ -392,6 +397,15 @@ export default function Index({ feedbacks }) {
                     </div>
                 </div>
             )}
+            <ConfirmModal
+                show={confirmDelete.show}
+                onClose={() => setConfirmDelete({ show: false, id: null })}
+                onConfirm={executeDelete}
+                title="Xóa phản hồi"
+                message="Bạn có chắc chắn muốn xóa phản hồi này không?"
+                confirmText="Xóa"
+                type="danger"
+            />
         </div>
     );
 }

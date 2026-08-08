@@ -13,6 +13,9 @@ use Carbon\Carbon;
 
 class AdminDashboardController extends Controller
 {
+    /**
+     * Hiển thị bảng điều khiển tổng quan Admin (Thống kê doanh thu, chủ trọ, biểu đồ 12 tháng, gói cước bán chạy)
+     */
     public function index()
     {
         // 1. Thống kê các chỉ số cốt lõi

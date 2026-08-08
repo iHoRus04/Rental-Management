@@ -3,7 +3,14 @@ import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 export default function Index() {
-    const { houses = [], meterLogs = [], rooms = [] } = usePage().props;
+    const { houses = [], meterLogs = [], rooms = [], auth } = usePage().props;
+
+    // Check permissions
+    const user = auth?.user;
+    const isLandlord = user?.role === 'landlord';
+    const userPerms = auth?.permissions || user?.permissions || [];
+    const canCreate = isLandlord || userPerms.includes('meter_logs.create');
+    const canEdit = isLandlord || userPerms.includes('meter_logs.edit');
 
     // State
     const [selectedHouse, setSelectedHouse] = useState(null);
@@ -340,21 +347,25 @@ export default function Index() {
                                                         >
                                                             Xem chi tiết
                                                         </Link>
-                                                        <Link
-                                                            href={route('landlord.meter-logs.edit', log.id)}
-                                                            className="px-3 py-2 bg-white border border-gray-200 hover:border-blue-500 hover:text-blue-600 text-gray-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center"
-                                                            title="Chỉnh sửa"
-                                                        >
-                                                            ✏️
-                                                        </Link>
+                                                        {canEdit && (
+                                                            <Link
+                                                                href={route('landlord.meter-logs.edit', log.id)}
+                                                                className="px-3 py-2 bg-white border border-gray-200 hover:border-blue-500 hover:text-blue-600 text-gray-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center"
+                                                                title="Chỉnh sửa"
+                                                            >
+                                                                ✏️
+                                                            </Link>
+                                                        )}
                                                     </>
                                                 ) : (
-                                                    <Link
-                                                        href={`${route('landlord.meter-logs.create')}?room_id=${room.id}&month=${filterMonth}&year=${filterYear}`}
-                                                        className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-center rounded-xl text-xs shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
-                                                    >
-                                                        + Ghi chỉ số mới
-                                                    </Link>
+                                                    canCreate && (
+                                                        <Link
+                                                            href={`${route('landlord.meter-logs.create')}?room_id=${room.id}&month=${filterMonth}&year=${filterYear}`}
+                                                            className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-center rounded-xl text-xs shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
+                                                        >
+                                                            + Ghi chỉ số mới
+                                                        </Link>
+                                                    )
                                                 )}
                                             </div>
                                         </div>

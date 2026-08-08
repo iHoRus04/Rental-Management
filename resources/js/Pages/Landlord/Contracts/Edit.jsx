@@ -1,5 +1,26 @@
+import { useState } from 'react';
 import { Link, useForm, usePage, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+
+const isoToVn = (isoStr) => {
+    if (!isoStr) return '';
+    const parts = isoStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return isoStr;
+};
+
+const vnToIso = (vnStr) => {
+    if (!vnStr) return '';
+    const cleanStr = vnStr.trim();
+    const parts = cleanStr.includes('/') ? cleanStr.split('/') : cleanStr.split('-');
+    if (parts.length === 3 && parts[0].length <= 2 && parts[2].length === 4) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+    }
+    return cleanStr;
+};
 
 export default function Edit() {
     const { room, contract, renterRequests } = usePage().props;
@@ -11,10 +32,16 @@ export default function Edit() {
         return date.toISOString().split('T')[0];
     };
 
+    const initialStartIso = formatDateForInput(contract.start_date);
+    const initialEndIso = formatDateForInput(contract.end_date);
+
+    const [startDateVn, setStartDateVn] = useState(isoToVn(initialStartIso));
+    const [endDateVn, setEndDateVn] = useState(isoToVn(initialEndIso));
+
     const { data, setData, put, processing, errors } = useForm({
         renter_request_id: contract.renter_request_id,
-        start_date: formatDateForInput(contract.start_date),
-        end_date: formatDateForInput(contract.end_date),
+        start_date: initialStartIso,
+        end_date: initialEndIso,
         monthly_rent: contract.monthly_rent,
         deposit: contract.deposit,
         payment_date: contract.payment_date,
@@ -118,23 +145,83 @@ export default function Edit() {
                                 {/* Thời hạn */}
                                 <div className="col-span-2 grid grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày bắt đầu</label>
-                                        <input
-                                            type="date"
-                                            value={data.start_date}
-                                            onChange={e => setData('start_date', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-                                        />
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Ngày bắt đầu <span className="text-xs font-normal text-emerald-600">(Nhập: Ngày/Tháng/Năm)</span>
+                                        </label>
+                                        <div className="relative flex items-center">
+                                            <input
+                                                type="text"
+                                                placeholder="DD/MM/YYYY (Ví dụ: 03/08/2026)"
+                                                value={startDateVn}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setStartDateVn(val);
+                                                    const iso = vnToIso(val);
+                                                    if (iso && iso.length === 10) {
+                                                        setData('start_date', iso);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    if (data.start_date) {
+                                                        setStartDateVn(isoToVn(data.start_date));
+                                                    }
+                                                }}
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-medium pr-12"
+                                            />
+                                            <input
+                                                type="date"
+                                                value={data.start_date}
+                                                onChange={e => {
+                                                    setData('start_date', e.target.value);
+                                                    setStartDateVn(isoToVn(e.target.value));
+                                                }}
+                                                className="absolute right-3 w-6 h-6 opacity-0 cursor-pointer z-10"
+                                            />
+                                            <div className="absolute right-3 pointer-events-none text-emerald-600">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            </div>
+                                        </div>
                                         {errors.start_date && <p className="text-red-500 text-sm mt-1">{errors.start_date}</p>}
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Ngày kết thúc</label>
-                                        <input
-                                            type="date"
-                                            value={data.end_date}
-                                            onChange={e => setData('end_date', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-                                        />
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            Ngày kết thúc <span className="text-xs font-normal text-emerald-600">(Nhập: Ngày/Tháng/Năm)</span>
+                                        </label>
+                                        <div className="relative flex items-center">
+                                            <input
+                                                type="text"
+                                                placeholder="DD/MM/YYYY (Ví dụ: 03/08/2027)"
+                                                value={endDateVn}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setEndDateVn(val);
+                                                    const iso = vnToIso(val);
+                                                    if (iso && iso.length === 10) {
+                                                        setData('end_date', iso);
+                                                    } else if (!val) {
+                                                        setData('end_date', '');
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    if (data.end_date) {
+                                                        setEndDateVn(isoToVn(data.end_date));
+                                                    }
+                                                }}
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none font-medium pr-12"
+                                            />
+                                            <input
+                                                type="date"
+                                                value={data.end_date}
+                                                onChange={e => {
+                                                    setData('end_date', e.target.value);
+                                                    setEndDateVn(isoToVn(e.target.value));
+                                                }}
+                                                className="absolute right-3 w-6 h-6 opacity-0 cursor-pointer z-10"
+                                            />
+                                            <div className="absolute right-3 pointer-events-none text-emerald-600">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            </div>
+                                        </div>
                                         {errors.end_date && <p className="text-red-500 text-sm mt-1">{errors.end_date}</p>}
                                     </div>
                                 </div>

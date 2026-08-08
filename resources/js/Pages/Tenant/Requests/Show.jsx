@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import ConfirmModal from '@/Components/ConfirmModal';
+import AlertModal from '@/Components/AlertModal';
 
 export default function TenantRequestShow({ auth, request }) {
     const [showRejectForm, setShowRejectForm] = useState(false);
+    const [confirmClose, setConfirmClose] = useState(false);
+    const [alertState, setAlertState] = useState({ show: false, title: 'Thông báo', message: '', type: 'warning' });
 
     const rejectForm = useForm({
         reject_reason: '',
@@ -52,15 +56,17 @@ export default function TenantRequestShow({ auth, request }) {
     };
 
     const handleConfirmClose = () => {
-        if (confirm('Bạn có chắc chắn muốn xác nhận hoàn tất sửa chữa và đóng yêu cầu này không?')) {
-            router.post(route('tenant.requests.close', request.id));
-        }
+        setConfirmClose(true);
+    };
+
+    const executeClose = () => {
+        router.post(route('tenant.requests.close', request.id));
     };
 
     const handleRejectSubmit = (e) => {
         e.preventDefault();
         if (!rejectForm.data.reject_reason.trim()) {
-            alert('Vui lòng nhập lý do từ chối nghiệm thu.');
+            setAlertState({ show: true, title: 'Thiếu thông tin', message: 'Vui lòng nhập lý do từ chối nghiệm thu.', type: 'warning' });
             return;
         }
         rejectForm.post(route('tenant.requests.reject', request.id), {
@@ -287,6 +293,24 @@ export default function TenantRequestShow({ auth, request }) {
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                show={confirmClose}
+                onClose={() => setConfirmClose(false)}
+                onConfirm={executeClose}
+                title="Xác nhận hoàn tất"
+                message="Bạn có chắc chắn muốn xác nhận hoàn tất sửa chữa và đóng yêu cầu này không?"
+                confirmText="Xác nhận đóng"
+                type="info"
+            />
+
+            <AlertModal
+                show={alertState.show}
+                onClose={() => setAlertState({ ...alertState, show: false })}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+            />
         </TenantLayout>
     );
 }

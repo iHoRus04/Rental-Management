@@ -1,11 +1,18 @@
 import { Link, usePage, router, Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function Index() {
-    const { reminders, filters, houses = [], selectedHouse = null } = usePage().props;
+    const { reminders, filters, houses = [], selectedHouse = null, auth } = usePage().props;
+    const user = auth?.user;
+    const isLandlord = user?.role === 'landlord';
+    const userPerms = auth?.permissions || user?.permissions || [];
+    const canDeleteReminder = isLandlord || userPerms.includes('reminders.delete');
+
     const [selectedType, setSelectedType] = useState(filters?.type || 'all');
     const [selectedStatus, setSelectedStatus] = useState(filters?.status || 'all');
+    const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
 
     // Auto-refresh logic remains the same
     useEffect(() => {
@@ -45,9 +52,13 @@ export default function Index() {
     };
 
     const handleDelete = (reminderId) => {
-        if (confirm('Bạn có chắc muốn xóa nhắc nhở này?')) {
-            router.delete(route('landlord.reminders.destroy', reminderId));
-        }
+        setConfirmDelete({ show: true, id: reminderId });
+    };
+
+    const executeDelete = () => {
+        router.delete(route('landlord.reminders.destroy', confirmDelete.id), {
+            onFinish: () => setConfirmDelete({ show: false, id: null }),
+        });
     };
 
     const getTypeConfig = (type) => {
@@ -193,7 +204,7 @@ export default function Index() {
                             </div>
                         </div>
 
-                        {/* REMINDERS LIST */}
+                        {/* REMINDERS TABLE LIST */}
                         {reminders.data.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[24px] border border-gray-100 shadow-sm">
                                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300">
@@ -202,67 +213,135 @@ export default function Index() {
                                 <p className="text-gray-500 font-medium">Không có nhắc nhở nào cần xử lý ở nhà này.</p>
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                {reminders.data.map((reminder) => {
-                                    const typeConfig = getTypeConfig(reminder.type);
-                                    const isOverdue = new Date(reminder.reminder_date) <= new Date() && !reminder.is_sent;
-                                    const isSent = reminder.is_sent;
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-100">
+                                            <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                                            <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ngày & Loại</th>
+                                            <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nội dung nhắc nhở</th>
+                                            <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Phòng & Khách thuê</th>
+                                            <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {reminders.data.map((reminder) => {
+                                            const typeConfig = getTypeConfig(reminder.type);
+                                            const isOverdue = new Date(reminder.reminder_date) <= new Date() && !reminder.is_sent;
+                                            const isSent = reminder.is_sent;
 
-                                    return (
-                                        <div
-                                            key={reminder.id}
-                                            className={`group bg-white rounded-2xl p-5 border shadow-sm transition-all duration-300 flex flex-col md:flex-row items-start md:items-center gap-4 ${isOverdue ? 'border-rose-200 hover:border-rose-300 hover:shadow-rose-100' :
-                                                    isSent ? 'border-gray-100 opacity-75 hover:opacity-100' : 'border-gray-100 hover:border-emerald-200 hover:shadow-emerald-50'
-                                                }`}
-                                        >
-                                            {/* Left Status Bar */}
-                                            <div className={`w-1.5 h-12 rounded-full flex-shrink-0 hidden md:block ${isSent ? 'bg-gray-300' :
-                                                    isOverdue ? 'bg-rose-500' : 'bg-emerald-500'
-                                                }`}></div>
+                                            return (
+                                                <tr key={reminder.id} className="hover:bg-gray-50/70 transition-colors group">
+                                                    {/* Trạng thái (Status Badge) */}
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {isSent ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                                                                Đã hoàn thành
+                                                            </span>
+                                                        ) : isOverdue ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100 animate-pulse">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block"></span>
+                                                                Quá hạn xử lý
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span>
+                                                                Chưa xử lý
+                                                            </span>
+                                                        )}
+                                                    </td>
 
-                                            {/* 1. Date & Type */}
-                                            <div className="flex items-center gap-4 min-w-[180px]">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${isSent ? 'bg-gray-100 text-gray-400' :
-                                                        isOverdue ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'
-                                                    }`}>
-                                                    <span className="font-bold text-lg">{new Date(reminder.reminder_date).getDate()}</span>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">
-                                                        Tháng {new Date(reminder.reminder_date).getMonth() + 1}
-                                                    </p>
-                                                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${typeConfig.bg} ${typeConfig.text}`}>
-                                                        <span>{typeConfig.icon}</span> {typeConfig.label}
-                                                    </span>
-                                                </div>
-                                            </div>
+                                                    {/* Ngày & Loại */}
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center font-bold text-xs flex-shrink-0 ${
+                                                                isSent ? 'bg-gray-100 text-gray-500 border border-gray-200' :
+                                                                isOverdue ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                                            }`}>
+                                                                <span className="text-sm leading-none font-black">{new Date(reminder.reminder_date).getDate()}</span>
+                                                                <span className="text-[9px] opacity-75 font-semibold mt-0.5">T{new Date(reminder.reminder_date).getMonth() + 1}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${typeConfig.bg} ${typeConfig.text}`}>
+                                                                    <span>{typeConfig.icon}</span> {typeConfig.label}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
 
-                                            {/* 2. Content (Middle) */}
-                                            <div className="flex-grow">
-                                                <h3 className={`font-bold text-lg ${isSent ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                                                    {reminder.message || 'Không có nội dung'}
-                                                </h3>
-                                                <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                                                    <span>Phòng {reminder.contract.room.name}</span>
-                                                    <span className="text-gray-300">•</span>
-                                                    <span className="truncate max-w-[150px]">{reminder.contract.renter_request?.name || 'Không tên'}</span>
-                                                </div>
-                                            </div>
+                                                    {/* Nội dung */}
+                                                    <td className="px-6 py-4">
+                                                        <p className={`text-sm font-semibold leading-relaxed ${isSent ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                                            {reminder.message || 'Không có nội dung'}
+                                                        </p>
+                                                    </td>
 
-                                            {/* 3. Actions (Right) */}
-                                            <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-none border-gray-50 pt-4 lg:pt-0 mt-2 lg:mt-0">
-                                                <Link
-                                                    href={route('landlord.reminders.show', reminder.id)}
-                                                    className="px-4 py-2 bg-gray-50 text-gray-600 rounded-lg font-bold text-sm hover:bg-emerald-50 hover:text-emerald-600 transition-colors flex items-center gap-2"
-                                                >
-                                                    Chi tiết
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                                    {/* Phòng & Khách thuê */}
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2 text-xs font-medium">
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-100 rounded-lg font-bold">
+                                                                🏠 {reminder.contract?.room?.name ? (reminder.contract.room.name.toLowerCase().startsWith('phòng') ? reminder.contract.room.name : `Phòng ${reminder.contract.room.name}`) : 'N/A'}
+                                                            </span>
+                                                            <span className="text-gray-300">•</span>
+                                                            <span className="text-gray-700 font-semibold">
+                                                                {reminder.contract?.renter_request?.name || 'Chưa rõ'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Thao tác */}
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            {!isSent ? (
+                                                                <button
+                                                                    onClick={() => handleMarkAsSent(reminder.id)}
+                                                                    className="p-2 rounded-lg text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 transition-all hover:scale-110"
+                                                                    title="Đánh dấu đã hoàn thành"
+                                                                >
+                                                                    {/* Check Circle Icon */}
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                </button>
+                                                            ) : (
+                                                                <span className="p-2 rounded-lg text-emerald-500 cursor-default" title="Đã hoàn thành">
+                                                                    {/* Check Circle Solid Icon */}
+                                                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                                                        <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+                                                                    </svg>
+                                                                </span>
+                                                            )}
+
+                                                            <Link
+                                                                href={route('landlord.reminders.show', reminder.id)}
+                                                                className="p-2 rounded-lg text-gray-400 hover:bg-teal-50 hover:text-teal-600 transition-all hover:scale-110"
+                                                                title="Xem chi tiết"
+                                                            >
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                </svg>
+                                                            </Link>
+
+                                                            {canDeleteReminder && (
+                                                                <button
+                                                                    onClick={() => handleDelete(reminder.id)}
+                                                                    className="p-2 rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-500 transition-all hover:scale-110"
+                                                                    title="Xóa"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
 
@@ -296,6 +375,15 @@ export default function Index() {
                     </>
                 )}
             </div>
+            <ConfirmModal
+                show={confirmDelete.show}
+                onClose={() => setConfirmDelete({ show: false, id: null })}
+                onConfirm={executeDelete}
+                title="Xóa nhắc nhở"
+                message="Bạn có chắc muốn xóa nhắc nhở này?"
+                confirmText="Xóa"
+                type="danger"
+            />
         </div>
     );
 }

@@ -9,6 +9,9 @@ use Inertia\Inertia;
 
 class AdminPackageController extends Controller
 {
+    /**
+     * Hiển thị danh sách các gói dịch vụ/gói cước đăng ký của hệ thống
+     */
     public function index()
     {
         $packages = Package::all();
@@ -17,6 +20,9 @@ class AdminPackageController extends Controller
         ]);
     }
 
+    /**
+     * Tạo gói dịch vụ mới (giá cước, hạn mức số phòng, thời hạn)
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -48,6 +54,9 @@ class AdminPackageController extends Controller
         return redirect()->back()->with('success', 'Gói cước mới đã được tạo thành công.');
     }
 
+    /**
+     * Cập nhật thông tin gói dịch vụ
+     */
     public function update(Request $request, Package $package)
     {
         $validated = $request->validate([
@@ -79,6 +88,9 @@ class AdminPackageController extends Controller
         return redirect()->back()->with('success', "Gói cước {$package->name} đã được cập nhật thành công.");
     }
 
+    /**
+     * Xóa gói dịch vụ (nếu gói đang có người dùng đăng ký active thì tự chuyển sang ẩn is_active = false)
+     */
     public function destroy(Package $package)
     {
         // Kiểm tra xem có subscription nào đang dùng gói này không

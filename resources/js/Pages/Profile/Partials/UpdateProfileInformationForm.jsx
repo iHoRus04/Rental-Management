@@ -22,6 +22,12 @@ const Mail = (props) => (
     </Icon>
 );
 
+const Phone = (props) => (
+    <Icon {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+    </Icon>
+);
+
 const Save = (props) => (
     <Icon {...props} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M5 4h14v16H5z" />
@@ -54,6 +60,7 @@ export default function UpdateProfileInformation({
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({
             name: user.name,
+            phone: user.phone || '',
             email: user.email,
         });
 
@@ -94,6 +101,26 @@ export default function UpdateProfileInformation({
                         <User className="absolute right-3 top-3 w-5 h-5 text-slate-400 pointer-events-none" />
                     </div>
                     <InputError message={errors.name} className="mt-2" />
+                </div>
+
+                {/* Phone Input */}
+                <div>
+                    <label htmlFor="phone" className="block text-sm font-bold text-slate-700 mb-2">
+                        Số điện thoại
+                    </label>
+                    <div className="relative">
+                        <input
+                            id="phone"
+                            type="text"
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-sm text-slate-800"
+                            value={data.phone}
+                            onChange={(e) => setData('phone', e.target.value)}
+                            autoComplete="tel"
+                            placeholder="0912345678"
+                        />
+                        <Phone className="absolute right-3 top-3 w-5 h-5 text-slate-400 pointer-events-none" />
+                    </div>
+                    <InputError message={errors.phone} className="mt-2" />
                 </div>
 
                 {/* Email Input */}

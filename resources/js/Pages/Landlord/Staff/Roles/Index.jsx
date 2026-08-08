@@ -1,6 +1,8 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
+import AlertModal from '@/Components/AlertModal';
 
 const MODULE_LABELS = {
     houses: 'Quản lý nhà trọ',
@@ -13,11 +15,9 @@ const MODULE_LABELS = {
     tenant_requests: 'Yêu cầu người thuê',
     reminders: 'Nhắc nhở',
     services: 'Dịch vụ',
-    reports: 'Báo cáo',
 };
 
 const ACTION_LABELS = { view: 'Xem', create: 'Tạo', edit: 'Sửa', delete: 'Xóa' };
-const REPORT_ONLY_VIEW = ['reports'];
 
 // ─── Permission Matrix ────────────────────────────────────────────────────────
 function PermissionMatrix({ permissions, onChange, readOnly = false }) {
@@ -33,7 +33,7 @@ function PermissionMatrix({ permissions, onChange, readOnly = false }) {
 
     const toggleModule = (module) => {
         if (readOnly) return;
-        const actions = REPORT_ONLY_VIEW.includes(module) ? ['view'] : Object.keys(ACTION_LABELS);
+        const actions = Object.keys(ACTION_LABELS);
         const perms = actions.map(a => `${module}.${a}`);
         const allChecked = perms.every(p => permSet.has(p));
         const next = new Set(permSet);
@@ -56,7 +56,7 @@ function PermissionMatrix({ permissions, onChange, readOnly = false }) {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                     {modules.map(module => {
-                        const actions = REPORT_ONLY_VIEW.includes(module) ? ['view'] : Object.keys(ACTION_LABELS);
+                        const actions = Object.keys(ACTION_LABELS);
                         const perms = actions.map(a => `${module}.${a}`);
                         const allChecked = perms.every(p => permSet.has(p));
                         const someChecked = perms.some(p => permSet.has(p));
@@ -78,20 +78,15 @@ function PermissionMatrix({ permissions, onChange, readOnly = false }) {
                                 </td>
                                 {Object.keys(ACTION_LABELS).map(action => {
                                     const perm = `${module}.${action}`;
-                                    const notApplicable = REPORT_ONLY_VIEW.includes(module) && action !== 'view';
                                     return (
                                         <td key={action} className="text-center px-4 py-3">
-                                            {notApplicable ? (
-                                                <span className="text-gray-200 text-lg select-none">—</span>
-                                            ) : (
-                                                <input
-                                                    type="checkbox"
-                                                    checked={permSet.has(perm)}
-                                                    onChange={() => toggle(perm)}
-                                                    disabled={readOnly}
-                                                    className={`w-4 h-4 rounded accent-emerald-500 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
-                                                />
-                                            )}
+                                            <input
+                                                type="checkbox"
+                                                checked={permSet.has(perm)}
+                                                onChange={() => toggle(perm)}
+                                                disabled={readOnly}
+                                                className={`w-4 h-4 rounded accent-emerald-500 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
+                                            />
                                         </td>
                                     );
                                 })}
@@ -111,8 +106,8 @@ function RoleCard({ role, isSelected, onClick }) {
             type="button"
             onClick={onClick}
             className={`w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all duration-200 ${isSelected
-                    ? 'border-emerald-400 bg-emerald-50'
-                    : 'border-gray-100 bg-white hover:border-emerald-200 hover:bg-emerald-50/40'
+                ? 'border-emerald-400 bg-emerald-50'
+                : 'border-gray-100 bg-white hover:border-emerald-200 hover:bg-emerald-50/40'
                 }`}
         >
             <div className="flex items-center justify-between mb-1">
@@ -148,8 +143,7 @@ function CreateRoleForm({ onCancel }) {
     };
 
     const countSelected = form.permissions.length;
-    const totalPerms = Object.keys(MODULE_LABELS).reduce((acc, m) =>
-        acc + (REPORT_ONLY_VIEW.includes(m) ? 1 : Object.keys(ACTION_LABELS).length), 0);
+    const totalPerms = Object.keys(MODULE_LABELS).length * Object.keys(ACTION_LABELS).length;
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -227,18 +221,24 @@ function EditRolePanel({ role, onClose }) {
         });
     };
 
+    const [showAlertInUse, setShowAlertInUse] = useState(false);
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
     const handleDelete = () => {
         if (role.staff_count > 0) {
-            alert(`Không thể xóa: vai trò này đang được ${role.staff_count} nhân viên sử dụng.`);
+            setShowAlertInUse(true);
             return;
         }
-        if (!confirm(`Xóa vai trò "${role.name}"?`)) return;
+        setShowConfirmDelete(true);
+    };
+
+    const executeDelete = () => {
+        setShowConfirmDelete(false);
         router.delete(route('landlord.staff-roles.destroy', role.id));
     };
 
     const countSelected = form.permissions.length;
-    const totalPerms = Object.keys(MODULE_LABELS).reduce((acc, m) =>
-        acc + (REPORT_ONLY_VIEW.includes(m) ? 1 : Object.keys(ACTION_LABELS).length), 0);
+    const totalPerms = Object.keys(MODULE_LABELS).length * Object.keys(ACTION_LABELS).length;
 
     return (
         <form onSubmit={handleUpdate} className="space-y-6">
@@ -305,6 +305,22 @@ function EditRolePanel({ role, onClose }) {
                     </button>
                 </div>
             </div>
+            <AlertModal
+                show={showAlertInUse}
+                onClose={() => setShowAlertInUse(false)}
+                title="Không thể xóa"
+                message={`Vai trò này đang được ${role.staff_count} nhân viên sử dụng. Vui lòng gỡ vai trò khỏi tất cả nhân viên trước khi xóa.`}
+                type="error"
+            />
+            <ConfirmModal
+                show={showConfirmDelete}
+                onClose={() => setShowConfirmDelete(false)}
+                onConfirm={executeDelete}
+                title="Xóa vai trò"
+                message={`Bạn có chắc chắn muốn xóa vai trò "${role.name}"?`}
+                confirmText="Xóa"
+                type="danger"
+            />
         </form>
     );
 }

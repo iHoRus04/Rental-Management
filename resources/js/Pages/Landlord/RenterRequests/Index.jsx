@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function RenterRequestsIndex({ auth, requests = [], houses = [] }) {
+    const user = auth?.user;
+    const isLandlord = user?.role === 'landlord';
+    const userPerms = auth?.permissions || user?.permissions || [];
+    const canCreateRenter = isLandlord || userPerms.includes('renter_requests.create');
+    const canEditRenter = isLandlord || userPerms.includes('renter_requests.edit');
+
     const [selectedHouse, setSelectedHouse] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('all'); // 'all' | 'new' | 'renting' | 'former' | 'archived'
+    const [confirmArchive, setConfirmArchive] = useState({ show: false, id: null });
 
     const requestsArray = Array.isArray(requests) ? requests : [];
 
@@ -180,13 +188,15 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                                         </p>
                                     </div>
 
-                                    <Link
-                                        href={route('landlord.renter-requests.create')}
-                                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                        Tạo yêu cầu mới
-                                    </Link>
+                                    {canCreateRenter && (
+                                        <Link
+                                            href={route('landlord.renter-requests.create')}
+                                            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                            Tạo yêu cầu mới
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -367,20 +377,16 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                                                             </Link>
 
                                                             {/* Archive Button */}
-                                                            <Link
-                                                                href={route('landlord.renter-requests.destroy', request.id)}
-                                                                method="delete"
-                                                                as="button"
-                                                                onClick={(e) => {
-                                                                    if (!confirm('Bạn có chắc chắn muốn di chuyển khách thuê/yêu cầu này vào mục lưu trữ không?')) {
-                                                                        e.preventDefault();
-                                                                    }
-                                                                }}
-                                                                className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
-                                                                title="Lưu trữ khách hàng"
-                                                            >
-                                                                Lưu trữ
-                                                            </Link>
+                                                            {canEditRenter && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setConfirmArchive({ show: true, id: request.id })}
+                                                                    className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                                                                    title="Lưu trữ khách hàng"
+                                                                >
+                                                                    Lưu trữ
+                                                                </button>
+                                                            )}
                                                         </>
                                                     )}
                                                 </div>
@@ -393,6 +399,20 @@ export default function RenterRequestsIndex({ auth, requests = [], houses = [] }
                     </>
                 )}
             </div>
+
+            <ConfirmModal
+                show={confirmArchive.show}
+                onClose={() => setConfirmArchive({ show: false, id: null })}
+                onConfirm={() => {
+                    router.delete(route('landlord.renter-requests.destroy', confirmArchive.id), {
+                        onFinish: () => setConfirmArchive({ show: false, id: null }),
+                    });
+                }}
+                title="Lưu trữ yêu cầu"
+                message="Bạn có chắc chắn muốn di chuyển khách thuê/yêu cầu này vào mục lưu trữ không?"
+                confirmText="Lưu trữ"
+                type="danger"
+            />
         </div>
     );
 }

@@ -82,14 +82,20 @@ class BillController extends Controller
             return redirect()->back()->with('error', 'Hóa đơn này đã được thanh toán đầy đủ.');
         }
 
+        // Chuẩn hóa Nội dung chuyển khoản chuẩn VietQR
+        $houseName = $bill->room && $bill->room->house ? $bill->room->house->name : '';
+        $roomName = $bill->room ? $bill->room->name : '';
+        $rawContent = "THANH TOAN HD THANG {$bill->month} NAM {$bill->year} {$houseName} PHONG {$roomName}";
+        $transferContent = strtoupper(\Illuminate\Support\Str::slug($rawContent, ' '));
+
         // Tạo bản ghi Payment giả lập để lưu lại lịch sử thanh toán
         \App\Models\Payment::create([
             'bill_id' => $bill->id,
             'amount' => $remaining,
             'payment_date' => now(),
             'payment_method' => 'bank_transfer',
-            'reference' => 'Thanh toán giả lập (Tenant Test)',
-            'notes' => 'Thực hiện thanh toán trực tiếp qua chức năng TEST từ Tenant Portal.',
+            'reference' => $transferContent,
+            'notes' => $transferContent,
             'bank_transaction_code' => 'TESTPAY' . time(),
             'verified_by' => null,
         ]);
@@ -99,6 +105,28 @@ class BillController extends Controller
         $bill->status = 'paid';
         $bill->save();
 
-        return redirect()->back()->with('success', 'Thanh toán giả lập hóa đơn thành công!');
+        // Tự động tạo Nhắc nhở/Thông báo cho Chủ trọ
+        $roomName = $bill->room ? $bill->room->name : 'Phòng thuê';
+        \App\Models\Reminder::create([
+            'contract_id' => $bill->contract_id,
+            'bill_id' => $bill->id,
+            'type' => 'bill_payment',
+            'reminder_date' => now(),
+            'message' => "Khách thuê {$user->name} ({$roomName}) đã chuyển khoản thanh toán " . number_format($remaining, 0, ',', '.') . "đ cho Hóa đơn Tháng {$bill->month}/{$bill->year}.",
+            'is_sent' => false,
+        ]);
+
+        // Tự động gửi Email Biên lai xác nhận thanh toán cho Khách thuê
+        $recipientEmail = $user->email ?? ($bill->renterRequest ? $bill->renterRequest->email : null);
+        if ($recipientEmail) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($recipientEmail)
+                    ->send(new \App\Mail\BillPaidMail($bill));
+            } catch (\Exception $e) {
+                // Tránh gián đoạn giao dịch nếu cấu hình Mail chưa gửi được trong môi trường dev
+            }
+        }
+
+        return redirect()->back()->with('success', 'Thanh toán giả lập hóa đơn thành công! Đã gửi thông báo cho Chủ trọ và gửi Email biên lai cho bạn.');
     }
 }

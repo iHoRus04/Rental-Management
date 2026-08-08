@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function RenterRequestShow({ auth, renterRequest, hasActiveContract, tenantAccount }) {
     const { props } = usePage();
     const csrfToken = props?.csrf_token || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const [confirmStatus, setConfirmStatus] = useState({ show: false, status: null });
     
     // Check if renterRequest data exists
     if (!renterRequest) {
@@ -41,14 +43,17 @@ export default function RenterRequestShow({ auth, renterRequest, hasActiveContra
     const statusConfig = getStatusConfig(renterRequest.status);
 
     const updateStatus = (status) => {
-        if (confirm(`Bạn có chắc chắn muốn chuyển trạng thái thành "${getStatusConfig(status).label}"?`)) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = route('landlord.renter-requests.update-status', [renterRequest.id, status]);
-            form.innerHTML = `<input type="hidden" name="_token" value="${csrfToken}">`;
-            document.body.appendChild(form);
-            form.submit();
-        }
+        setConfirmStatus({ show: true, status });
+    };
+
+    const executeUpdateStatus = () => {
+        const status = confirmStatus.status;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = route('landlord.renter-requests.update-status', [renterRequest.id, status]);
+        form.innerHTML = `<input type="hidden" name="_token" value="${csrfToken}">`;
+        document.body.appendChild(form);
+        form.submit();
     };
 
     return (
@@ -327,6 +332,16 @@ export default function RenterRequestShow({ auth, renterRequest, hasActiveContra
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                show={confirmStatus.show}
+                onClose={() => setConfirmStatus({ show: false, status: null })}
+                onConfirm={executeUpdateStatus}
+                title="Chuyển trạng thái"
+                message={`Bạn có chắc chắn muốn chuyển trạng thái thành "${getStatusConfig(confirmStatus.status || '').label}"?`}
+                confirmText="Xác nhận"
+                type="info"
+            />
         </div>
     );
 }

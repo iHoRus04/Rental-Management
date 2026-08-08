@@ -1,11 +1,20 @@
 import { Link, usePage, router, Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ConfirmModal from '@/Components/ConfirmModal';
+import AlertModal from '@/Components/AlertModal';
 
 export default function Show() {
-    const { house, room, activeContract, allServices = [] } = usePage().props;
+    const { house, room, activeContract, allServices = [], auth } = usePage().props;
+    const user = auth?.user;
+    const isLandlord = user?.role === 'landlord';
+    const userPerms = auth?.permissions || user?.permissions || [];
+    const canEditRoom = isLandlord || userPerms.includes('rooms.edit');
     const [selectedImage, setSelectedImage] = useState(null);
     const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+    const [confirmDetach, setConfirmDetach] = useState({ show: false, pivotId: null });
+    const [confirmRemoveImg, setConfirmRemoveImg] = useState({ show: false, index: null });
+    const [errorAlert, setErrorAlert] = useState({ show: false, message: '' });
 
     // Filter room services and available system services
     const roomServices = room.services || [];
@@ -22,16 +31,17 @@ export default function Show() {
     const handleSelectServiceChange = (e) => {
         const selectedId = e.target.value;
         const found = allServices.find(s => String(s.id) === String(selectedId));
-        setServiceForm({
+        setServiceForm(data => ({
+            ...data,
             service_id: selectedId,
             price: found ? found.default_price : '',
             note: '',
-        });
+        }));
     };
 
     const handleAttachServiceSubmit = (e) => {
         e.preventDefault();
-        postService(route('rooms.services.attach', room.id), {
+        postService(route('landlord.rooms.services.attach', room.id), {
             onSuccess: () => {
                 setShowAddServiceModal(false);
                 resetServiceForm();
@@ -40,9 +50,13 @@ export default function Show() {
     };
 
     const handleDetachService = (pivotId) => {
-        if (confirm('Bạn có chắc muốn gỡ dịch vụ này khỏi phòng?')) {
-            router.delete(route('room-services.detach', pivotId));
-        }
+        setConfirmDetach({ show: true, pivotId });
+    };
+
+    const executeDetach = () => {
+        router.delete(route('landlord.room-services.detach', confirmDetach.pivotId), {
+            onFinish: () => setConfirmDetach({ show: false, pivotId: null }),
+        });
     };
 
     const formatUnit = (unit) => {
@@ -71,16 +85,21 @@ export default function Show() {
     const statusInfo = formatStatus(room.status);
 
     const removeImage = (index) => {
-        if (confirm('Bạn có chắc muốn xóa hình ảnh này không?')) {
-            router.delete(
-                route('landlord.houses.rooms.removeImage', [house.id, room.id]),
-                {
-                    data: { index },
-                    onSuccess: () => { /* Auto reload */ },
-                    onError: (errors) => alert('Có lỗi xảy ra khi xóa hình ảnh'),
-                }
-            );
-        }
+        setConfirmRemoveImg({ show: true, index });
+    };
+
+    const executeRemoveImage = () => {
+        router.delete(
+            route('landlord.houses.rooms.removeImage', [house.id, room.id]),
+            {
+                data: { index: confirmRemoveImg.index },
+                onSuccess: () => setConfirmRemoveImg({ show: false, index: null }),
+                onError: () => {
+                    setConfirmRemoveImg({ show: false, index: null });
+                    setErrorAlert({ show: true, message: 'Có lỗi xảy ra khi xóa hình ảnh' });
+                },
+            }
+        );
     };
 
     return (
@@ -121,13 +140,15 @@ export default function Show() {
                                     {parseInt(room.price).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span className="text-sm font-semibold text-gray-400">₫/tháng</span>
                                 </p>
                             </div>
-                            <Link
-                                href={route('landlord.houses.rooms.edit', [house.id, room.id])}
-                                className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-100 hover:border-emerald-200 text-gray-700 hover:text-emerald-700 font-bold rounded-xl transition-all shadow-sm hover:shadow-md"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                Chỉnh sửa
-                            </Link>
+                            {canEditRoom && (
+                                <Link
+                                    href={route('landlord.houses.rooms.edit', [house.id, room.id])}
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-100 hover:border-emerald-200 text-gray-700 hover:text-emerald-700 font-bold rounded-xl transition-all shadow-sm hover:shadow-md"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    Chỉnh sửa
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -476,6 +497,31 @@ export default function Show() {
                     </div>
                 )}
             </div>
+            <ConfirmModal
+                show={confirmDetach.show}
+                onClose={() => setConfirmDetach({ show: false, pivotId: null })}
+                onConfirm={executeDetach}
+                title="Gỡ dịch vụ"
+                message="Bạn có chắc muốn gỡ dịch vụ này khỏi phòng?"
+                confirmText="Gỡ dịch vụ"
+                type="danger"
+            />
+            <ConfirmModal
+                show={confirmRemoveImg.show}
+                onClose={() => setConfirmRemoveImg({ show: false, index: null })}
+                onConfirm={executeRemoveImage}
+                title="Xóa hình ảnh"
+                message="Bạn có chắc muốn xóa hình ảnh này không?"
+                confirmText="Xóa"
+                type="danger"
+            />
+            <AlertModal
+                show={errorAlert.show}
+                onClose={() => setErrorAlert({ show: false, message: '' })}
+                title="Lỗi"
+                message={errorAlert.message}
+                type="error"
+            />
         </div>
     );
 }

@@ -69,43 +69,44 @@ class BillService
             $electricUsage = $meterLog ? $meterLog->electric_usage : 0;
             $waterUsage = $meterLog ? $meterLog->water_usage : 0;
 
-            // === Bước 2: Lấy room_services (active) ===
+            // === Bước 2: Lấy room_services (active) & Cấu hình giá nhà trọ ===
             $roomServices = $contract->room->services ?? collect();
             $house = $contract->room->house ?? null;
             
-            $electricPrice = 0;
-            $waterPrice = 0;
+            // Đơn giá mặc định lấy từ nhà trọ trước
+            $electricPrice = floatval($house->electric_price ?? 0);
+            $waterPrice = floatval($house->water_price ?? 0);
             $fixedServicesCost = 0;
             $serviceDetails = [];
 
             foreach ($roomServices as $service) {
-                $price = floatval($service->pivot->price ?? $service->default_price ?? 0);
+                $pivotPrice = floatval($service->pivot->price ?? 0);
+                $defaultPrice = floatval($service->default_price ?? 0);
+                $price = $pivotPrice > 0 ? $pivotPrice : $defaultPrice;
                 $unit = $service->unit;
 
                 if ($unit === 'kwh') {
-                    if ($house && $house->electric_price > 0) {
-                        $price = floatval($house->electric_price);
+                    if ($pivotPrice > 0) {
+                        $electricPrice = $pivotPrice;
                     }
-                    $electricPrice = $price;
                     $serviceDetails[] = [
                         'name' => $service->name,
                         'unit' => $unit,
-                        'unit_price' => $price,
+                        'unit_price' => $electricPrice,
                         'quantity' => $electricUsage,
-                        'total' => $electricUsage * $price,
+                        'total' => $electricUsage * $electricPrice,
                         'type' => 'electric',
                     ];
                 } elseif ($unit === 'm3') {
-                    if ($house && $house->water_price > 0) {
-                        $price = floatval($house->water_price);
+                    if ($pivotPrice > 0) {
+                        $waterPrice = $pivotPrice;
                     }
-                    $waterPrice = $price;
                     $serviceDetails[] = [
                         'name' => $service->name,
                         'unit' => $unit,
-                        'unit_price' => $price,
+                        'unit_price' => $waterPrice,
                         'quantity' => $waterUsage,
-                        'total' => $waterUsage * $price,
+                        'total' => $waterUsage * $waterPrice,
                         'type' => 'water',
                     ];
                 } else {
@@ -131,12 +132,14 @@ class BillService
                 'room_price' => $contract->monthly_rent,
                 'electric_unit_price' => $electricPrice,
                 'water_unit_price' => $waterPrice,
-                'services' => $roomServices->map(function ($s) use ($house) {
-                    $price = floatval($s->pivot->price ?? $s->default_price);
-                    if ($s->unit === 'kwh' && $house && $house->electric_price > 0) {
-                        $price = floatval($house->electric_price);
-                    } elseif ($s->unit === 'm3' && $house && $house->water_price > 0) {
-                        $price = floatval($house->water_price);
+                'services' => $roomServices->map(function ($s) use ($electricPrice, $waterPrice) {
+                    $pivotPrice = floatval($s->pivot->price ?? 0);
+                    $defaultPrice = floatval($s->default_price ?? 0);
+                    $price = $pivotPrice > 0 ? $pivotPrice : $defaultPrice;
+                    if ($s->unit === 'kwh') {
+                        $price = $electricPrice;
+                    } elseif ($s->unit === 'm3') {
+                        $price = $waterPrice;
                     }
                     return [
                         'id' => $s->id,
@@ -177,6 +180,16 @@ class BillService
 
             $bill->calculateTotal();
             $bill->save();
+
+            // Gửi email thông báo hóa đơn mới cho khách thuê (nếu có email)
+            if ($bill->renterRequest && !empty($bill->renterRequest->email)) {
+                try {
+                    \Illuminate\Support\Facades\Mail::to($bill->renterRequest->email)
+                        ->send(new \App\Mail\BillCreatedMail($bill));
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Lỗi gửi mail thông báo hóa đơn hàng loạt: ' . $e->getMessage());
+                }
+            }
 
             $billsCreated++;
         }
@@ -264,36 +277,24 @@ class BillService
     }
 
     /**
-     * Calculate due date for a bill based on contract start_date + payment_date (days offset)
+     * Tính toán ngày hết hạn thanh toán hóa đơn dựa trên trường payment_date của hợp đồng (ngày trong tháng)
      */
     private function calculateDueDate(Contract $contract, $year, $month)
     {
-        // If payment_date is set (interpreted as days offset from start_date)
-        if ($contract->payment_date !== null) {
+        if ($contract->payment_date !== null && $contract->payment_date > 0) {
             try {
-                $start = Carbon::parse($contract->start_date ?? Carbon::create($year, $month, 1));
+                $day = (int) $contract->payment_date;
+                $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+                $targetDay = min($day, $daysInMonth);
 
-                // payment_date is stored as integer; treat it as number of days to add
-                $offsetDays = (int) $contract->payment_date;
-
-                // Build a date in the target month/year using the start day, then add offset
-                $base = Carbon::create($year, $month, min($start->day, Carbon::create($year, $month, 1)->endOfMonth()->day));
-                $due = $base->copy()->addDays($offsetDays);
-
-                // Clamp to end of month if overflow
-                $endOfMonth = Carbon::create($year, $month, 1)->endOfMonth();
-                if ($due->gt($endOfMonth)) {
-                    $due = $endOfMonth;
-                }
-
-                return $due->toDateString();
+                return Carbon::create($year, $month, $targetDay)->toDateString();
             } catch (\Exception $e) {
-                // If anything goes wrong, fall back to next month's first day
+                // Nếu có lỗi, dùng mặc định ngày 10 hàng tháng
             }
         }
 
-        // Default: first day of month + 1 month (same behavior as before)
-        return Carbon::create($year, $month, 1)->addMonth()->toDateString();
+        // Mặc định: Ngày 10 của tháng đó
+        return Carbon::create($year, $month, 10)->toDateString();
     }
 
     /**

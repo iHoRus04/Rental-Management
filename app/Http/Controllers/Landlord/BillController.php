@@ -123,8 +123,11 @@ class BillController extends Controller
                 ];
             });
 
+        $houses = \App\Models\House::whereIn('id', $houseIds)->get(['id', 'name', 'address']);
+
         return Inertia::render('Landlord/Bills/Create', [
             'contracts' => $contracts,
+            'houses'    => $houses,
         ]);
     }
 
@@ -348,15 +351,23 @@ class BillController extends Controller
     }
 
     /**
-     * Xóa hóa đơn
+     * Xóa hóa đơn (có kiểm tra an toàn lịch sử thanh toán)
      */
     public function destroy(Bill $bill)
     {
         $this->authorizeBillAction($bill, 'delete');
+
+        // Ngăn xóa nếu hóa đơn đã có phát sinh lượt thanh toán
+        if ($bill->payments()->count() > 0 || $bill->paid_amount > 0) {
+            return redirect()->back()->with('error', 
+                "Không thể xóa! Hóa đơn này đã có lịch sử thanh toán ({$bill->payments()->count()} lượt thu tiền). Vui lòng xóa các phiếu thanh toán liên quan trước khi xóa hóa đơn."
+            );
+        }
+
         $bill->delete();
 
         return redirect()->route('landlord.bills.index')
-            ->with('success', 'Đã xóa hóa đơn');
+            ->with('success', 'Đã xóa hóa đơn thành công!');
     }
 
     /**
@@ -406,5 +417,83 @@ class BillController extends Controller
             ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
             ->header('Pragma', 'no-cache')
             ->header('Expires', '0');
+    }
+
+    /**
+     * Xuất danh sách hóa đơn ra file CSV / Excel
+     */
+    public function exportExcel(Request $request)
+    {
+        $user     = auth()->user();
+        $houseIds = $user->getAccessibleHouseIds();
+
+        $bills = Bill::with(['contract', 'room.house', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
+            ->latest()
+            ->get();
+
+        $filename = "danh_sach_hoa_don_" . date('Y_m_d_H_i') . ".csv";
+
+        $headers = [
+            "Content-Type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename=\"$filename\"",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use ($bills) {
+            $file = fopen('php://output', 'w');
+            
+            // Đặt BOM UTF-8 để Microsoft Excel mở trực tiếp không bị lỗi font Tiếng Việt
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // Tiêu đề các cột
+            fputcsv($file, [
+                'Mã Hóa Đơn',
+                'Nhà Trọ',
+                'Phòng',
+                'Khách Thuê',
+                'Tháng/Năm',
+                'Tiền Phòng (VNĐ)',
+                'Tiền Điện (VNĐ)',
+                'Tiền Nước (VNĐ)',
+                'Dịch Vụ Khác (VNĐ)',
+                'Tổng Tiền (VNĐ)',
+                'Trạng Thái',
+                'Hạn Thanh Toán'
+            ]);
+
+            foreach ($bills as $bill) {
+                $statusText = match($bill->status) {
+                    'paid' => 'Đã thanh toán',
+                    'pending' => 'Chưa thanh toán',
+                    'partial' => 'Thanh toán một phần',
+                    'overdue' => 'Quá hạn',
+                    default => $bill->status,
+                };
+
+                fputcsv($file, [
+                    'HD-' . str_pad($bill->id, 5, '0', STR_PAD_LEFT),
+                    $bill->room->house->name ?? 'N/A',
+                    $bill->room->name ?? 'N/A',
+                    $bill->renterRequest->name ?? 'N/A',
+                    $bill->month . '/' . $bill->year,
+                    number_format($bill->room_price ?? 0, 0, ',', '.'),
+                    number_format($bill->electric_cost ?? 0, 0, ',', '.'),
+                    number_format($bill->water_cost ?? 0, 0, ',', '.'),
+                    number_format(($bill->service_costs ?? 0) + ($bill->other_costs ?? 0), 0, ',', '.'),
+                    number_format($bill->amount ?? 0, 0, ',', '.'),
+                    $statusText,
+                    $bill->due_date ? date('d/m/Y', strtotime($bill->due_date)) : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

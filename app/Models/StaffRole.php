@@ -23,7 +23,6 @@ class StaffRole extends Model
         'tenant_requests'  => 'Yêu cầu từ người thuê',
         'reminders'        => 'Nhắc nhở',
         'services'         => 'Dịch vụ',
-        'reports'          => 'Báo cáo',
     ];
 
     public const ACTIONS = ['view', 'create', 'edit', 'delete'];
@@ -33,8 +32,7 @@ class StaffRole extends Model
     {
         $perms = [];
         foreach (array_keys(self::MODULES) as $module) {
-            $actions = $module === 'reports' ? ['view'] : self::ACTIONS;
-            foreach ($actions as $action) {
+            foreach (self::ACTIONS as $action) {
                 $perms[] = "{$module}.{$action}";
             }
         }
@@ -76,6 +74,17 @@ class StaffRole extends Model
 
     public function syncPermissions(array $permissions): void
     {
+        // 🟢 Tự động hỗ trợ: Nếu nhân viên có bất kỳ quyền nào về Phòng trọ hoặc Hợp đồng
+        // ➔ Tự động bổ sung quyền 'houses.view' để Nhân viên luôn có menu/đường dẫn vào chọn Nhà trọ
+        $hasChildPermissions = collect($permissions)->contains(function ($perm) {
+            return str_starts_with($perm, 'rooms.') 
+                || str_starts_with($perm, 'contracts.');
+        });
+
+        if ($hasChildPermissions && !in_array('houses.view', $permissions)) {
+            $permissions[] = 'houses.view';
+        }
+
         // Chỉ giữ lại permissions hợp lệ
         $valid = array_intersect($permissions, self::allPermissions());
 
@@ -116,7 +125,6 @@ class StaffRole extends Model
             'tenant_requests.view', 'tenant_requests.edit',
             'reminders.view', 'reminders.create',
             'services.view',
-            'reports.view',
         ]);
 
         // 2. Kế toán / Thu ngân
@@ -129,7 +137,6 @@ class StaffRole extends Model
             'bills.view', 'bills.create', 'bills.edit',
             'payments.view', 'payments.create',
             'meter_logs.view', 'meter_logs.create', 'meter_logs.edit',
-            'reports.view',
         ]);
 
         // 3. Kỹ thuật / Bảo trì

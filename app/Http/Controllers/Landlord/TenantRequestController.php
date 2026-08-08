@@ -25,6 +25,9 @@ class TenantRequestController extends Controller
         }
     }
 
+    /**
+     * Hiển thị danh sách các phiếu yêu cầu sửa chữa/báo lỗi từ người thuê
+     */
     public function index(Request $request)
     {
         $user     = Auth::user();
@@ -57,6 +60,9 @@ class TenantRequestController extends Controller
         ]);
     }
 
+    /**
+     * Xem chi tiết phiếu yêu cầu báo lỗi (kèm danh sách nhân viên kỹ thuật có thể phân công)
+     */
     public function show(TenantRequest $tenantRequest)
     {
         $this->authorizeRequestAction($tenantRequest, 'view');
@@ -87,6 +93,9 @@ class TenantRequestController extends Controller
         ]);
     }
 
+    /**
+     * Cập nhật trạng thái tiến độ xử lý phiếu sự cố (pending -> in_progress -> resolved -> closed)
+     */
     public function updateStatus(Request $request, TenantRequest $tenantRequest, $status)
     {
         $this->authorizeRequestAction($tenantRequest, 'edit');
@@ -111,6 +120,9 @@ class TenantRequestController extends Controller
         return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
     }
 
+    /**
+     * Phân công nhân viên bảo trì/kỹ thuật phụ trách xử lý sự cố
+     */
     public function assign(Request $request, TenantRequest $tenantRequest)
     {
         $this->authorizeRequestAction($tenantRequest, 'edit');
@@ -145,6 +157,9 @@ class TenantRequestController extends Controller
         return redirect()->back()->with('success', 'Đã phân công người phụ trách và chuyển trạng thái sang Đang xử lý!');
     }
 
+    /**
+     * Nghiệm thu hoàn thành sửa chữa (tải lên hình ảnh/video bằng chứng nghiệm thu)
+     */
     public function resolve(Request $request, TenantRequest $tenantRequest)
     {
         $this->authorizeRequestAction($tenantRequest, 'edit');
@@ -182,6 +197,9 @@ class TenantRequestController extends Controller
         return redirect()->back()->with('success', 'Yêu cầu đã được sửa chữa thành công và chờ nghiệm thu!');
     }
 
+    /**
+     * Gửi câu trả lời / phản hồi thông tin cho người thuê
+     */
     public function respond(Request $request, TenantRequest $tenantRequest)
     {
         $this->authorizeRequestAction($tenantRequest, 'edit');

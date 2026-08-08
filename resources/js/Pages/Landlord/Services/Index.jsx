@@ -1,17 +1,30 @@
 import { Link, Head, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function Index({ auth, services = [], houses = [], rooms = [] }) {
+    const user = auth?.user;
+    const isLandlord = user?.role === 'landlord';
+    const userPerms = auth?.permissions || user?.permissions || [];
+    const canCreateService = isLandlord || userPerms.includes('services.create');
+    const canEditService = isLandlord || userPerms.includes('services.edit');
+    const canDeleteService = isLandlord || userPerms.includes('services.delete');
+
     const [activeTab, setActiveTab] = useState('house_services'); // house_services, catalog
     const [selectedHouse, setSelectedHouse] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [roomSearchTerm, setRoomSearchTerm] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
 
     const handleDelete = (serviceId) => {
-        if (confirm('Bạn có chắc chắn muốn xóa dịch vụ này?')) {
-            router.delete(route('landlord.services.destroy', serviceId));
-        }
+        setConfirmDelete({ show: true, id: serviceId });
+    };
+
+    const executeDelete = () => {
+        router.delete(route('landlord.services.destroy', confirmDelete.id), {
+            onFinish: () => setConfirmDelete({ show: false, id: null }),
+        });
     };
 
     const getUnitLabel = (unit) => {
@@ -50,17 +63,19 @@ export default function Index({ auth, services = [], houses = [], rooms = [] }) 
                     <p className="text-gray-500 text-sm mt-1">Quản lý biểu giá dịch vụ chung và phân phối dịch vụ cho từng phòng trọ</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={route('landlord.services.create')}
-                        className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Tạo dịch vụ mới
-                    </Link>
-                </div>
+                {canCreateService && (
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href={route('landlord.services.create')}
+                            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Tạo dịch vụ mới
+                        </Link>
+                    </div>
+                )}
             </div>
 
             {/* TABS SELECTOR */}
@@ -301,18 +316,22 @@ export default function Index({ auth, services = [], houses = [], rooms = [] }) 
                                     </div>
 
                                     <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-2">
-                                        <Link
-                                            href={route('landlord.services.edit', service.id)}
-                                            className="flex-1 text-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold text-sm transition-colors"
-                                        >
-                                            Sửa
-                                        </Link>
-                                        <button
-                                            onClick={() => handleDelete(service.id)}
-                                            className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold text-sm transition-colors"
-                                        >
-                                            Xóa
-                                        </button>
+                                        {canEditService && (
+                                            <Link
+                                                href={route('landlord.services.edit', service.id)}
+                                                className="flex-1 text-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold text-sm transition-colors"
+                                            >
+                                                Sửa
+                                            </Link>
+                                        )}
+                                        {canDeleteService && (
+                                            <button
+                                                onClick={() => handleDelete(service.id)}
+                                                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold text-sm transition-colors"
+                                            >
+                                                Xóa
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -327,6 +346,15 @@ export default function Index({ auth, services = [], houses = [], rooms = [] }) 
                     )}
                 </>
             )}
+            <ConfirmModal
+                show={confirmDelete.show}
+                onClose={() => setConfirmDelete({ show: false, id: null })}
+                onConfirm={executeDelete}
+                title="Xóa dịch vụ"
+                message="Bạn có chắc chắn muốn xóa dịch vụ này?"
+                confirmText="Xóa"
+                type="danger"
+            />
         </div>
 
     );

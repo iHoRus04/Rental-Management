@@ -362,6 +362,34 @@
         </tbody>
     </table>
 
+    @php
+        $services = (isset($renter) && $renter && $renter->services && $renter->services->count() > 0)
+            ? $renter->services
+            : ($room->services ?? collect());
+    @endphp
+
+    @if($services->count() > 0)
+    <div style="margin-top: 10px; font-weight: bold; font-size: 11px;">Đơn giá dịch vụ áp dụng:</div>
+    <table class="fin-table" style="margin-top: 4px;">
+        <thead>
+            <tr>
+                <th style="width:40%">Tên dịch vụ</th>
+                <th style="width:30%; text-align:right;">Đơn giá</th>
+                <th style="width:30%; text-align:center;">Đơn vị tính</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($services as $svc)
+            <tr>
+                <td><strong>{{ $svc->name }}</strong></td>
+                <td class="right">{{ number_format($svc->pivot->price ?? $svc->default_price, 0, ',', '.') }} ₫</td>
+                <td style="text-align:center;">/ {{ $svc->unit ?? 'tháng' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    @endif
+
     {{-- ── ĐIỀU 5: ĐIỀU KHOẢN ── --}}
     <div class="article-title">Điều 5. Quyền và nghĩa vụ của các bên</div>
 

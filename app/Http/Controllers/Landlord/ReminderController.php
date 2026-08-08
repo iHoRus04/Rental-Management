@@ -20,16 +20,18 @@ use Carbon\Carbon;
 class ReminderController extends Controller
 {
     /**
-     * Display a listing of reminders
+     * Hiển thị danh sách các nhắc nhở (tự động chạy command sinh nhắc nhở hợp đồng/hóa đơn)
      */
     public function index(Request $request)
     {
+        //  Tự động chạy Artisan Command quét sinh các nhắc nhở mới nhất (hợp đồng hết hạn, hóa đơn đến hạn)
         Artisan::call('reminders:generate');
 
+        //  Lấy danh sách ID các nhà trọ thuộc quyền quản lý của người dùng hiện tại
         $user     = auth()->user();
         $houseIds = $user->getAccessibleHouseIds();
 
-        // Query houses with count of pending reminders
+        // Truy vấn danh sách nhà trọ và đếm số nhắc nhở cần xử lý (is_sent = false và đến hạn) của từng nhà
         $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get()->map(function ($house) {
             $house->pending_reminders_count = \App\Models\Reminder::where('is_sent', false)
                 ->where('reminder_date', '<=', now())
@@ -40,26 +42,31 @@ class ReminderController extends Controller
             return $house;
         });
 
+        // Kiểm tra xem người dùng có chọn xem một nhà trọ cụ thể hay không (drill-down)
         $selectedHouse = null;
         if ($request->has('house_id') && $request->house_id !== 'all') {
             $selectedHouse = \App\Models\House::find($request->house_id);
         }
 
+        //  Xây dựng Query lấy danh sách nhắc nhở kèm theo thông tin quan hệ Hợp đồng, Phòng, Khách thuê
         $query = Reminder::with(['contract.renterRequest', 'contract.room.house', 'bill'])
             ->whereHas('contract.room', function ($q) use ($houseIds) {
                 $q->whereIn('house_id', $houseIds);
             });
 
+        // Bộ lọc 1: Lọc theo nhà trọ được chọn
         if ($request->has('house_id') && $request->house_id !== 'all') {
             $query->whereHas('contract.room', function ($q) use ($request) {
                 $q->where('house_id', $request->house_id);
             });
         }
 
+        // Bộ lọc 2: Lọc theo loại nhắc nhở (thanh toán, hết hạn hợp đồng, tạo hóa đơn...)
         if ($request->has('type') && $request->type !== 'all') {
             $query->where('type', $request->type);
         }
 
+        // Bộ lọc 3: Lọc theo trạng thái nhắc nhở (cần xử lý, sắp tới, đã gửi/đã xong)
         if ($request->has('status')) {
             if ($request->status === 'pending') {
                 $query->where('is_sent', false)->where('reminder_date', '<=', now());
@@ -70,8 +77,10 @@ class ReminderController extends Controller
             }
         }
 
+        //  Sắp xếp theo ngày nhắc nhở mới nhất và phân trang 15 bản ghi/trang
         $reminders = $query->orderBy('reminder_date', 'desc')->paginate(15);
 
+        // Trả dữ liệu dạng JSON nếu là API request
         if ($request->wantsJson()) {
             return response()->json([
                 'reminders' => $reminders,
@@ -81,6 +90,7 @@ class ReminderController extends Controller
             ]);
         }
 
+        //  Trả về giao diện Inertia React
         return Inertia::render('Landlord/Reminders/Index', [
             'reminders' => $reminders,
             'filters'   => $request->only(['type', 'status', 'house_id']),
@@ -90,7 +100,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Show the form for creating a new reminder
+     * Hiển thị giao diện Form tạo mới nhắc nhở thủ công
      */
     public function create()
     {
@@ -110,7 +120,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Store a newly created reminder
+     * Lưu thông tin nhắc nhở mới vào CSDL
      */
     public function store(Request $request)
     {
@@ -130,7 +140,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Display the specified reminder
+     * Xem thông tin chi tiết một nhắc nhở
      */
     public function show(Reminder $reminder)
     {
@@ -146,7 +156,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Show the form for editing the specified reminder
+     * Hiển thị giao diện Form chỉnh sửa nhắc nhở
      */
     public function edit(Reminder $reminder)
     {
@@ -175,7 +185,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Update the specified reminder
+     * Cập nhật thông tin nhắc nhở
      */
     public function update(Request $request, Reminder $reminder)
     {
@@ -197,7 +207,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Mark reminder as sent
+     * Đánh dấu nhắc nhở là đã xử lý/đã gửi
      */
     public function markAsSent(Reminder $reminder)
     {
@@ -209,7 +219,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Remove the specified reminder
+     * Xóa nhắc nhở
      */
     public function destroy(Reminder $reminder)
     {
@@ -223,7 +233,7 @@ class ReminderController extends Controller
     }
 
     /**
-     * Get pending reminders count for dashboard
+     * API trả về số lượng các nhắc nhở & thông báo hết hạn gói cước hiển thị ở biểu tượng Chuông
      */
     public function getPendingCount()
     {

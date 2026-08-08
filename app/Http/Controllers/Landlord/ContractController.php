@@ -36,6 +36,9 @@ class ContractController extends Controller
         }
     }
 
+    /**
+     * Hiển thị danh sách tất cả các hợp đồng thuê của một phòng trọ
+     */
     public function index(Room $room)
     {
         $this->authorizeContractAction($room, 'view');
@@ -65,6 +68,9 @@ class ContractController extends Controller
         ]);
     }
 
+    /**
+     * Hiển thị giao diện Form tạo mới hợp đồng thuê phòng
+     */
     public function create(Room $room)
     {
         $this->authorizeContractAction($room, 'create');
@@ -82,6 +88,9 @@ class ContractController extends Controller
         ]);
     }
 
+    /**
+     * Lưu hợp đồng thuê mới vào CSDL, cập nhật phòng thành occupied và gửi Email thông báo
+     */
     public function store(Request $request, Room $room)
     {
         $this->authorizeContractAction($room, 'create');
@@ -112,7 +121,7 @@ class ContractController extends Controller
         // Load relationship before redirect
         $contract->load(['renterRequest', 'room.house.user']);
 
-        // Gửi email hợp đồng cho khách thuê nếu có địa chỉ email
+        // Gửi email hợp đồng cho khách thuê được duyệt
         if ($renterRequest->email) {
             try {
                 Mail::to($renterRequest->email)->send(new ContractCreatedMail($contract));
@@ -122,12 +131,33 @@ class ContractController extends Controller
             }
         }
 
+        // Tự động gửi Email thông báo lịch sự, chuyển trạng thái 'rejected' và lưu trữ (Soft Delete) các yêu cầu còn lại của phòng này
+        $otherRequests = RenterRequest::where('room_id', $room->id)
+            ->where('id', '!=', $renterRequest->id)
+            ->whereIn('status', ['new', 'contacted'])
+            ->get();
+
+        foreach ($otherRequests as $other) {
+            if ($other->email) {
+                try {
+                    Mail::to($other->email)->send(new \App\Mail\RoomAlreadyRentedMail($other, $room));
+                } catch (\Exception $e) {
+                    \Log::error('Lỗi gửi mail thông báo hết phòng: ' . $e->getMessage());
+                }
+            }
+            $other->update(['status' => 'rejected']);
+            $other->delete(); // Tự động lưu trữ (Soft Delete)
+        }
+
         return redirect()->route('landlord.rooms.contracts.show', [
             'room' => $room->id,
             'contract' => $contract->id,
-        ])->with('success', 'Tạo hợp đồng thành công và đã gửi email cho khách thuê!');
+        ])->with('success', 'Tạo hợp đồng thành công! Đã gửi email cho khách thuê và tự động thông báo/lưu trữ các yêu cầu khác.');
     }
 
+    /**
+     * Xem thông tin chi tiết một hợp đồng thuê phòng
+     */
     public function show(Room $room, Contract $contract)
     {
         $this->authorizeContractAction($room, 'view');
@@ -154,6 +184,9 @@ class ContractController extends Controller
         ]);
     }
 
+    /**
+     * Hiển thị trang chỉnh sửa hợp đồng thuê phòng
+     */
     public function edit(Room $room, Contract $contract)
     {
         $this->authorizeContractAction($room, 'edit');
@@ -170,6 +203,9 @@ class ContractController extends Controller
         ]);
     }
 
+    /**
+     * Cập nhật thông tin hợp đồng hoặc chấm dứt hợp đồng sớm (kèm bật/tắt tài khoản tenant)
+     */
     public function update(Request $request, Room $room, Contract $contract)
     {
         $this->authorizeContractAction($room, 'edit');
@@ -244,6 +280,9 @@ class ContractController extends Controller
         ])->with('success', 'Cập nhật hợp đồng thành công!');
     }
 
+    /**
+     * Gia hạn hợp đồng thuê (theo số tháng hoặc theo ngày kết thúc cụ thể)
+     */
     public function renew(Request $request, Room $room, Contract $contract)
     {
         $this->authorizeContractAction($room, 'edit');
@@ -286,6 +325,9 @@ class ContractController extends Controller
         ])->with('success', "Gia hạn hợp đồng thành công! Hợp đồng có hiệu lực đến ngày {$newEndDate->format('d/m/Y')}.");
     }
 
+    /**
+     * Xóa hợp đồng thuê phòng (tự động giải phóng phòng về available nếu không còn hợp đồng active)
+     */
     public function destroy(Room $room, Contract $contract)
     {
         $this->authorizeContractAction($room, 'delete');
@@ -327,8 +369,8 @@ class ContractController extends Controller
     {
         $this->authorizeContractAction($room, 'view');
 
-        $contract->load('renterRequest');
-        $room->load('house.user');
+        $contract->load('renterRequest.services');
+        $room->load(['house.user', 'services']);
 
         $landlord = $room->house->user;
         $renter   = $contract->renterRequest;
@@ -345,6 +387,35 @@ class ContractController extends Controller
         $filename = 'HopDong_' . str_pad($contract->id, 4, '0', STR_PAD_LEFT)
             . '_Phong' . str_replace(' ', '', $room->name)
             . '_' . now()->format('Ymd') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Xuất hợp đồng ra file PDF dành riêng cho Tenant
+     */
+    public function downloadPdfTenant(Contract $contract)
+    {
+        $user = auth()->user();
+        if ($user->role === 'tenant' && $user->renter_request_id !== $contract->renter_request_id) {
+            abort(403, 'Bạn không có quyền xem hoặc tải hợp đồng này.');
+        }
+
+        $contract->load(['room.house.user', 'room.services', 'renterRequest.services']);
+        $room = $contract->room;
+        $landlord = $room->house->user;
+        $renter   = $contract->renterRequest;
+
+        $pdf = Pdf::loadView('landlord.contracts.pdf', compact('contract', 'room', 'landlord', 'renter'))
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'defaultFont'  => 'DejaVu Sans',
+                'isRemoteEnabled' => true,
+                'isHtml5ParserEnabled' => true,
+                'chroot' => public_path(),
+            ]);
+
+        $filename = 'HopDong_Phong' . str_replace(' ', '', $room->name) . '_' . now()->format('Ymd') . '.pdf';
 
         return $pdf->download($filename);
     }

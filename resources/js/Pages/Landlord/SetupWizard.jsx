@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, useForm, Link, usePage } from '@inertiajs/react';
+import AlertModal from '@/Components/AlertModal';
 
 export default function SetupWizard({ auth, packages = [] }) {
     const [step, setStep] = useState(1);
@@ -7,6 +8,7 @@ export default function SetupWizard({ auth, packages = [] }) {
     const [checkingPayment, setCheckingPayment] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showZoomModal, setShowZoomModal] = useState(false);
+    const [alertModal, setAlertModal] = useState({ show: false, message: '', title: 'Thông báo', type: 'warning' });
 
     const { data, setData, post, processing, errors } = useForm({
         package_id: packages.length > 0 ? packages[0].id : '',
@@ -56,7 +58,7 @@ export default function SetupWizard({ auth, packages = [] }) {
     const nextStep = () => {
         if (step === 1) {
             if (!data.package_id) {
-                alert('Vui lòng chọn một gói dịch vụ để tiếp tục.');
+                setAlertModal({ show: true, title: 'Thiếu thông tin', message: 'Vui lòng chọn một gói dịch vụ để tiếp tục.', type: 'warning' });
                 return;
             }
             const isFree = selectedPackage.price === 0 || parseFloat(selectedPackage.price) === 0;
@@ -74,7 +76,7 @@ export default function SetupWizard({ auth, packages = [] }) {
         }
         if (step === 2) {
             if (!data.house_name.trim() || !data.house_address.trim()) {
-                alert('Vui lòng điền đầy đủ tên và địa chỉ nhà trọ.');
+                setAlertModal({ show: true, title: 'Thiếu thông tin', message: 'Vui lòng điền đầy đủ tên và địa chỉ nhà trọ.', type: 'warning' });
                 return;
             }
         }
@@ -97,11 +99,11 @@ export default function SetupWizard({ auth, packages = [] }) {
         // Validation
         const limit = selectedPackage.room_limit;
         if (data.room_count < 1 || data.room_count > limit) {
-            alert(`Số lượng phòng khởi tạo ban đầu phải từ 1 đến ${limit} phòng (Theo hạn mức gói đã chọn).`);
+            setAlertModal({ show: true, title: 'Số lượng không hợp lệ', message: `Số lượng phòng khởi tạo ban đầu phải từ 1 đến ${limit} phòng (Theo hạn mức gói đã chọn).`, type: 'warning' });
             return;
         }
         if (data.room_rent_price <= 0) {
-            alert('Vui lòng nhập giá thuê phòng hợp lệ.');
+            setAlertModal({ show: true, title: 'Giá thuê không hợp lệ', message: 'Vui lòng nhập giá thuê phòng hợp lệ.', type: 'warning' });
             return;
         }
 
@@ -516,6 +518,14 @@ export default function SetupWizard({ auth, packages = [] }) {
                     animation: scale-up 0.2s ease-out forwards;
                 }
             `}</style>
+
+            <AlertModal
+                show={alertModal.show}
+                onClose={() => setAlertModal({ ...alertModal, show: false })}
+                title={alertModal.title}
+                message={alertModal.message}
+                type={alertModal.type}
+            />
         </div>
     );
 }

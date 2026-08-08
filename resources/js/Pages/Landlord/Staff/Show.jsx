@@ -1,10 +1,12 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function Show({ staff, houses }) {
     const [showPass, setShowPass] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [confirmRemove, setConfirmRemove] = useState({ show: false, houseId: null });
 
     const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
         password: '',
@@ -16,9 +18,13 @@ export default function Show({ staff, houses }) {
     };
 
     const handleRemoveHouse = (houseId) => {
-        if (confirm('Bỏ phân công nhà trọ này cho nhân viên?')) {
-            router.delete(route('landlord.staff.houses.remove', { staff: staff.id, house: houseId }));
-        }
+        setConfirmRemove({ show: true, houseId });
+    };
+
+    const executeRemove = () => {
+        router.delete(route('landlord.staff.houses.remove', { staff: staff.id, house: confirmRemove.houseId }), {
+            onFinish: () => setConfirmRemove({ show: false, houseId: null }),
+        });
     };
 
     const handleChangePassword = (e) => {
@@ -297,6 +303,15 @@ export default function Show({ staff, houses }) {
                     ← Quay lại danh sách
                 </Link>
             </div>
+            <ConfirmModal
+                show={confirmRemove.show}
+                onClose={() => setConfirmRemove({ show: false, houseId: null })}
+                onConfirm={executeRemove}
+                title="Gỡ phân công"
+                message="Bỏ phân công nhà trọ này cho nhân viên?"
+                confirmText="Gỡ phân công"
+                type="danger"
+            />
         </div>
     );
 }

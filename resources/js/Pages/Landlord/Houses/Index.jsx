@@ -3,7 +3,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 import { showToast } from '@/Components/Toast';
 
-export default function Index({ houses }) {
+export default function Index({ houses, auth }) {
+    const user = auth?.user;
+    const isLandlord = user?.role === 'landlord';
+    const userPerms = auth?.permissions || user?.permissions || [];
+    const canCreateHouse = isLandlord || userPerms.includes('houses.create');
+    const canEditHouse = isLandlord || userPerms.includes('houses.edit');
+    const canDeleteHouse = isLandlord || userPerms.includes('houses.delete');
+
     const [searchTerm, setSearchTerm] = useState('');
 
     // Lọc dữ liệu giả lập (nếu cần xử lý client-side)
@@ -33,13 +40,15 @@ export default function Index({ houses }) {
                     </button>
 
                     {/* Nút Add Property (Gradient Emerald) */}
-                    <Link
-                        href={route('landlord.houses.create')}
-                        className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                        Thêm nhà trọ
-                    </Link>
+                    {canCreateHouse && (
+                        <Link
+                            href={route('landlord.houses.create')}
+                            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                            Thêm nhà trọ
+                        </Link>
+                    )}
                 </div>
             </div>
 
@@ -76,22 +85,26 @@ export default function Index({ houses }) {
 
                                 {/* Quick Actions (Edit/Delete) - Nổi lên khi hover */}
                                 <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                                    <Link
-                                        href={route('landlord.houses.edit', house.id)}
-                                        className="w-9 h-9 bg-white text-gray-600 rounded-full flex items-center justify-center hover:text-emerald-600 hover:shadow-md transition-all"
-                                        title="Chỉnh sửa"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                    </Link>
-                                    <Link
-                                        as="button"
-                                        method="delete"
-                                        href={route('landlord.houses.destroy', house.id)}
-                                        className="w-9 h-9 bg-white text-gray-600 rounded-full flex items-center justify-center hover:text-rose-500 hover:shadow-md transition-all"
-                                        title="Xóa"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </Link>
+                                    {canEditHouse && (
+                                        <Link
+                                            href={route('landlord.houses.edit', house.id)}
+                                            className="w-9 h-9 bg-white text-gray-600 rounded-full flex items-center justify-center hover:text-emerald-600 hover:shadow-md transition-all"
+                                            title="Chỉnh sửa"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        </Link>
+                                    )}
+                                    {canDeleteHouse && (
+                                        <Link
+                                            as="button"
+                                            method="delete"
+                                            href={route('landlord.houses.destroy', house.id)}
+                                            className="w-9 h-9 bg-white text-gray-600 rounded-full flex items-center justify-center hover:text-rose-500 hover:shadow-md transition-all"
+                                            title="Xóa"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
 

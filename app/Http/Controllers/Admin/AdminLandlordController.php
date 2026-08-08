@@ -9,6 +9,9 @@ use Inertia\Inertia;
 
 class AdminLandlordController extends Controller
 {
+    /**
+     * Hiển thị danh sách tất cả tài khoản Chủ trọ trên hệ thống
+     */
     public function index()
     {
         $landlords = User::where('role', 'landlord')
@@ -43,6 +46,9 @@ class AdminLandlordController extends Controller
         ]);
     }
 
+    /**
+     * Xem thông tin chi tiết một Chủ trọ (quy mô tòa nhà, phòng, lịch sử mua gói cước)
+     */
     public function show(User $user)
     {
         if ($user->role !== 'landlord') {
@@ -113,6 +119,9 @@ class AdminLandlordController extends Controller
     }
 
 
+    /**
+     * Cập nhật trạng thái tài khoản Chủ trọ (Duyệt active, Khóa inactive, Chờ duyệt pending)
+     */
     public function updateStatus(Request $request, User $user)
     {
         $validated = $request->validate([

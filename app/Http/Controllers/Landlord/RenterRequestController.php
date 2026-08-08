@@ -15,11 +15,14 @@ use Inertia\Inertia;
 /**
  * RenterRequestController
  *
- * Xá»­ lÃ½ cÃ¡c yÃªu cáº§u thuÃª phÃ²ng tá»« khÃ¡ch (renter requests): táº¡o, xem, thay Ä‘á»•i tráº¡ng thÃ¡i.
- * - Äáº£m báº£o landlord Ä‘ang sá»Ÿ há»¯u phÃ²ng khi thao tÃ¡c (quyá»n sá»Ÿ há»¯u/kiá»ƒm tra phÃ²ng).
+ * Xử lý các yêu cầu thuê phòng từ khách (renter requests): tạo mới, xem chi tiết, cập nhật trạng thái,
+ * cấp tài khoản app người thuê, gán dịch vụ đi kèm và lưu trữ/khôi phục dữ liệu.
  */
 class RenterRequestController extends Controller
 {
+    /**
+     * Hiển thị danh sách các yêu cầu thuê / khách thuê (phân loại theo tab)
+     */
     public function index(Request $request)
     {
         $user     = Auth::user();
@@ -66,6 +69,9 @@ class RenterRequestController extends Controller
         ]);
     }
 
+    /**
+     * Xem thông tin chi tiết của một yêu cầu thuê / khách thuê
+     */
     public function show(RenterRequest $renterRequest)
     {
         $renterRequest->load(['room.house', 'contracts' => function ($query) {
@@ -86,6 +92,9 @@ class RenterRequestController extends Controller
         ]);
     }
 
+    /**
+     * Hiển thị trang giao diện tạo mới yêu cầu thuê phòng (chủ trọ nhập thủ công)
+     */
     public function create(Request $request)
     {
         $user     = Auth::user();
@@ -102,6 +111,9 @@ class RenterRequestController extends Controller
         ]);
     }
 
+    /**
+     * Lưu thông tin yêu cầu thuê phòng mới vào CSDL và tự động duyệt
+     */
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -140,18 +152,23 @@ class RenterRequestController extends Controller
                         ->with('success', 'Tạo yêu cầu thuê phòng thành công và tự động duyệt!');
     }
 
+    /**
+     * Cập nhật tiến trình trạng thái yêu cầu (new -> contacted -> approved -> rejected)
+     */
     public function updateStatus(Request $httpRequest, RenterRequest $renterRequest, $status)
     {
         $user = Auth::user();
         
         // Ensure the landlord owns the house associated with this request
-        // (náº¿u khÃ´ng cÃ³ room hoáº·c house thÃ¬ tráº£ vá»  lá»—i rÃµ rÃ ng)
-        if ($renterRequest->room && $renterRequest->room->house) {
-            if (!$user->managesHouse($renterRequest->room->house)) {
+        $room = $renterRequest->room;
+        $house = $room ? $room->house : null;
+
+        if ($house) {
+            if (!$user->managesHouse($house)) {
                 return redirect()->back()->with('error', 'Bạn không có quyền cập nhật yêu cầu này!');
             }
         } else {
-            return redirect()->back()->with('error', 'KhÃ´ng tÃ¬m tháº¥y thÃ´ng tin nhÃ  cho yÃªu cáº§u nÃ y!');
+            return redirect()->back()->with('error', 'Không tìm thấy thông tin nhà/phòng cho yêu cầu này!');
         }
 
         $validStatuses = ['new', 'contacted', 'approved', 'rejected'];
@@ -179,7 +196,7 @@ class RenterRequestController extends Controller
     }
     
     /**
-     * Get pending renter requests count for dashboard
+     * Lấy số lượng các yêu cầu thuê phòng mới gửi (dùng cho badge thông báo trên Menu)
      */
     public function getPendingCount()
     {
@@ -195,7 +212,7 @@ class RenterRequestController extends Controller
     }
 
     /**
-     * Display services for a specific renter request
+     * Hiển thị trang quản lý các dịch vụ bổ sung gán riêng cho khách thuê
      */
     public function renterRequestServices(RenterRequest $renterRequest)
     {
@@ -209,7 +226,7 @@ class RenterRequestController extends Controller
         // Only allow service management for approved requests with active contract
         if ($renterRequest->status !== 'approved') {
             return redirect()->route('landlord.renter-requests.index')
-                ->with('error', 'Chá»‰ cÃ³ thá»ƒ gÃ¡n dá»‹ch vá»¥ cho khÃ¡ch hÃ ng Ä‘Ã£ Ä‘Æ°á»£c duyá»‡t!');
+                ->with('error', 'Chỉ có thể gán dịch vụ cho khách hàng đã được duyệt!');
         }
 
         // Check if renter has active contract
@@ -222,7 +239,7 @@ class RenterRequestController extends Controller
 
         if (!$hasActiveContract) {
             return redirect()->route('landlord.renter-requests.index')
-                ->with('error', 'Chá»‰ cÃ³ thá»ƒ gÃ¡n dá»‹ch vá»¥ cho khÃ¡ch hÃ ng Ä‘ang thuÃª phÃ²ng (cÃ³ há»£p Ä‘á»“ng hoáº¡t Ä‘á»™ng)!');
+                ->with('error', 'Chỉ có thể gán dịch vụ cho khách hàng đang thuê phòng (có hợp đồng hoạt động)!');
         }
 
         $renterRequest->load(['services', 'room.house']);
@@ -236,7 +253,7 @@ class RenterRequestController extends Controller
     }
 
     /**
-     * Attach service to renter request
+     * Gán thêm một dịch vụ mới cho khách thuê (kèm đơn giá riêng/ghi chú)
      */
     public function attachService(Request $request, RenterRequest $renterRequest)
     {
@@ -249,7 +266,7 @@ class RenterRequestController extends Controller
 
         // Check if approved and has active contract
         if ($renterRequest->status !== 'approved') {
-            return redirect()->back()->with('error', 'Chá»‰ cÃ³ thá»ƒ gÃ¡n dá»‹ch vá»¥ cho khÃ¡ch hÃ ng Ä‘Ã£ Ä‘Æ°á»£c duyá»‡t!');
+            return redirect()->back()->with('error', 'Chỉ có thể gán dịch vụ cho khách hàng đã được duyệt!');
         }
 
         $hasActiveContract = $renterRequest->contracts()
@@ -260,7 +277,7 @@ class RenterRequestController extends Controller
             ->exists();
 
         if (!$hasActiveContract) {
-            return redirect()->back()->with('error', 'Chá»‰ cÃ³ thá»ƒ gÃ¡n dá»‹ch vá»¥ cho khÃ¡ch hÃ ng Ä‘ang thuÃª phÃ²ng!');
+            return redirect()->back()->with('error', 'Chỉ có thể gán dịch vụ cho khách hàng đang thuê phòng!');
         }
 
         $validated = $request->validate([
@@ -278,11 +295,11 @@ class RenterRequestController extends Controller
             'end_date' => $validated['end_date'] ?? null,
         ]);
 
-        return redirect()->back()->with('success', 'Dá»‹ch vá»¥ Ä‘Ã£ Ä‘Æ°á»£c thÃªm!');
+        return redirect()->back()->with('success', 'Dịch vụ đã được thêm!');
     }
 
     /**
-     * Update renter request service
+     * Cập nhật thông tin dịch vụ riêng của khách (giá, ghi chú, trạng thái kích hoạt)
      */
     public function updateRenterRequestService(Request $request, RenterRequestService $renterRequestService)
     {
@@ -304,11 +321,11 @@ class RenterRequestController extends Controller
 
         $renterRequestService->update($validated);
 
-        return redirect()->back()->with('success', 'Dá»‹ch vá»¥ Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t!');
+        return redirect()->back()->with('success', 'Dịch vụ đã được cập nhật!');
     }
 
     /**
-     * Detach service from renter request
+     * Gỡ/Xóa dịch vụ ra khỏi khách thuê
      */
     public function detachService(RenterRequestService $renterRequestService)
     {
@@ -326,7 +343,7 @@ class RenterRequestController extends Controller
     }
 
     /**
-     * Create tenant account for approved renter request
+     * Tự động cấp tài khoản đăng nhập ứng dụng cho Khách thuê (mật khẩu = Số điện thoại)
      */
     public function createTenantAccount(RenterRequest $renterRequest)
     {

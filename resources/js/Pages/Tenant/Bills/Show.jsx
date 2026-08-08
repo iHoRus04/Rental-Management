@@ -1,17 +1,19 @@
 import { Head, Link, router } from '@inertiajs/react';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function Show({ auth, bill }) {
     const [copiedText, setCopiedText] = useState('');
     const [showZoomModal, setShowZoomModal] = useState(false);
+    const [confirmPayTest, setConfirmPayTest] = useState(false);
     const fmt = (v) => new Intl.NumberFormat('vi-VN').format(v ?? 0);
     const snapshot = bill.price_snapshot || {};
     const serviceDetails = bill.service_details || [];
 
     const getStatusConfig = (status) => {
         const configs = {
-            paid:    { label: 'Đã thanh toán', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+            paid: { label: 'Đã thanh toán', bg: 'bg-emerald-100', text: 'text-emerald-700' },
             pending: { label: 'Chưa thanh toán', bg: 'bg-amber-100', text: 'text-amber-700' },
             partial: { label: 'Thanh toán một phần', bg: 'bg-blue-100', text: 'text-blue-700' },
             overdue: { label: 'Quá hạn', bg: 'bg-red-100', text: 'text-red-700' },
@@ -32,10 +34,23 @@ export default function Show({ auth, bill }) {
     const hasBankSetup = house.bank_name && house.account_no && house.account_name;
     const isUnpaid = bill.status !== 'paid';
 
+    const rawTransferInfo = `THANH TOAN HD THANG ${bill.month} NAM ${bill.year} ${house.name || ''} PHONG ${bill.room?.name || ''}`;
+    const transferContent = rawTransferInfo
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[đĐ]/g, "D")
+        .replace(/[^A-Z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
     const handlePayTest = () => {
-        if (confirm('Bạn có chắc muốn thực hiện giả lập THANH TOÁN (thành Đã thanh toán) cho hóa đơn này để test?')) {
-            router.post(route('tenant.bills.payTest', bill.id));
-        }
+        setConfirmPayTest(true);
+    };
+
+    const executePayTest = () => {
+        router.post(route('tenant.bills.payTest', bill.id));
+        setConfirmPayTest(false);
     };
 
     const getUnitLabel = (unit) => {
@@ -111,7 +126,7 @@ export default function Show({ auth, bill }) {
                                 🧪 Thanh toán (Test)
                             </button>
                         </div>
-                        
+
                         {!hasBankSetup ? (
                             <div className="p-4 bg-amber-50/50 text-amber-800 rounded-xl border border-amber-100 text-xs font-semibold leading-normal">
                                 💡 Chủ nhà chưa thiết lập tài khoản nhận tiền ngân hàng trên hệ thống. Vui lòng liên hệ trực tiếp chủ nhà để thanh toán tiền phòng bằng các phương thức khác.
@@ -125,7 +140,7 @@ export default function Show({ auth, bill }) {
                                             <span className="text-slate-400">Ngân hàng:</span>
                                             <span className="font-extrabold text-slate-800 uppercase">{house.bank_name}</span>
                                         </div>
-                                        
+
                                         <div className="flex justify-between items-center py-2 border-b border-slate-100">
                                             <span className="text-slate-400">Số tài khoản:</span>
                                             <div className="flex items-center gap-2">
@@ -138,7 +153,7 @@ export default function Show({ auth, bill }) {
                                                 </button>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="flex justify-between items-center py-2 border-b border-slate-100">
                                             <span className="text-slate-400">Chủ tài khoản:</span>
                                             <span className="font-black text-slate-850 uppercase">{house.account_name}</span>
@@ -153,10 +168,10 @@ export default function Show({ auth, bill }) {
                                             <span className="text-slate-400">Nội dung CK:</span>
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="font-black text-slate-800 text-[10px] bg-slate-200/50 px-2 py-0.5 rounded border border-slate-300/40 select-all">
-                                                    {`THANH TOAN HD T${bill.month} PHONG ${bill.room?.name || ''}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, "")}
+                                                    {transferContent}
                                                 </span>
                                                 <button
-                                                    onClick={() => handleCopy(`THANH TOAN HD T${bill.month} PHONG ${bill.room?.name || ''}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, ""), 'nd')}
+                                                    onClick={() => handleCopy(transferContent, 'nd')}
                                                     className="px-2 py-0.5 bg-slate-200 hover:bg-emerald-50 hover:text-emerald-700 rounded text-[10px] font-bold transition-colors"
                                                 >
                                                     {copiedText === 'nd' ? 'Đã chép!' : 'Chép'}
@@ -173,7 +188,7 @@ export default function Show({ auth, bill }) {
                                 <div className="w-52 shrink-0 flex flex-col items-center justify-center p-4 bg-emerald-55/10 border border-emerald-100 rounded-2xl">
                                     <div className="w-40 h-40 bg-white rounded-xl border border-slate-100 p-1 flex items-center justify-center shadow-inner-sm overflow-hidden">
                                         <img
-                                            src={`https://img.vietqr.io/image/${house.bank_name}-${house.account_no}-compact2.png?amount=${remaining}&addInfo=${encodeURIComponent(`THANH TOAN HD T${bill.month} PHONG ${bill.room?.name || ''}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, ""))}&accountName=${encodeURIComponent(house.account_name)}`}
+                                            src={`https://img.vietqr.io/image/${house.bank_name}-${house.account_no}-compact2.png?amount=${remaining}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(house.account_name)}`}
                                             alt="VietQR code"
                                             className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-all duration-200"
                                             onClick={() => setShowZoomModal(true)}
@@ -313,7 +328,7 @@ export default function Show({ auth, bill }) {
                 </div>
 
                 {/* Biểu giá áp dụng (Price Snapshot) */}
-                {snapshot.services && snapshot.services.length > 0 && (
+                {/* {snapshot.services && snapshot.services.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
                         <div className="px-6 py-4 border-b border-gray-100">
                             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -344,7 +359,7 @@ export default function Show({ auth, bill }) {
                             )}
                         </div>
                     </div>
-                )}
+                )} */}
 
                 {/* Lịch sử thanh toán */}
                 {bill.payments && bill.payments.length > 0 && (
@@ -366,8 +381,8 @@ export default function Show({ auth, bill }) {
                                             {new Date(payment.payment_date).toLocaleDateString('vi-VN')}
                                             <span className="mx-1">•</span>
                                             {payment.payment_method === 'cash' ? 'Tiền mặt' :
-                                             payment.payment_method === 'bank_transfer' ? 'Chuyển khoản' :
-                                             payment.payment_method === 'check' ? 'Séc' : 'Khác'}
+                                                payment.payment_method === 'bank_transfer' ? 'Chuyển khoản' :
+                                                    payment.payment_method === 'check' ? 'Séc' : 'Khác'}
                                         </p>
                                         {payment.bank_transaction_code && (
                                             <p className="text-xs text-gray-400 mt-0.5">
@@ -409,19 +424,19 @@ export default function Show({ auth, bill }) {
                         >
                             ✕
                         </button>
-                        
+
                         <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-4">
                             Quét mã thanh toán phòng
                         </h3>
-                        
+
                         <div className="w-72 h-72 bg-white rounded-2xl border border-slate-100 p-2 flex items-center justify-center shadow-inner-sm overflow-hidden mb-6">
                             <img
-                                src={`https://img.vietqr.io/image/${house.bank_name}-${house.account_no}-compact2.png?amount=${remaining}&addInfo=${encodeURIComponent(`THANH TOAN HD T${bill.month} PHONG ${bill.room?.name || ''}`.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "D").replace(/[^A-Z0-9 ]/g, ""))}&accountName=${encodeURIComponent(house.account_name)}`}
+                                src={`https://img.vietqr.io/image/${house.bank_name}-${house.account_no}-compact2.png?amount=${remaining}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(house.account_name)}`}
                                 alt="VietQR code enlarged"
                                 className="w-full h-full object-contain"
                             />
                         </div>
-                        
+
                         <div className="flex gap-3 w-full">
                             <button
                                 onClick={async () => {
@@ -455,6 +470,16 @@ export default function Show({ auth, bill }) {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                show={confirmPayTest}
+                onClose={() => setConfirmPayTest(false)}
+                onConfirm={executePayTest}
+                title="Giả lập thanh toán"
+                message="Bạn có chắc muốn thực hiện giả lập THANH TOÁN (thành Đã thanh toán) cho hóa đơn này để test?"
+                confirmText="Thanh toán ngay"
+                type="info"
+            />
         </TenantLayout>
     );
 }

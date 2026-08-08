@@ -10,6 +10,9 @@ use App\Models\TenantRequest;
 
 class TenantRequestController extends Controller
 {
+    /**
+     * Hiển thị danh sách các phiếu sự cố/báo lỗi do khách thuê gửi
+     */
     public function index()
     {
         $user = Auth::user();
@@ -24,6 +27,9 @@ class TenantRequestController extends Controller
         ]);
     }
 
+    /**
+     * Hiển thị giao diện Form gửi phiếu báo lỗi/yêu cầu sửa chữa mới
+     */
     public function create()
     {
         $user = Auth::user();
@@ -51,7 +57,7 @@ class TenantRequestController extends Controller
 
         if (!$landlord) {
             return redirect()->route('tenant.dashboard')
-                ->with('error', 'KhÃ´ng tÃ¬m tháº¥y thÃ´ng tin chá»§ trá»!');
+                ->with('error', 'Không tìm thấy thông tin chủ trọ!');
         }
 
         return Inertia::render('Tenant/Requests/Create', [
@@ -60,6 +66,9 @@ class TenantRequestController extends Controller
         ]);
     }
 
+    /**
+     * Lưu phiếu báo lỗi mới vào CSDL (tải lên hình ảnh/video bằng chứng) và gửi Mail cho chủ trọ
+     */
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -67,7 +76,7 @@ class TenantRequestController extends Controller
         // Get landlord info
         $renterRequest = $user->renterRequest;
         if (!$renterRequest) {
-            return back()->with('error', 'KhÃ´ng tÃ¬m tháº¥y thÃ´ng tin thuÃª phÃ²ng!');
+            return back()->with('error', 'Không tìm thấy thông tin thuê phòng!');
         }
 
         $contract = $renterRequest->contracts()
@@ -79,7 +88,7 @@ class TenantRequestController extends Controller
             ->first();
 
         if (!$contract) {
-            return back()->with('error', 'KhÃ´ng tÃ¬m tháº¥y há»£p Ä‘á»“ng!');
+            return back()->with('error', 'Không tìm thấy hợp đồng!');
         }
 
         $validated = $request->validate([
@@ -129,6 +138,9 @@ class TenantRequestController extends Controller
             ->with('success', 'Yêu cầu đã được gửi thành công!');
     }
 
+    /**
+     * Xem chi tiết phiếu báo sự cố (xem bằng chứng nghiệm thu từ nhân viên/chủ trọ)
+     */
     public function show(TenantRequest $tenantRequest)
     {
         $user = Auth::user();
@@ -144,6 +156,9 @@ class TenantRequestController extends Controller
         ]);
     }
 
+    /**
+     * Khách thuê xác nhận nghiệm thu hài lòng và đóng phiếu sự cố (status = closed)
+     */
     public function close(TenantRequest $tenantRequest)
     {
         $user = Auth::user();
@@ -163,6 +178,9 @@ class TenantRequestController extends Controller
         return redirect()->back()->with('success', 'Đã xác nhận hoàn tất và đóng yêu cầu thành công!');
     }
 
+    /**
+     * Khách thuê từ chối kết quả sửa chữa và yêu cầu làm lại (chuyển status về in_progress)
+     */
     public function reject(Request $request, TenantRequest $tenantRequest)
     {
         $user = Auth::user();

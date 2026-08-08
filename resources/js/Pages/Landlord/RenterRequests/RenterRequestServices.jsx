@@ -1,10 +1,12 @@
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function RenterRequestServices({ auth, renterRequest, renterRequestServices, allServices }) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingService, setEditingService] = useState(null);
+    const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
 
     const { data, setData, post, reset, processing, errors } = useForm({
         service_id: '',
@@ -42,9 +44,13 @@ export default function RenterRequestServices({ auth, renterRequest, renterReque
     };
 
     const handleDeleteService = (renterRequestServiceId) => {
-        if (confirm('Bạn có chắc chắn muốn gỡ dịch vụ này?')) {
-            router.delete(route('landlord.renter-request-services.detach', renterRequestServiceId));
-        }
+        setConfirmDelete({ show: true, id: renterRequestServiceId });
+    };
+
+    const executeDeleteService = () => {
+        router.delete(route('landlord.renter-request-services.detach', confirmDelete.id), {
+            onFinish: () => setConfirmDelete({ show: false, id: null }),
+        });
     };
 
     const getUnitLabel = (unit) => {
@@ -397,6 +403,17 @@ export default function RenterRequestServices({ auth, renterRequest, renterReque
                         </div>
                     </div>
                 )}
+                )}
+
+                <ConfirmModal
+                    show={confirmDelete.show}
+                    onClose={() => setConfirmDelete({ show: false, id: null })}
+                    onConfirm={executeDeleteService}
+                    title="Gỡ dịch vụ"
+                    message="Bạn có chắc chắn muốn gỡ dịch vụ này?"
+                    confirmText="Gỡ dịch vụ"
+                    type="danger"
+                />
             </div>
         </AuthenticatedLayout>
     );

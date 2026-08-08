@@ -41,6 +41,9 @@ class RoomController extends Controller
         }
     }
 
+    /**
+     * Hiển thị danh sách tất cả các phòng trọ của một nhà trọ
+     */
     public function index(House $house)
     {
         $this->authorizeHouseOwnership($house);
@@ -92,6 +95,9 @@ class RoomController extends Controller
         ]);
     }
 
+    /**
+     * Hiển thị giao diện Form tạo mới phòng trọ
+     */
     public function create(House $house)
     {
         $this->authorizeHouseOwnership($house, 'create');
@@ -101,6 +107,9 @@ class RoomController extends Controller
         ]);
     }
 
+    /**
+     * Lưu thông tin phòng trọ mới vào CSDL (kiểm tra hạn hạn mức gói cước và upload ảnh)
+     */
     public function store(Request $request, House $house)
     {
         $this->authorizeHouseOwnership($house, 'create');
@@ -144,6 +153,9 @@ class RoomController extends Controller
                          ->with('success', 'Thêm phòng thành công!');
     }
 
+    /**
+     * Xem chi tiết thông tin phòng trọ (hợp đồng đang chạy, dịch vụ đi kèm)
+     */
     public function show(House $house, Room $room)
     {
         $this->authorizeHouseOwnership($house, 'view');
@@ -188,6 +200,9 @@ class RoomController extends Controller
         ]);
     }
 
+    /**
+     * Hiển thị trang giao diện chỉnh sửa thông tin phòng trọ
+     */
     public function edit(House $house, Room $room)
     {
         $this->authorizeHouseOwnership($house, 'edit');
@@ -202,6 +217,9 @@ class RoomController extends Controller
         ]);
     }
 
+    /**
+     * Cập nhật thông tin phòng trọ (tên, giá, diện tích, trạng thái, ảnh)
+     */
     public function update(Request $request, House $house, Room $room)
     {
         $this->authorizeHouseOwnership($house, 'edit');
@@ -256,12 +274,20 @@ class RoomController extends Controller
                         ->with('success', 'Cập nhật phòng thành công!');
     }
 
+    /**
+     * Xóa phòng trọ (xóa tất cả các hình ảnh liên quan trong bộ nhớ storage)
+     */
     public function destroy(House $house, Room $room)
     {
         $this->authorizeHouseOwnership($house, 'delete');
         
         if ($room->house_id !== $house->id) {
             abort(404, 'Phòng không tồn tại trong nhà trọ này.');
+        }
+
+        // Kiểm tra bảo mật: Không cho phép xóa phòng đang có hợp đồng active
+        if ($room->contracts()->where('status', 'active')->exists()) {
+            return redirect()->back()->with('error', 'Không thể xóa phòng đang có người thuê (hợp đồng đang hoạt động). Vui lòng chấm dứt hợp đồng trước khi xóa!');
         }
 
         // ✅ Xóa tất cả ảnh trước khi xóa room
@@ -279,7 +305,7 @@ class RoomController extends Controller
     }
 
     /**
-     * Remove an image from a room
+     * Xóa 1 hình ảnh cụ thể của phòng trọ theo index vị trí
      */
     public function removeImage(Request $request, House $house, Room $room)
     {

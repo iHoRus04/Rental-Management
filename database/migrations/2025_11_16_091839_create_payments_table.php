@@ -23,7 +23,7 @@ return new class extends Migration
             $table->date('payment_date');
             // Ngày thanh toán
             
-            $table->enum('payment_method', ['cash', 'bank_transfer', 'check', 'other'])->default('cash');
+            $table->string('payment_method', 50)->default('cash');
             // Phương thức thanh toán
             
             $table->string('reference')->nullable();

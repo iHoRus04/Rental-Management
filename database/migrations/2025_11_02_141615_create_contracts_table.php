@@ -24,7 +24,7 @@ return new class extends Migration
             $table->integer('payment_date');
             $table->text('terms')->nullable();
             
-            $table->enum('status', ['active', 'terminated', 'expired'])->default('active');
+            $table->string('status', 50)->default('active');
             
             $table->timestamps();
         });

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('contract_id')->constrained()->cascadeOnDelete();
             // Nhắc nhở cho hợp đồng nào
             
-            $table->enum('type', ['payment', 'contract_expiry'])->default('payment');
+            $table->string('type', 50)->default('payment');
             // payment = nhắc thanh toán tiền
             // contract_expiry = nhắc sắp hết hợp đồng
             

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name'); // Tên dịch vụ: Điện, Nước, Internet, Vệ sinh...
             $table->text('description')->nullable(); // Mô tả dịch vụ
             $table->decimal('default_price', 10, 2)->default(0); // Giá mặc định
-            $table->enum('unit', ['kwh', 'm3', 'month', 'service'])->default('service'); // Đơn vị tính
+            $table->string('unit', 50)->default('service'); // Đơn vị tính
             $table->boolean('is_active')->default(true); // Trạng thái kích hoạt
             $table->timestamps();
         });

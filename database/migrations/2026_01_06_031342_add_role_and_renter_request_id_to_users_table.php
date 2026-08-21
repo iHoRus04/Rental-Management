@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             if (!Schema::hasColumn('users', 'role')) {
-                $table->enum('role', ['landlord', 'tenant'])->default('landlord')->after('email');
+                $table->string('role', 50)->default('landlord')->after('email');
             }
             if (!Schema::hasColumn('users', 'renter_request_id')) {
                 $table->foreignId('renter_request_id')->nullable()->after('role')->constrained('renter_requests')->nullOnDelete();

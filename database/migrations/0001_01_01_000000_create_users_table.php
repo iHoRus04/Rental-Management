@@ -17,7 +17,10 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->enum('role', ['admin', 'landlord'])->default('landlord');
+            // Use string instead of enum for cross-database compatibility (MySQL + PostgreSQL/Neon)
+            $table->string('role', 20)->default('landlord');
+            $table->string('phone', 20)->nullable();
+            $table->string('status', 20)->default('pending');
             $table->rememberToken();
             $table->timestamps();
         });

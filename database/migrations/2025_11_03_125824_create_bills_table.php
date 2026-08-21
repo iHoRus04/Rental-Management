@@ -45,7 +45,7 @@ return new class extends Migration
             $table->decimal('paid_amount', 10, 2)->default(0);
             // Số tiền đã thanh toán
             
-            $table->enum('status', ['pending', 'partial', 'paid'])->default('pending');
+            $table->string('status', 50)->default('pending');
             // pending = chưa thanh toán
             // partial = thanh toán một phần
             // paid = đã thanh toán đủ

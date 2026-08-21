@@ -22,7 +22,7 @@ class StaffRoleSeeder extends Seeder
         }
 
         // Gán vai trò mẫu "Quản lý Tòa nhà" cho tài khoản Nhân viên A (staff@example.com)
-        $staffUser = User::where('email', 'staff@example.com')->first();
+        $staffUser = User::where('email', 'staff@dreamhouse.vn')->first();
         if ($staffUser && $staffUser->landlord_id) {
             $managerRole = StaffRole::where('landlord_id', $staffUser->landlord_id)
                 ->where('name', 'Quản lý Tòa nhà')

@@ -23,7 +23,7 @@ return new class extends Migration
         });
 
         // Cập nhật enum role để thêm 'staff' nếu chưa có (chỉ MySQL)
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
             DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin','landlord','tenant','staff') NOT NULL DEFAULT 'tenant'");
         }
     }

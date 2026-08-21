@@ -3,13 +3,14 @@ set -e
 
 echo "==> Entrypoint starting for Rental-Management"
 
+# Ensure storage directories exist and have full write permissions
+mkdir -p /var/www/html/storage/logs /var/www/html/storage/framework/views /var/www/html/storage/framework/sessions /var/www/html/storage/framework/cache
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache || true
+chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache || true
+
 # Clear config cache first to ensure Laravel reads current environment variables
 echo "==> Clearing config cache"
 php artisan config:clear || true
-
-# Set storage and cache permissions
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache || true
-chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache || true
 
 # Run database migrations and seeders
 echo "==> Running database migrations and seeders"

@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         // Modify the role enum to include 'tenant'
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
             DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'landlord', 'tenant') NOT NULL DEFAULT 'landlord'");
         }
     }

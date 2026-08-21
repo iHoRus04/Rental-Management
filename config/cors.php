@@ -12,18 +12,20 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', '*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout', 'register'],
 
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
         'https://dreamhouse-pied.vercel.app',
+        'https://dreamhouse-app.onrender.com',
         'http://localhost:5173',
         'http://localhost:3000',
     ],
 
+    // Must be valid regex patterns (not glob), fruitcake uses preg_match()
     'allowed_origins_patterns' => [
-        '*.vercel.app',
+        '#^https://[a-z0-9-]+\.vercel\.app$#',
     ],
 
     'allowed_headers' => ['*'],

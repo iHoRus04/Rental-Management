@@ -14,7 +14,7 @@ return new class extends Migration
     {
         // Check if column exists before renaming
         if (Schema::hasColumn('contracts', 'renter_id') && !Schema::hasColumn('contracts', 'renter_request_id')) {
-            if (DB::connection()->getDriverName() !== 'sqlite') {
+            if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
                 DB::statement('ALTER TABLE contracts CHANGE renter_id renter_request_id BIGINT UNSIGNED NOT NULL');
             } else {
                 Schema::table('contracts', function (Blueprint $table) {
@@ -31,7 +31,7 @@ return new class extends Migration
     {
         // Reverse the rename
         if (Schema::hasColumn('contracts', 'renter_request_id')) {
-            if (DB::connection()->getDriverName() !== 'sqlite') {
+            if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
                 DB::statement('ALTER TABLE contracts CHANGE renter_request_id renter_id BIGINT UNSIGNED NOT NULL');
             } else {
                 Schema::table('contracts', function (Blueprint $table) {

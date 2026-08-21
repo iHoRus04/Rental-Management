@@ -50,44 +50,44 @@ class SubscriptionPackageSeeder extends Seeder
         ]);
 
         // 2. Tạo lịch sử giao dịch mẫu để hiển thị biểu đồ doanh thu
-        $landlord = User::where('role', 'landlord')->first();
+        // $landlord = User::where('role', 'landlord')->first();
 
-        if ($landlord) {
-            // Giao dịch tháng 4
-            Subscription::create([
-                'user_id' => $landlord->id,
-                'package_id' => $basic->id,
-                'start_date' => Carbon::now()->subMonths(2)->startOfMonth(),
-                'end_date' => Carbon::now()->subMonths(2)->startOfMonth()->addMonths(1),
-                'price_paid' => 150000.00,
-                'status' => 'expired',
-                'payment_status' => 'paid',
-                'created_at' => Carbon::now()->subMonths(2)->startOfMonth(),
-            ]);
+        // if ($landlord) {
+        //     // Giao dịch tháng 4
+        //     Subscription::create([
+        //         'user_id' => $landlord->id,
+        //         'package_id' => $basic->id,
+        //         'start_date' => Carbon::now()->subMonths(2)->startOfMonth(),
+        //         'end_date' => Carbon::now()->subMonths(2)->startOfMonth()->addMonths(1),
+        //         'price_paid' => 150000.00,
+        //         'status' => 'expired',
+        //         'payment_status' => 'paid',
+        //         'created_at' => Carbon::now()->subMonths(2)->startOfMonth(),
+        //     ]);
 
-            // Giao dịch tháng 5
-            Subscription::create([
-                'user_id' => $landlord->id,
-                'package_id' => $standard->id,
-                'start_date' => Carbon::now()->subMonth()->startOfMonth(),
-                'end_date' => Carbon::now()->subMonth()->startOfMonth()->addMonths(3),
-                'price_paid' => 450000.00,
-                'status' => 'expired',
-                'payment_status' => 'paid',
-                'created_at' => Carbon::now()->subMonth()->startOfMonth(),
-            ]);
+        //     // Giao dịch tháng 5
+        //     Subscription::create([
+        //         'user_id' => $landlord->id,
+        //         'package_id' => $standard->id,
+        //         'start_date' => Carbon::now()->subMonth()->startOfMonth(),
+        //         'end_date' => Carbon::now()->subMonth()->startOfMonth()->addMonths(3),
+        //         'price_paid' => 450000.00,
+        //         'status' => 'expired',
+        //         'payment_status' => 'paid',
+        //         'created_at' => Carbon::now()->subMonth()->startOfMonth(),
+        //     ]);
 
-            // Giao dịch tháng 6 (hiện tại - đang hoạt động)
-            Subscription::create([
-                'user_id' => $landlord->id,
-                'package_id' => $vip->id,
-                'start_date' => Carbon::now()->startOfMonth(),
-                'end_date' => Carbon::now()->startOfMonth()->addMonths(6),
-                'price_paid' => 1200000.00,
-                'status' => 'active',
-                'payment_status' => 'paid',
-                'created_at' => Carbon::now()->startOfMonth(),
-            ]);
-        }
+        //     // Giao dịch tháng 6 (hiện tại - đang hoạt động)
+        //     Subscription::create([
+        //         'user_id' => $landlord->id,
+        //         'package_id' => $vip->id,
+        //         'start_date' => Carbon::now()->startOfMonth(),
+        //         'end_date' => Carbon::now()->startOfMonth()->addMonths(6),
+        //         'price_paid' => 1200000.00,
+        //         'status' => 'active',
+        //         'payment_status' => 'paid',
+        //         'created_at' => Carbon::now()->startOfMonth(),
+        //     ]);
+        // }
     }
 }

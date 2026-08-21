@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Landlord;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contract;
+use App\Models\MeterLog;
 use App\Models\Room;
 use App\Models\RenterRequest;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -118,13 +119,75 @@ class ContractController extends Controller
         // Cập nhật trạng thái phòng thành "occupied"
         $room->update(['status' => 'occupied']);
 
+        // === TỰ ĐỘNG TẠO METER LOG KHỞI ĐIỂM CHO NGƯỜI THUÊ MỚI ===
+        // Lấy chỉ số điện nước cuối cùng của phòng làm mốc bắt đầu
+        $latestMeterLog = MeterLog::where('room_id', $room->id)
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->first();
+        if ($latestMeterLog) {
+            $nowMonth = now()->month;
+            $nowYear  = now()->year;
+            // Chỉ tạo nếu chưa có bản ghi cho tháng hiện tại
+            $alreadyExists = MeterLog::where('room_id', $room->id)
+                ->where('month', $nowMonth)
+                ->where('year',  $nowYear)
+                ->exists();
+            if (!$alreadyExists) {
+                MeterLog::create([
+                    'room_id'          => $room->id,
+                    'month'            => $nowMonth,
+                    'year'             => $nowYear,
+                    'electric_reading' => $latestMeterLog->electric_reading,
+                    'water_reading'    => $latestMeterLog->water_reading,
+                    'electric_usage'   => 0,
+                    'water_usage'      => 0,
+                    'notes'            => 'Chỉ số khởi điểm tự động — bắt đầu hợp đồng mới',
+                ]);
+            }
+        }
+
         // Load relationship before redirect
         $contract->load(['renterRequest', 'room.house.user']);
 
-        // Gửi email hợp đồng cho khách thuê được duyệt
-        if ($renterRequest->email) {
+        // === TỰ ĐỘNG TẠO HOẶC KÍCH HOẠT TÀI KHOẢN ĐĂNG NHẬP CHO KHÁCH THUÊ ===
+        $tenantUser = \App\Models\User::where('renter_request_id', $renterRequest->id)->first();
+        $plainPassword = $renterRequest->phone ?? '12345678';
+        $accountEmail = null;
+
+        if (!$tenantUser) {
+            $email = $renterRequest->email;
+            if (!$email || \App\Models\User::where('email', $email)->exists()) {
+                $baseEmail = ($renterRequest->phone ?? rand(100000, 999999)) . '@tenant.local';
+                $email = $baseEmail;
+                $counter = 1;
+                while (\App\Models\User::where('email', $email)->exists()) {
+                    $email = ($renterRequest->phone ?? rand(100000, 999999)) . '.' . $counter . '@tenant.local';
+                    $counter++;
+                }
+            }
+
+            $tenantUser = \App\Models\User::create([
+                'name' => $renterRequest->name,
+                'email' => $email,
+                'password' => bcrypt($plainPassword),
+                'role' => 'tenant',
+                'status' => 'active',
+                'renter_request_id' => $renterRequest->id,
+                'email_verified_at' => now(),
+            ]);
+            $accountEmail = $tenantUser->email;
+        } else {
+            $tenantUser->update(['status' => 'active']);
+            $accountEmail = $tenantUser->email;
+        }
+
+        // Gửi email hợp đồng kèm thông tin tài khoản đăng nhập cho khách thuê
+        $recipientEmail = !empty($renterRequest->email) ? $renterRequest->email : (!str_contains($accountEmail, '@tenant.local') ? $accountEmail : null);
+
+        if ($recipientEmail) {
             try {
-                Mail::to($renterRequest->email)->send(new ContractCreatedMail($contract));
+                Mail::to($recipientEmail)->send(new ContractCreatedMail($contract, $accountEmail, $plainPassword));
             } catch (\Exception $e) {
                 // Log lỗi để tránh làm nghẽn quá trình tạo hợp đồng nếu SMTP chưa được cấu hình
                 \Log::error('Lỗi gửi email hợp đồng: ' . $e->getMessage());

@@ -23,11 +23,15 @@ class ServiceController extends Controller
     public function index(Request $request)
     {
         $user     = auth()->user();
+        $landlordId = $user->getLandlordId(); // Lấy ID chủ trọ (kể cả khi đang login là nhân viên)
         $houseIds = $user->getAccessibleHouseIds();
 
         $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
 
-        $services = Service::where('is_active', true)->get();
+        // Chỉ lấy dịch vụ của chính Chủ trọ này
+        $services = Service::where('user_id', $landlordId)
+            ->where('is_active', true)
+            ->get();
 
         $rooms = Room::whereIn('house_id', $houseIds)
             ->with(['services' => function ($q) {
@@ -56,14 +60,16 @@ class ServiceController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'name'          => 'required|string|max:255',
+            'description'   => 'nullable|string',
             'default_price' => 'required|numeric|min:0',
-            'unit' => 'required|in:kwh,m3,month,service',
-            'is_active' => 'boolean',
+            'unit'          => 'required|in:kwh,m3,month,service',
+            'is_active'     => 'boolean',
         ]);
 
-        $service = Service::create($validated);
+        // Tự động gán user_id = Chủ trọ đang đăng nhập
+        $landlordId = auth()->user()->getLandlordId();
+        $service = Service::create(array_merge($validated, ['user_id' => $landlordId]));
 
         return redirect()->route('landlord.services.index')
             ->with('success', 'Dịch vụ đã được tạo thành công!');
@@ -84,24 +90,33 @@ class ServiceController extends Controller
      */
     public function update(Request $request, Service $service)
     {
+        // Kiểm tra quyền sở hữu: chỉ Chủ trọ tạo dịch vụ mới được sửa
+        $landlordId = auth()->user()->getLandlordId();
+        if ($service->user_id !== $landlordId) {
+            abort(403, 'Bạn không có quyền chỉnh sửa dịch vụ này.');
+        }
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'name'          => 'required|string|max:255',
+            'description'   => 'nullable|string',
             'default_price' => 'required|numeric|min:0',
-            'unit' => 'required|in:kwh,m3,month,service',
-            'is_active' => 'boolean',
-            'sync_to_rooms' => 'nullable|boolean', // Tùy chọn đồng bộ hàng loạt
+            'unit'          => 'required|in:kwh,m3,month,service',
+            'is_active'     => 'boolean',
+            'sync_to_rooms' => 'nullable|boolean',
         ]);
 
         $service->update($validated);
 
-        // ✅ Tự động đồng bộ đơn giá mới cho tất cả các phòng trọ đang gán dịch vụ này
+        // ✅ Đồng bộ đơn giá chỉ cho phòng thuộc nhà trọ của CHÍNH CHỦ TRỌ NÀY
+        $houseIds = auth()->user()->getAccessibleHouseIds();
+        $roomIds  = Room::whereIn('house_id', $houseIds)->pluck('id');
         $updatedRoomsCount = RoomService::where('service_id', $service->id)
+            ->whereIn('room_id', $roomIds)
             ->update(['price' => $validated['default_price']]);
 
-        $message = "Dịch vụ đã được cập nhật thành công!";
+        $message = 'Dịch vụ đã được cập nhật thành công!';
         if ($updatedRoomsCount > 0) {
-            $message .= " Đã tự động đồng bộ đơn giá mới ({$validated['default_price']} ₫) cho {$updatedRoomsCount} phòng trọ.";
+            $message .= " Đã đồng bộ đơn giá mới ({$validated['default_price']} ₫) cho {$updatedRoomsCount} phòng của bạn.";
         }
 
         return redirect()->route('landlord.services.index')
@@ -113,12 +128,22 @@ class ServiceController extends Controller
      */
     public function destroy(Service $service)
     {
-        // Kiểm tra xem dịch vụ này có đang được gán cho phòng nào không
-        $assignedRoomsCount = RoomService::where('service_id', $service->id)->count();
+        // Kiểm tra quyền sở hữu: chỉ Chủ trọ tạo dịch vụ mới được xóa
+        $landlordId = auth()->user()->getLandlordId();
+        if ($service->user_id !== $landlordId) {
+            abort(403, 'Bạn không có quyền xóa dịch vụ này.');
+        }
+
+        // Chỉ kiểm tra phòng thuộc nhà trọ của chính Chủ trọ này
+        $houseIds           = auth()->user()->getAccessibleHouseIds();
+        $roomIds            = Room::whereIn('house_id', $houseIds)->pluck('id');
+        $assignedRoomsCount = RoomService::where('service_id', $service->id)
+            ->whereIn('room_id', $roomIds)
+            ->count();
 
         if ($assignedRoomsCount > 0) {
-            return redirect()->back()->with('error', 
-                "Không thể xóa! Dịch vụ \"{$service->name}\" đang được gán cho {$assignedRoomsCount} phòng trọ. Vui lòng gỡ dịch vụ khỏi các phòng hoặc tắt kích hoạt (ẩn) dịch vụ này."
+            return redirect()->back()->with('error',
+                "Không thể xóa! Dịch vụ \"{$service->name}\" đang được gán cho {$assignedRoomsCount} phòng của bạn. Vui lòng gỡ dịch vụ khỏi các phòng trước."
             );
         }
 
@@ -135,12 +160,17 @@ class ServiceController extends Controller
     public function roomServices(Room $room)
     {
         $room->load(['services', 'house']);
-        $allServices = Service::where('is_active', true)->get();
+
+        // Chỉ hiển thị dịch vụ do chính Chủ trọ này tạo ra
+        $landlordId  = auth()->user()->getLandlordId();
+        $allServices = Service::where('user_id', $landlordId)
+            ->where('is_active', true)
+            ->get();
 
         return Inertia::render('Landlord/Services/RoomServices', [
-            'room' => $room,
+            'room'         => $room,
             'roomServices' => $room->services,
-            'allServices' => $allServices,
+            'allServices'  => $allServices,
         ]);
     }
 

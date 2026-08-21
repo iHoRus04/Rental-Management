@@ -26,6 +26,9 @@ class PaymentController extends Controller
         $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
 
         $payments = Payment::with(['bill.room.house', 'bill.renterRequest'])
+            ->whereHas('bill.room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->latest('payment_date')
             ->get();
 
@@ -44,14 +47,24 @@ class PaymentController extends Controller
 
     public function create(Request $request)
     {
-        $billId = $request->query('bill_id');
+        $billId   = $request->query('bill_id');
+        $houseIds = auth()->user()->getAccessibleHouseIds();
+
         $bills = Bill::with(['room', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->where('status', '!=', 'paid')
             ->get();
 
         $selectedBill = null;
         if ($billId) {
-            $selectedBill = Bill::with(['room', 'renterRequest'])->find($billId);
+            // Kiểm tra hóa đơn được chọn có thuộc phạm vi quản lý không
+            $selectedBill = Bill::with(['room', 'renterRequest'])
+                ->whereHas('room', function ($q) use ($houseIds) {
+                    $q->whereIn('house_id', $houseIds);
+                })
+                ->find($billId);
         }
 
         return Inertia::render('Landlord/Payments/Create', [
@@ -82,9 +95,23 @@ class PaymentController extends Controller
         ]));
 
         // Cập nhật bill paid_amount (tổng đã thu) và trạng thái hóa đơn
+        $oldStatus = $bill->status;
         $bill->paid_amount += $validated['amount'];
         $bill->updatePaymentStatus();
         $bill->save();
+
+        // Gửi email xác nhận thanh toán (Biên lai) cho Khách thuê khi hóa đơn đã thanh toán hoàn tất
+        if ($bill->status === 'paid' && $oldStatus !== 'paid') {
+            $bill->load(['room.house.user', 'renterRequest']);
+            if ($bill->renterRequest && !empty($bill->renterRequest->email)) {
+                try {
+                    \Illuminate\Support\Facades\Mail::to($bill->renterRequest->email)
+                        ->send(new \App\Mail\BillPaidMail($bill));
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Lỗi gửi mail xác nhận thanh toán trong PaymentController: ' . $e->getMessage());
+                }
+            }
+        }
 
         return redirect()->route('landlord.payments.index')
                         ->with('success', 'Ghi nhận thanh toán thành công!');
@@ -103,7 +130,11 @@ class PaymentController extends Controller
     {
         $payment->load(['bill.room', 'bill.renterRequest', 'bill.contract']);
         
+        $houseIds = auth()->user()->getAccessibleHouseIds();
         $bills = Bill::with(['room', 'renterRequest'])
+            ->whereHas('room', function ($q) use ($houseIds) {
+                $q->whereIn('house_id', $houseIds);
+            })
             ->where('status', '!=', 'paid')
             ->get();
 

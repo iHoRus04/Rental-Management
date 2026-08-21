@@ -10,7 +10,7 @@ export default function Show() {
     const userPerms = auth?.permissions || user?.permissions || [];
     const canEdit = isLandlord || userPerms.includes('meter_logs.edit');
     const canDelete = isLandlord || userPerms.includes('meter_logs.delete');
-    const { delete: destroy } = useForm();
+    const { delete: destroy, processing } = useForm();
     const [confirmDelete, setConfirmDelete] = useState(false);
 
     const handleDelete = () => {
@@ -18,13 +18,15 @@ export default function Show() {
     };
 
     const executeDelete = () => {
-        destroy(route('landlord.meter-logs.destroy', meterLog.id));
+        destroy(route('landlord.meter-logs.destroy', meterLog.id), {
+            onFinish: () => setConfirmDelete(false),
+        });
     };
 
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title={`Chỉ số phòng ${meterLog.room.name}`} />
-            
+
             <div className="max-w-[1600px] mx-auto">
                 {/* --- HEADER --- */}
                 <div className="mb-8">
@@ -83,11 +85,11 @@ export default function Show() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* LEFT COLUMN: Current Log Details */}
                     <div className="lg:col-span-2 space-y-8">
-                        
+
                         {/* 1. Electric Log */}
                         <div className="bg-yellow-50/50 rounded-[24px] p-8 border border-yellow-100 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-100 rounded-full blur-3xl -mr-10 -mt-10 transition-all group-hover:scale-150 duration-700"></div>
-                            
+
                             <div className="relative z-10">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center">
@@ -118,7 +120,7 @@ export default function Show() {
                         {/* 2. Water Log */}
                         <div className="bg-blue-50/50 rounded-[24px] p-8 border border-blue-100 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full blur-3xl -mr-10 -mt-10 transition-all group-hover:scale-150 duration-700"></div>
-                            
+
                             <div className="relative z-10">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
@@ -170,11 +172,10 @@ export default function Show() {
                                     <Link
                                         key={log.id}
                                         href={route('landlord.meter-logs.show', log.id)}
-                                        className={`block p-4 rounded-xl border transition-all ${
-                                            log.id === meterLog.id
+                                        className={`block p-4 rounded-xl border transition-all ${log.id === meterLog.id
                                                 ? 'bg-emerald-50 border-emerald-200 shadow-sm'
                                                 : 'bg-white border-gray-100 hover:border-emerald-200 hover:shadow-sm'
-                                        }`}
+                                            }`}
                                     >
                                         <div className="flex justify-between items-center mb-2">
                                             <span className={`font-bold text-sm ${log.id === meterLog.id ? 'text-emerald-800' : 'text-gray-700'}`}>
@@ -209,6 +210,7 @@ export default function Show() {
                 message="Bạn có chắc chắn muốn xóa chỉ số này không?"
                 confirmText="Xóa"
                 type="danger"
+                processing={processing}
             />
         </div>
     );

@@ -86,8 +86,9 @@ export default function Index() {
 
     const filteredBills = houseBills.filter(bill => {
         // Search term match
+        const tenantName = bill.renter_request?.name || bill.renterRequest?.name || bill.contract?.renter_request?.name || bill.contract?.renterRequest?.name || '';
         const matchesSearch = bill.room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (bill.renterRequest?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+            tenantName.toLowerCase().includes(searchTerm.toLowerCase());
 
         if (!matchesSearch) return false;
 
@@ -361,14 +362,14 @@ export default function Index() {
                                         <div className="flex justify-between items-start mb-4">
                                             <div>
                                                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                                    Phòng {bill.room.name}
+                                                    {bill.room.name.toLowerCase().startsWith('phòng') ? bill.room.name : `Phòng ${bill.room.name}`}
                                                     <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
                                                         T{bill.month}/{bill.year}
                                                     </span>
                                                 </h3>
                                                 <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
                                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                                    {bill.renterRequest?.name || 'Chưa có tên'}
+                                                    {bill.renter_request?.name || bill.renterRequest?.name || bill.contract?.renter_request?.name || bill.contract?.renterRequest?.name || 'Chưa có tên'}
                                                 </p>
                                             </div>
                                             <div className="text-right">

@@ -13,7 +13,6 @@ export function showToast(type, message) {
 export default function Toast() {
     const { flash } = usePage().props;
     const [toasts, setToasts] = useState([]);
-    const [lastFlash, setLastFlash] = useState({});
 
     const addToast = (type, message) => {
         const id = Date.now() + Math.random();
@@ -34,22 +33,17 @@ export default function Toast() {
     }, []);
 
     useEffect(() => {
-        // Only show toast if flash message is different from last one
-        if (flash?.success && flash.success !== lastFlash.success) {
+        if (flash?.success) {
             addToast('success', flash.success);
-            setLastFlash(prev => ({ ...prev, success: flash.success }));
         }
-        if (flash?.error && flash.error !== lastFlash.error) {
+        if (flash?.error) {
             addToast('error', flash.error);
-            setLastFlash(prev => ({ ...prev, error: flash.error }));
         }
-        if (flash?.info && flash.info !== lastFlash.info) {
+        if (flash?.info) {
             addToast('info', flash.info);
-            setLastFlash(prev => ({ ...prev, info: flash.info }));
         }
-        if (flash?.warning && flash.warning !== lastFlash.warning) {
+        if (flash?.warning) {
             addToast('warning', flash.warning);
-            setLastFlash(prev => ({ ...prev, warning: flash.warning }));
         }
     }, [flash]);
 

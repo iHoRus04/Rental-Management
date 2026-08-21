@@ -54,7 +54,7 @@ class BillController extends Controller
 
         $houses = \App\Models\House::whereIn('id', $houseIds)->withCount('rooms')->get();
 
-        $bills = Bill::with(['contract', 'room.house', 'renterRequest'])
+        $bills = Bill::with(['contract.renterRequest', 'room.house', 'renterRequest'])
             ->whereHas('room', function ($q) use ($houseIds) {
                 $q->whereIn('house_id', $houseIds);
             })
@@ -173,6 +173,18 @@ class BillController extends Controller
             ]);
         }
 
+        // RÀNG BUỘC CHẶN TRÙNG: Kiểm tra xem hóa đơn cho tháng/năm này đã tồn tại chưa
+        $existingBill = Bill::where('contract_id', $contract->id)
+            ->where('month', $validated['month'])
+            ->where('year', $validated['year'])
+            ->first();
+
+        if ($existingBill) {
+            return redirect()->back()->withInput()->withErrors([
+                'month' => "Hóa đơn cho phòng này trong Tháng {$validated['month']}/{$validated['year']} đã tồn tại! Không thể tạo trùng."
+            ]);
+        }
+
         // Tạo price snapshot (đóng băng biểu giá)
         $priceSnapshot = $this->billService->createPriceSnapshot($contract->room_id);
         $priceSnapshot['room_price'] = $validated['room_price'];
@@ -273,6 +285,11 @@ class BillController extends Controller
     public function update(Request $request, Bill $bill)
     {
         $this->authorizeBillAction($bill, 'edit');
+
+        // BẢO VỆ DỮ LIỆU: Không cho phép chỉnh sửa Hóa đơn đã ở trạng thái ĐÃ THANH TOÁN
+        if ($bill->status === 'paid') {
+            return redirect()->back()->with('error', 'Hóa đơn đã được thanh toán hoàn tất (Paid). Không thể chỉnh sửa!');
+        }
         /**
          * Trường hợp chỉ cập nhật tiền đã thanh toán
          */
@@ -383,8 +400,30 @@ class BillController extends Controller
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
+        // Kiểm tra tất cả các nhà trọ thuộc quyền quản lý xem đã cấu hình tài khoản ngân hàng VietQR chưa
+        $houseIds = $user->getAccessibleHouseIds();
+        $unconfiguredHouses = \App\Models\House::whereIn('id', $houseIds)
+            ->where(function ($q) {
+                $q->whereNull('bank_name')->orWhere('bank_name', '')
+                  ->orWhereNull('account_no')->orWhere('account_no', '')
+                  ->orWhereNull('account_name')->orWhere('account_name', '');
+            })
+            ->pluck('name')
+            ->toArray();
+
+        if (!empty($unconfiguredHouses)) {
+            return redirect()->back()->with('error', 
+                'Không thể tạo hóa đơn! Các nhà trọ sau chưa được thiết lập tài khoản ngân hàng (VietQR): ' . implode(', ', $unconfiguredHouses) . '. Vui lòng cập nhật tài khoản ngân hàng trong Quản lý Nhà trọ trước khi tạo hóa đơn.'
+            );
+        }
+
         // Gọi service xử lý logic tạo hàng loạt (truyền user hiện tại để audit)
         $count = $this->billService->generateMonthlyBills($month, $year, auth()->id());
+
+        if ($count === 0) {
+            return redirect()->route('landlord.bills.index')
+                ->with('info', "Không có hóa đơn mới nào được tạo cho tháng {$month}/{$year} (tất cả hợp đồng đã được lập hóa đơn).");
+        }
 
         return redirect()->route('landlord.bills.index')
             ->with('success', "Đã tạo {$count} hóa đơn cho tháng {$month}/{$year}");

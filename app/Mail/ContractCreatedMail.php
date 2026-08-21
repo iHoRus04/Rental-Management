@@ -19,13 +19,17 @@ class ContractCreatedMail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $contract;
+    public $accountEmail;
+    public $accountPassword;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Contract $contract)
+    public function __construct(Contract $contract, $accountEmail = null, $accountPassword = null)
     {
         $this->contract = $contract;
+        $this->accountEmail = $accountEmail;
+        $this->accountPassword = $accountPassword;
     }
 
     /**

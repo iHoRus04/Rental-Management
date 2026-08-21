@@ -13,8 +13,9 @@ echo "==> Clearing config cache"
 php artisan config:clear || true
 
 # Run database migrations and seeders
+# If there are half-created tables from a failed previous run, we need a fresh start
 echo "==> Running database migrations and seeders"
-php artisan migrate --seed --force || true
+php artisan migrate:fresh --seed --force || php artisan migrate --seed --force || true
 
 # Ensure storage link
 echo "==> Creating storage symlink"

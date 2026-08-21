@@ -8,9 +8,12 @@ mkdir -p /var/www/html/storage/logs /var/www/html/storage/framework/views /var/w
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache || true
 chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache || true
 
-# Clear config cache first to ensure Laravel reads current environment variables
-echo "==> Clearing config cache"
+# Clear ALL caches first (removes stale route/config cache that causes preg_match errors)
+echo "==> Clearing all caches"
 php artisan config:clear || true
+php artisan route:clear || true
+php artisan view:clear || true
+php artisan cache:clear || true
 
 # Drop entire public schema and recreate it — this clears ALL tables including partial ones
 # This is the most reliable way to handle failed PostgreSQL transactions

@@ -182,11 +182,11 @@ export default function AuthenticatedLayout({ header, children }) {
 
             // If server invalidated session, reload or redirect externally
             // Prefer external site as requested
-            window.location.href = 'http://127.0.0.1:8000/login';
+            window.location.href = 'https://dreamhouse-app.onrender.com/login';
         } catch (e) {
             console.error('Logout failed', e);
             // Still redirect to external page to ensure user leaves authenticated area
-            window.location.href = 'http://127.0.0.1:8000/login';
+            window.location.href = 'https://dreamhouse-app.onrender.com/login';
         }
     };
 

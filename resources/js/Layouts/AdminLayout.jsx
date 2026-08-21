@@ -84,10 +84,10 @@ export default function AdminLayout({ children, title }) {
                 body: JSON.stringify({}),
             });
 
-            window.location.href = 'http://127.0.0.1:8000/login';
+            window.location.href = 'https://dreamhouse-app.onrender.com/login';
         } catch (e) {
             console.error('Logout failed', e);
-            window.location.href = 'http://127.0.0.1:8000/login';
+            window.location.href = 'https://dreamhouse-app.onrender.com/login';
         }
     };
 
@@ -140,7 +140,7 @@ export default function AdminLayout({ children, title }) {
                             className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-300 group relative ${item.active
                                 ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25'
                                 : 'text-gray-500 hover:bg-emerald-50 hover:text-emerald-700'
-                            }`}
+                                }`}
                         >
                             {/* Icon + Badge (khi sidebar thu gọn) */}
                             <span className={`flex-shrink-0 relative transition-transform duration-300 ${!item.active && 'group-hover:scale-110'}`}>
@@ -157,9 +157,8 @@ export default function AdminLayout({ children, title }) {
                                 <span className="flex-1 flex items-center justify-between">
                                     <span className="font-bold text-sm whitespace-nowrap">{item.name}</span>
                                     {item.badge > 0 && (
-                                        <span className={`min-w-[20px] h-5 px-1.5 text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-sm ${
-                                            item.active ? 'bg-white/30 text-white' : 'bg-rose-500 text-white animate-pulse'
-                                        }`}>
+                                        <span className={`min-w-[20px] h-5 px-1.5 text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-sm ${item.active ? 'bg-white/30 text-white' : 'bg-rose-500 text-white animate-pulse'
+                                            }`}>
                                             {item.badge > 99 ? '99+' : item.badge}
                                         </span>
                                     )}
@@ -184,7 +183,7 @@ export default function AdminLayout({ children, title }) {
 
             {/* Main Content Area */}
             <div className={`${sidebarOpen ? 'ml-72' : 'ml-24'} flex-1 transition-all duration-300 flex flex-col relative z-10`}>
-                
+
                 {/* Floating Top Navbar */}
                 <nav className="sticky top-0 z-30 px-6 py-4">
                     <div className="bg-white/80 backdrop-blur-xl border border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)] rounded-2xl px-6 py-3 flex items-center justify-between">

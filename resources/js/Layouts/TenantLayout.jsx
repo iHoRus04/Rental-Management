@@ -108,10 +108,10 @@ export default function TenantLayout({ header, children }) {
             });
 
             console.log('Logout response', res.status, res);
-            window.location.href = 'http://127.0.0.1:8000/login';
+            window.location.href = 'https://dreamhouse-app.onrender.com/login';
         } catch (e) {
             console.error('Logout failed', e);
-            window.location.href = 'http://127.0.0.1:8000/login';
+            window.location.href = 'https://dreamhouse-app.onrender.com/login';
         }
     };
 

@@ -27,6 +27,10 @@ export default function Index() {
         );
     };
 
+    // Lọc theo tháng năm 
+    const [month, setMonth] = useState('all');
+    const [year, setYear] = useState(new Date().getFullYear());
+
     // Calculate house statistics
     const getHouseStats = (houseId) => {
         const housePayments = payments.filter(p => p.bill && p.bill.room && p.bill.room.house_id === houseId);
@@ -40,10 +44,16 @@ export default function Index() {
         ? payments.filter(p => p.bill && p.bill.room && p.bill.room.house_id === selectedHouse.id)
         : [];
 
-    const filteredPayments = housePayments.filter(p =>
-        p.bill.room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.bill.renter_request?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPayments = housePayments.filter(p => {
+        const matchesSearch =
+            (p.bill?.room?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (p.bill?.renter_request?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesMonth = month === 'all' || Number(p.bill?.month) === Number(month);
+        const matchesYear = year === 'all' || Number(p.bill?.year) === Number(year);
+
+        return matchesSearch && matchesMonth && matchesYear;
+    });
 
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
@@ -182,6 +192,33 @@ export default function Index() {
                                 />
                                 <svg className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                             </div>
+
+
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Lọc kỳ hóa đơn:</span>
+                                <select
+                                    value={month}
+                                    onChange={(e) => setMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                                    className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all cursor-pointer"
+                                >
+                                    <option value="all">Tất cả các tháng</option>
+                                    {[...Array(12)].map((_, i) => (
+                                        <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
+                                    ))}
+                                </select>
+
+                                <select
+                                    value={year}
+                                    onChange={(e) => setYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                                    className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all cursor-pointer"
+                                >
+                                    <option value="all">Tất cả các năm</option>
+                                    {[...Array(8)].map((_, i) => {
+                                        const y = new Date().getFullYear() - i + 1;
+                                        return <option key={y} value={y}>Năm {y}</option>;
+                                    })}
+                                </select>
+                            </div>
                         </div>
 
                         {/* PAYMENTS GRID */}
@@ -203,7 +240,7 @@ export default function Index() {
                                         <div className="flex justify-between items-start mb-4 relative z-10">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="font-bold text-gray-900 text-lg">Phòng {payment.bill.room.name}</h3>
+                                                    <h3 className="font-bold text-gray-900 text-lg"> {payment.bill.room.name}</h3>
                                                     <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
                                                         T{payment.bill.month}/{payment.bill.year}
                                                     </span>

@@ -10,6 +10,7 @@ class Service extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'name',
         'description',
         'default_price',
@@ -19,8 +20,16 @@ class Service extends Model
 
     protected $casts = [
         'default_price' => 'decimal:2',
-        'is_active' => 'boolean',
+        'is_active'     => 'boolean',
     ];
+
+    /**
+     * Chủ trọ sở hữu dịch vụ này
+     */
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
     /**
      * Get rooms that use this service

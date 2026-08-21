@@ -50,6 +50,7 @@ class ProfileController extends Controller
     /**
      * Delete the user's account.
      */
+
     public function destroy(Request $request): RedirectResponse
     {
         $request->validate([
@@ -57,6 +58,23 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+
+        // RÀNG BUỘC BẢO VỆ DỮ LIỆU:
+        // 1. Tài khoản Nhân viên do Chủ trọ quản lý, không cho tự xóa
+        if ($user->role === 'staff') {
+            return back()->withErrors(['password' => 'Tài khoản Nhân viên thuộc quyền quản lý của Chủ trọ. Vui lòng liên hệ Chủ trọ để thao tác.']);
+        }
+
+        // 2. Tài khoản Khách thuê đang có Hợp đồng hoạt động không được tự xóa
+        if ($user->role === 'tenant') {
+            $hasActiveContract = \App\Models\Contract::where('renter_request_id', $user->renter_request_id)
+                ->where('status', 'active')
+                ->exists();
+
+            if ($hasActiveContract) {
+                return back()->withErrors(['password' => 'Bạn đang có Hợp đồng thuê phòng đang hoạt động. Vui lòng liên hệ Chủ trọ thanh lý hợp đồng trước khi xóa tài khoản.']);
+            }
+        }
 
         Auth::logout();
 

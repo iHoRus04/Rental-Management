@@ -229,8 +229,8 @@ export default function Index() {
                                 <button
                                     onClick={() => setStatusFilter('all')}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${statusFilter === 'all'
-                                            ? 'bg-white text-emerald-700 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-800'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
                                         }`}
                                 >
                                     Tất cả ({houseRooms.length})
@@ -238,8 +238,8 @@ export default function Index() {
                                 <button
                                     onClick={() => setStatusFilter('recorded')}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${statusFilter === 'recorded'
-                                            ? 'bg-white text-emerald-700 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-800'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
                                         }`}
                                 >
                                     Đã chốt số
@@ -247,8 +247,8 @@ export default function Index() {
                                 <button
                                     onClick={() => setStatusFilter('unrecorded')}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${statusFilter === 'unrecorded'
-                                            ? 'bg-white text-emerald-700 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-800'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-800'
                                         }`}
                                 >
                                     Chưa chốt số
@@ -295,7 +295,7 @@ export default function Index() {
                                                 <div className="flex justify-between items-start mb-3">
                                                     <div>
                                                         <h3 className="text-lg font-extrabold text-teal-900">
-                                                            Phòng {room.name}
+                                                            {room.name}
                                                         </h3>
                                                         <p className="text-xs text-gray-400 mt-0.5">
                                                             {renterName ? `👤 ${renterName}` : '❌ Phòng trống'}
@@ -387,7 +387,7 @@ export default function Index() {
                         <p className="text-xs text-gray-500 mb-6">
                             Áp dụng đơn giá cố định cho tất cả các phòng thuộc nhà <strong>{selectedHouse.name}</strong> khi lập hóa đơn.
                         </p>
-                        
+
                         <div className="space-y-4 mb-6">
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">⚡ Đơn giá điện (₫ / kWh)</label>

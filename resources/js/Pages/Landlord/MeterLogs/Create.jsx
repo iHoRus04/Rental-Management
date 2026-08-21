@@ -44,7 +44,7 @@ export default function Create() {
     return (
         <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <Head title="Ghi chỉ số Điện-Nước" />
-            
+
             <div className="max-w-3xl mx-auto">
                 {/* --- HEADER --- */}
                 <div className="mb-8">
@@ -75,7 +75,7 @@ export default function Create() {
 
                 <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden">
                     <form onSubmit={handleSubmit} className="p-8 space-y-8">
-                        
+
                         {/* Section 1: Thông tin cơ bản */}
                         <div>
                             <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">
@@ -99,7 +99,7 @@ export default function Create() {
                                                 </option>
                                             ))}
                                         </select>
-                                      
+
                                     </div>
                                     {errors.room_id && <p className="text-red-500 text-sm mt-1">{errors.room_id}</p>}
                                 </div>
@@ -129,7 +129,7 @@ export default function Create() {
                                                     <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
                                                 ))}
                                             </select>
-                                            
+
                                         </div>
                                         {errors.month && <p className="text-red-500 text-sm mt-1">{errors.month}</p>}
                                     </div>
@@ -161,13 +161,14 @@ export default function Create() {
                                         <svg className="w-24 h-24 text-yellow-600" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                     </div>
                                     <label className="block text-sm font-bold text-yellow-800 mb-2 flex items-center gap-2 relative z-10">
-                                        <span className="bg-yellow-200 p-1 rounded">⚡</span> 
+                                        <span className="bg-yellow-200 p-1 rounded">⚡</span>
                                         Chỉ số Điện (kWh) <span className="text-red-500">*</span>
                                     </label>
+
                                     <input
                                         type="number"
-                                        value={data.electric_reading}
-                                        onChange={e => setData('electric_reading', parseInt(e.target.value) || '')}
+                                        value={data.electric_reading ?? 0}
+                                        onChange={e => setData('electric_reading', parseInt(e.target.value) || 0)}
                                         className="w-full px-4 py-3 rounded-xl border border-yellow-200 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 transition-all outline-none font-bold text-gray-900 text-lg relative z-10 bg-white/80"
                                         placeholder="0"
                                     />
@@ -185,8 +186,8 @@ export default function Create() {
                                     </label>
                                     <input
                                         type="number"
-                                        value={data.water_reading}
-                                        onChange={e => setData('water_reading', parseInt(e.target.value) || '')}
+                                        value={data.water_reading ?? 0}
+                                        onChange={e => setData('water_reading', parseInt(e.target.value) || 0)}
                                         className="w-full px-4 py-3 rounded-xl border border-blue-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none font-bold text-gray-900 text-lg relative z-10 bg-white/80"
                                         placeholder="0"
                                     />

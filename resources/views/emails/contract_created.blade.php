@@ -177,6 +177,31 @@
                 </div>
             </div>
 
+            @if(!empty($accountEmail))
+            <!-- TENANT LOGIN CREDENTIALS CARD -->
+            <div class="info-card" style="background-color: #eff6ff; border-color: #bfdbfe; margin-bottom: 30px;">
+                <div class="info-title" style="color: #1e40af; border-bottom-color: #93c5fd; font-size: 16px; font-weight: 700; padding-bottom: 8px; margin-bottom: 16px; border-bottom: 2px solid;">
+                    🔑 Thông Tin Tài Khoản Đăng Nhập Ứng Dụng Khách Thuê
+                </div>
+                
+                <div class="info-row" style="border-bottom: 1px dashed #bfdbfe; display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px;">
+                    <span class="info-label" style="color: #1e3a8a; font-weight: 600;">Tên đăng nhập (Email):</span>
+                    <span class="info-value" style="color: #1e40af; font-weight: 700;">{{ $accountEmail }}</span>
+                </div>
+                
+                @if(!empty($accountPassword))
+                <div class="info-row" style="border-bottom: none; display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px;">
+                    <span class="info-label" style="color: #1e3a8a; font-weight: 600;">Mật khẩu đăng nhập:</span>
+                    <span class="info-value" style="color: #1d4ed8; font-weight: 700; font-family: monospace; font-size: 15px;">{{ $accountPassword }}</span>
+                </div>
+                @endif
+                
+                <p style="font-size: 12px; color: #3b82f6; margin-top: 12px; margin-bottom: 0; line-height: 1.5;">
+                    💡 <em>Quý khách có thể dùng thông tin trên để đăng nhập ứng dụng Khách thuê, theo dõi hóa đơn, chỉ số điện nước và gửi yêu cầu sửa chữa. Vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên.</em>
+                </p>
+            </div>
+            @endif
+
             <!-- LANDLORD CONTACT INFO -->
             <div class="info-card" style="background-color: #f0fdf4; border-color: #bbf7d0; margin-bottom: 30px;">
                 <div class="info-title" style="color: #065f46; border-bottom-color: #d1fae5; font-size: 16px; font-weight: 700; padding-bottom: 8px; margin-bottom: 16px; border-bottom: 2px solid;">Thông tin liên hệ chủ nhà</div>

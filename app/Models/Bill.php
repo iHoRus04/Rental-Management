@@ -56,7 +56,7 @@ class Bill extends Model
 
     public function renterRequest()
     {
-        return $this->belongsTo(RenterRequest::class);
+        return $this->belongsTo(RenterRequest::class)->withTrashed();
     }
 
     public function payments()

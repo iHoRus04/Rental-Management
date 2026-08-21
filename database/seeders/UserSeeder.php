@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Models\Landlord;
 use App\Models\StaffRole;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -42,18 +41,6 @@ class UserSeeder extends Seeder
 
         // Khởi tạo 3 vai trò mặc định cho Chủ trọ
         StaffRole::createDefaultRolesForLandlord($landlordUser->id);
-
-        // Thêm thông tin mở rộng cho chủ trọ nếu có bảng landlords
-        if (class_exists(Landlord::class)) {
-            Landlord::updateOrCreate(
-                ['user_id' => $landlordUser->id],
-                [
-                    'phone'   => '0912345678',
-                    'address' => 'Hồ Chí Minh',
-                ]
-            );
-        }
-
         // 3. Tạo tài khoản Nhân viên mẫu (Đã kích hoạt)
         User::updateOrCreate(
             ['email' => 'staff@dreamhouse.vn'],

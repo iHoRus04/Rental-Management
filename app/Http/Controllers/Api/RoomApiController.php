@@ -43,6 +43,13 @@ class RoomApiController extends Controller
         $room = Room::with('house')
                     ->where('status', 'available')
                     ->findOrFail($roomId);
+        
+        // Lấy ra giá các dịch vụ của phòng
+        $services = $room->services()->get();
+        
+        // Thêm thông tin dịch vụ vào response
+        $room->service_price = $services;
+
 
         return response()->json([
             'success' => true,

@@ -73,6 +73,11 @@ class BillService
             $roomServices = $contract->room->services ?? collect();
             $house = $contract->room->house ?? null;
             
+            // RÀNG BUỘC NGHIÊM NGẶT: Nếu nhà trọ chưa thiết lập tài khoản ngân hàng VietQR -> Bỏ qua không cho tạo hóa đơn
+            if (!$house || empty($house->bank_name) || empty($house->account_no) || empty($house->account_name)) {
+                continue;
+            }
+
             // Đơn giá mặc định lấy từ nhà trọ trước
             $electricPrice = floatval($house->electric_price ?? 0);
             $waterPrice = floatval($house->water_price ?? 0);

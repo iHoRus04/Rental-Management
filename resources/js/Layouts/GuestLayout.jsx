@@ -14,7 +14,7 @@ export default function GuestLayout({ children }) {
 
     return (
         <div className="min-h-screen flex flex-col justify-center items-center pt-6 sm:pt-0 bg-slate-50 relative overflow-hidden">
-            
+
             {/* Background Decoration (Gradient nhẹ nhàng) */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-emerald-200/20 rounded-full blur-3xl"></div>
@@ -48,6 +48,7 @@ export default function GuestLayout({ children }) {
             <div className="mt-8 text-center text-slate-400 text-xs z-10">
                 &copy; {new Date().getFullYear()} DreamHouse. All rights reserved.
             </div>
+
         </div>
     );
 }

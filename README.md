@@ -10,6 +10,13 @@
 
 ---
 
+## 🌐 DEMO TRỰC TUYẾN (LIVE DEMO)
+
+* 🏢 **Trang Web Quản Lý (Admin / Landlord / Staff / Tenant Portal):** [https://dreamhouse-app.onrender.com/](https://dreamhouse-app.onrender.com/)
+* 🌐 **Trang Web Cấu Hình / Công Khai (Public Landing Page & Tìm Phòng):** [https://dreamhouse-pied.vercel.app/](https://dreamhouse-pied.vercel.app/)
+
+---
+
 ## 🌟 TÍNH NĂNG NỔI BẬT
 
 ### 🏢 Phân Hệ Chủ Trọ (Landlord) & Nhân Viên (Staff)

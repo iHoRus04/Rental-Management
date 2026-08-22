@@ -18,8 +18,8 @@ return new class extends Migration
             $table->dateTime('start_date');
             $table->dateTime('end_date');
             $table->decimal('price_paid', 15, 2);
-            $table->enum('status', ['active', 'expired', 'cancelled'])->default('active');
-            $table->enum('payment_status', ['pending', 'paid', 'failed'])->default('paid');
+            $table->string('status', 50)->default('active');
+            $table->string('payment_status', 50)->default('paid');
             $table->timestamps();
         });
     }

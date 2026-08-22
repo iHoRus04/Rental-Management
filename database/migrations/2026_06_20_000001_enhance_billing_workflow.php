@@ -17,7 +17,7 @@ return new class extends Migration
         });
 
         // Thêm 'overdue' vào enum status
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
             DB::statement("ALTER TABLE bills MODIFY COLUMN status ENUM('pending', 'partial', 'paid', 'overdue') DEFAULT 'pending'");
         }
 
@@ -37,7 +37,7 @@ return new class extends Migration
             $table->dropColumn(['verified_by', 'bank_transaction_code']);
         });
 
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
             DB::statement("ALTER TABLE bills MODIFY COLUMN status ENUM('pending', 'partial', 'paid') DEFAULT 'pending'");
         }
 

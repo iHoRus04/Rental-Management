@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: rental-management
+    env: managed
+    plan: free
+    branch: render-deloy
+    buildCommand: |
+      # Install PHP dependencies
+      composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader || true
+      # Build Inertia / React frontend assets
+      if [ -f package.json ]; then npm ci && npm run build || true; fi
+      # Ensure APP_KEY exists
+      if [ -z "$APP_KEY" ]; then php artisan key:generate --force || true; fi
+    startCommand: |
+      chmod +x ./render-start.sh || true
+      ./render-start.sh

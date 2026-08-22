@@ -19,7 +19,7 @@ return new class extends Migration
             $table->unique(['house_id', 'name']); // Mỗi nhà có phòng riêng
 
             $table->decimal('price', 10, 2)->default(0);
-            $table->enum('status', ['available', 'occupied', 'maintenance'])->default('available');
+            $table->string('status', 50)->default('available');
             $table->integer('floor')->nullable();
             $table->float('area')->nullable();
             $table->text('description')->nullable();

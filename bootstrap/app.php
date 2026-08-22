@@ -23,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'user.status'=> \App\Http\Middleware\CheckUserStatus::class,
         ]);
 
-        //
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

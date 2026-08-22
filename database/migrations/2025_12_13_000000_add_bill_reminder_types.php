@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         // Thay đổi enum type để thêm bill_creation và bill_payment
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
             DB::statement("ALTER TABLE reminders MODIFY COLUMN type ENUM('payment', 'contract_expiry', 'bill_creation', 'bill_payment') DEFAULT 'payment'");
         }
         
@@ -32,7 +32,7 @@ return new class extends Migration
             }
         });
         
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
             DB::statement("ALTER TABLE reminders MODIFY COLUMN type ENUM('payment', 'contract_expiry') DEFAULT 'payment'");
         }
     }

@@ -34,7 +34,7 @@ export default function TenantLayout({ header, children }) {
 
     const handleSso = async () => {
         setProfileOpen(false);
-        const targetOrigin = 'http://localhost:5174';
+        const targetOrigin = 'https://dreamhouse-pied.vercel.app/';
         try {
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             const res = await fetch('/sso-token', {
@@ -77,7 +77,7 @@ export default function TenantLayout({ header, children }) {
             }, 200);
         } catch (e) {
             console.error('SSO token fetch failed', e);
-            window.open('http://localhost:5174/', '_blank');
+            window.open('https://dreamhouse-pied.vercel.app//', '_blank');
         }
     };
 
@@ -108,10 +108,10 @@ export default function TenantLayout({ header, children }) {
             });
 
             console.log('Logout response', res.status, res);
-            window.location.href = 'http://127.0.0.1:8000/login';
+            window.location.href = 'https://dreamhouse-app.onrender.com/login';
         } catch (e) {
             console.error('Logout failed', e);
-            window.location.href = 'http://127.0.0.1:8000/login';
+            window.location.href = 'https://dreamhouse-app.onrender.com/login';
         }
     };
 
@@ -244,7 +244,7 @@ export default function TenantLayout({ header, children }) {
                                             onClick={handleSso}
                                             className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-bold text-slate-700"
                                         >
-                                            Trở về trang chính
+                                            Chuyển trang Public
                                         </button>
                                         <div className="border-t border-gray-100" />
                                         <button

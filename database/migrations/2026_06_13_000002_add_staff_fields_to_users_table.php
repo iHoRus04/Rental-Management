@@ -12,10 +12,11 @@ return new class extends Migration
         // Thêm các cột mới vào bảng users nếu chưa có
         Schema::table('users', function (Blueprint $table) {
             if (!Schema::hasColumn('users', 'phone')) {
-                $table->string('phone')->nullable()->after('email');
+                $table->string('phone', 20)->nullable()->after('email');
             }
             if (!Schema::hasColumn('users', 'status')) {
-                $table->enum('status', ['pending', 'active', 'inactive'])->default('pending')->after('role');
+                // Use string instead of enum for PostgreSQL/Neon compatibility
+                $table->string('status', 20)->default('pending')->after('role');
             }
             if (!Schema::hasColumn('users', 'landlord_id')) {
                 $table->foreignId('landlord_id')->nullable()->constrained('users')->onDelete('set null')->after('status');
@@ -23,7 +24,7 @@ return new class extends Migration
         });
 
         // Cập nhật enum role để thêm 'staff' nếu chưa có (chỉ MySQL)
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'])) {
             DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin','landlord','tenant','staff') NOT NULL DEFAULT 'tenant'");
         }
     }

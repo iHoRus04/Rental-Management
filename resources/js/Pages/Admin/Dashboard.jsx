@@ -169,28 +169,30 @@ export default function Dashboard({ stats, revenueChart, landlordStatusChart, to
                             </div>
                         </div>
 
-                        <div className="relative flex items-end justify-between gap-3 sm:gap-5 h-56 px-1">
-                            {(filteredRevenueChart || []).map((data, idx) => {
-                                const h = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
-                                return (
-                                    <div key={idx} className="flex-1 flex flex-col justify-end items-center group h-full relative cursor-pointer">
-                                        {/* Tooltip */}
-                                        <div className="absolute -top-2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-slate-800 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg whitespace-nowrap z-20 shadow-lg transform group-hover:-translate-y-1 pointer-events-none">
-                                            {formatVND(data.revenue)}
-                                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45"></div>
+                        <div className="overflow-x-auto pb-2 scrollbar-thin">
+                            <div className="relative flex items-end justify-between gap-3 sm:gap-5 h-56 px-1 min-w-[280px]">
+                                {(filteredRevenueChart || []).map((data, idx) => {
+                                    const h = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
+                                    return (
+                                        <div key={idx} className="flex-1 flex flex-col justify-end items-center group h-full relative cursor-pointer min-w-[28px]">
+                                            {/* Tooltip */}
+                                            <div className="absolute -top-2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-slate-800 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg whitespace-nowrap z-20 shadow-lg transform group-hover:-translate-y-1 pointer-events-none">
+                                                {formatVND(data.revenue)}
+                                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45"></div>
+                                            </div>
+                                            {/* Bar */}
+                                            <div
+                                                className="w-full max-w-[52px] rounded-2xl relative overflow-hidden transition-all duration-500 group-hover:scale-[1.04] group-hover:shadow-lg border border-slate-100/50"
+                                                style={{ height: `${Math.max(h, 4)}%` }}
+                                            >
+                                                <div className="absolute bottom-0 w-full h-full bg-gradient-to-t from-emerald-500 via-teal-400 to-teal-300 rounded-2xl opacity-85 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                            </div>
+                                            {/* Label */}
+                                            <span className="text-[10px] text-slate-400 font-bold mt-3 group-hover:text-emerald-600 transition-colors whitespace-nowrap">{data.month}</span>
                                         </div>
-                                        {/* Bar */}
-                                        <div
-                                            className="w-full max-w-[52px] rounded-2xl relative overflow-hidden transition-all duration-500 group-hover:scale-[1.04] group-hover:shadow-lg border border-slate-100/50"
-                                            style={{ height: `${Math.max(h, 4)}%` }}
-                                        >
-                                            <div className="absolute bottom-0 w-full h-full bg-gradient-to-t from-emerald-500 via-teal-400 to-teal-300 rounded-2xl opacity-85 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                        </div>
-                                        {/* Label */}
-                                        <span className="text-[10px] text-slate-400 font-bold mt-3 group-hover:text-emerald-600 transition-colors whitespace-nowrap">{data.month}</span>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
 
@@ -277,12 +279,12 @@ export default function Dashboard({ stats, revenueChart, landlordStatusChart, to
 
                 {/* Bảng giao dịch chi tiết (thay thế trang Revenue) */}
                 <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="p-5 border-b border-slate-50 flex justify-between items-center">
+                    <div className="p-4 sm:p-5 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
                             <h3 className="text-sm font-extrabold text-slate-800">Lịch sử giao dịch mua gói cước</h3>
                             <p className="text-[11px] text-slate-400 font-medium mt-0.5">10 giao dịch đăng ký gói dịch vụ gần nhất trên toàn hệ thống</p>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
                             <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">{stats.activeSubsCount} gói hoạt động</span>
                             <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg">+{stats.newSubsCount} mới tháng này</span>
                         </div>

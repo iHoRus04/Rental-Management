@@ -20,30 +20,28 @@ export default function Index({ houses, auth }) {
     );
 
     return (
-        <div className="p-6 md:p-10 max-w-[1600px] mx-auto font-sans">
+        <div className="p-4 sm:p-6 md:p-10 max-w-[1600px] mx-auto font-sans">
             <Head title="Danh sách nhà trọ" />
 
-            {/* --- HEADER SECTION (Giống mẫu: Title trái, Button phải) --- */}
-            <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-8 gap-4">
+            {/* --- HEADER SECTION --- */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-teal-900 tracking-tight">Nhà trọ</h1>
-                    <p className="text-emerald-600/80 font-medium text-sm mt-1">Quản lý danh sách nhà trọ của bạn</p>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-teal-900 tracking-tight">Nhà trọ</h1>
+                    <p className="text-emerald-600/80 font-medium text-xs sm:text-sm mt-1">Quản lý danh sách nhà trọ của bạn</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-
-
-                    {/* Nút Filter (Giống mẫu) */}
-                    <button className="flex items-center gap-2 bg-white text-gray-600 border border-gray-200 px-5 py-2.5 rounded-xl font-bold text-sm hover:border-emerald-300 hover:text-emerald-600 transition-all shadow-sm">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto">
+                    {/* Nút Filter */}
+                    <button className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-white text-gray-600 border border-gray-200 px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:border-emerald-300 hover:text-emerald-600 transition-all shadow-sm">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                         Filter
                     </button>
 
-                    {/* Nút Add Property (Gradient Emerald) */}
+                    {/* Nút Add Property */}
                     {canCreateHouse && (
                         <Link
                             href={route('landlord.houses.create')}
-                            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
+                            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 whitespace-nowrap"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                             Thêm nhà trọ
@@ -52,9 +50,9 @@ export default function Index({ houses, auth }) {
                 </div>
             </div>
 
-            {/* --- GRID PROPERTIES (Giống layout ảnh mẫu) --- */}
+            {/* --- GRID PROPERTIES --- */}
             {filteredHouses.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8">
                     {filteredHouses.map((house) => (
                         <div
                             key={house.id}

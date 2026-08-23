@@ -54,7 +54,7 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
         new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(price);
 
     return (
-        <div className="min-h-screen bg-emerald-50/30 py-8 px-4 sm:px-6 lg:px-8 font-sans relative">
+        <div className="min-h-screen bg-emerald-50/30 py-4 sm:py-8 px-3 sm:px-6 lg:px-8 font-sans relative">
             <Head title={`Danh sách phòng - ${house.name}`} />
             
             {/* Background Blobs */}
@@ -62,9 +62,9 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
 
             <div className="max-w-[1600px] mx-auto">
                 {/* --- HEADER SECTION --- */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 pb-6 border-b border-gray-100">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4 pb-4 sm:pb-6 border-b border-gray-100">
                     <div>
-                        <div className="mb-3">
+                        <div className="mb-2">
                             <Link
                                 href={route('landlord.houses.index')}
                                 className="inline-flex items-center text-xs font-bold text-gray-400 hover:text-emerald-600 transition-colors"
@@ -74,25 +74,25 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                             </Link>
                         </div>
                         
-                        <p className="text-emerald-600 font-extrabold text-[10px] uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                        <p className="text-emerald-600 font-extrabold text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             Quản lý phòng trọ
                         </p>
-                        <h1 className="text-2xl font-black text-teal-900 tracking-tight">
+                        <h1 className="text-xl sm:text-2xl font-black text-teal-900 tracking-tight">
                             {house.name}
                         </h1>
                         <p className="text-gray-400 mt-1 text-xs flex items-center gap-1 font-medium">
-                            <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            {house.address}
+                            <svg className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            <span className="truncate">{house.address}</span>
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 w-full sm:w-auto">
                         {/* View Mode Toggle Switch */}
                         <div className="flex bg-slate-100/80 p-1 rounded-xl shrink-0">
                             <button
                                 onClick={() => setViewMode('map')}
-                                className={`px-4 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all border-0 ${
+                                className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all border-0 ${
                                     viewMode === 'map'
                                         ? 'bg-white text-emerald-700 shadow-sm'
                                         : 'text-slate-500 hover:text-slate-800 bg-transparent'
@@ -102,7 +102,7 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                             </button>
                             <button
                                 onClick={() => setViewMode('list')}
-                                className={`px-4 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all border-0 ${
+                                className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-black tracking-wide transition-all border-0 ${
                                     viewMode === 'list'
                                         ? 'bg-white text-emerald-700 shadow-sm'
                                         : 'text-slate-500 hover:text-slate-800 bg-transparent'
@@ -116,7 +116,7 @@ export default function Index({ house, rooms, roomLimit, currentRoomCount }) {
                             <Link
                                 href={route('landlord.houses.rooms.create', house.id)}
                                 onClick={handleCreateClick}
-                                className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/10 transition-all active:scale-[0.98]"
+                                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-500/10 transition-all active:scale-[0.98] whitespace-nowrap"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                                 Thêm phòng

@@ -63,7 +63,7 @@ export default function NotificationBell() {
                         className="fixed inset-0 z-40" 
                         onClick={() => setShowDropdown(false)}
                     />
-                    <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl z-50 border border-slate-100 overflow-hidden animate-fade-in">
+                    <div className="absolute right-[-2.5rem] sm:right-0 mt-3 w-[calc(100vw-2rem)] sm:w-80 max-w-xs sm:max-w-sm bg-white rounded-2xl shadow-2xl z-50 border border-slate-100 overflow-hidden animate-fade-in">
                         <div className="p-4 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
                             <h3 className="text-sm font-extrabold text-slate-800">Thông báo</h3>
                             {pendingCount > 0 && (

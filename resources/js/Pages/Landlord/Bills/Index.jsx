@@ -109,25 +109,25 @@ export default function Index() {
                 {/* HOUSE LIST GRID VIEW */}
                 {!selectedHouse ? (
                     <>
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 sm:mb-8 gap-4 sm:gap-6">
                             <div>
-                                <p className="text-emerald-600 font-bold text-xs uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <p className="text-emerald-600 font-bold text-xs uppercase tracking-widest mb-1.5 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                                     Tài chính & Thanh toán
                                 </p>
-                                <h1 className="text-3xl font-extrabold text-teal-900 tracking-tight">Quản lý hóa đơn</h1>
-                                <p className="text-gray-500 mt-1 text-sm">Chọn nhà trọ/căn hộ để quản lý, xem danh sách và thanh toán hóa đơn</p>
+                                <h1 className="text-2xl sm:text-3xl font-extrabold text-teal-900 tracking-tight">Quản lý hóa đơn</h1>
+                                <p className="text-gray-500 mt-1 text-xs sm:text-sm">Chọn nhà trọ/căn hộ để quản lý, xem danh sách và thanh toán hóa đơn</p>
                             </div>
 
-                            <div className="flex gap-3 w-full md:w-auto">
+                            <div className="flex flex-wrap gap-2.5 sm:gap-3 w-full md:w-auto">
                                 <a
                                     href={route('landlord.bills.exportExcel')}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-sm hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                    className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs sm:text-sm hover:bg-emerald-600 hover:text-white transition-all shadow-sm whitespace-nowrap"
                                     title="Tải về danh sách tất cả hóa đơn dạng file Excel / CSV"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     Xuất Excel
@@ -137,16 +137,16 @@ export default function Index() {
                                     <>
                                         <button
                                             onClick={handleGenerateMonthly}
-                                            className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-emerald-100 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm"
+                                            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-emerald-100 text-emerald-700 rounded-xl font-bold text-xs sm:text-sm hover:bg-emerald-50 hover:border-emerald-200 transition-all shadow-sm whitespace-nowrap"
                                         >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                             Tạo tự động
                                         </button>
                                         <Link
                                             href={route('landlord.bills.create')}
-                                            className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5"
+                                            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 whitespace-nowrap"
                                         >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                                             Tạo hóa đơn
                                         </Link>
                                     </>
@@ -162,7 +162,7 @@ export default function Index() {
                                 <p className="text-gray-500 font-medium">Bạn chưa quản lý nhà nào.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 {houses.map((house) => {
                                     const { total, unpaid, paid, overdue } = getHouseStats(house.id);
 

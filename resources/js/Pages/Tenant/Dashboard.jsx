@@ -36,23 +36,23 @@ export default function TenantDashboard({ auth, contract, room, landlord, recent
         <TenantLayout user={user}>
             <Head title="Bảng điều khiển khách thuê" />
 
-            <div className="max-w-[1400px] mx-auto py-8 px-4 sm:px-6 lg:px-8 font-sans space-y-8">
+            <div className="max-w-[1400px] mx-auto py-4 sm:py-8 px-3 sm:px-6 lg:px-8 font-sans space-y-6 sm:space-y-8">
 
                 {/* ── BANNER CHÀO MỪNG CHUYÊN NGHIỆP ── */}
-                <div className="relative bg-gradient-to-r from-teal-900 via-emerald-800 to-teal-700 rounded-[32px] p-8 sm:p-10 shadow-xl overflow-hidden border border-emerald-700/30">
+                <div className="relative bg-gradient-to-r from-teal-900 via-emerald-800 to-teal-700 rounded-2xl sm:rounded-[32px] p-5 sm:p-8 md:p-10 shadow-xl overflow-hidden border border-emerald-700/30">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none"></div>
                     <div className="absolute bottom-0 left-0 w-80 h-80 bg-teal-500/10 rounded-full blur-[80px] -ml-32 -mb-32 pointer-events-none"></div>
 
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="space-y-2">
-                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                                 Cổng thông tin cư dân
                             </span>
-                            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-tight">
                                 Xin chào, {user.name}! 👋
                             </h1>
-                            <p className="text-emerald-100/80 text-sm max-w-xl font-medium">
+                            <p className="text-emerald-100/80 text-xs sm:text-sm max-w-xl font-medium">
                                 Chào mừng bạn quay trở lại. Hôm nay là {currentDateString}. Hãy xem nhanh các thông tin phòng trọ và hóa đơn của bạn bên dưới.
                             </p>
                         </div>

@@ -67,11 +67,10 @@ const ModernUnitCard = ({ contract }) => {
     return (
         <Link 
             href={route('landlord.houses.rooms.show', [contract.room?.house?.id, contract.room?.id])}
-            // Hover border changed to emerald
-            className="group relative bg-white rounded-[24px] p-3 transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(16,185,129,0.15)] hover:bg-emerald-50/30 border border-gray-100/50 hover:border-emerald-200"
+            className="group relative bg-white rounded-2xl sm:rounded-[24px] p-3 sm:p-3.5 transition-all duration-300 hover:shadow-[0_20px_40px_-15px_rgba(16,185,129,0.15)] hover:bg-emerald-50/30 border border-gray-100/50 hover:border-emerald-200 block min-w-0"
         >
-            <div className="flex gap-4">
-                <div className="relative w-32 h-32 flex-shrink-0 rounded-[20px] overflow-hidden bg-gray-100 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div className="relative w-full sm:w-32 h-36 sm:h-32 flex-shrink-0 rounded-xl sm:rounded-[20px] overflow-hidden bg-gray-100 shadow-sm">
                     {imageUrl ? (
                         <img src={imageUrl} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                     ) : (
@@ -79,33 +78,27 @@ const ModernUnitCard = ({ contract }) => {
                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         </div>
                     )}
-                    {/* Status Dot - Vibrant Green */}
+                    {/* Status Dot */}
                     <div className={`absolute top-3 left-3 w-3.5 h-3.5 rounded-full border-[3px] border-white shadow-md ${isOccupied ? 'bg-emerald-500' : 'bg-gray-300'}`}></div>
                 </div>
 
-                <div className="flex-grow flex flex-col justify-center py-1 pr-2">
-                    <div className="mb-1">
-                        {/* Title hover color changed to emerald */}
-                        <h4 className="font-bold text-gray-900 text-[17px] group-hover:text-emerald-600 transition-colors line-clamp-1">{contract.room?.name}</h4>
+                <div className="flex-grow flex flex-col justify-between py-1 pr-1 min-w-0">
+                    <div className="mb-2">
+                        <h4 className="font-bold text-gray-900 text-base sm:text-[17px] group-hover:text-emerald-600 transition-colors truncate">{contract.room?.name}</h4>
                         <div className="flex items-center gap-1 mt-1 text-gray-400 text-xs font-medium">
-                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            <p className="line-clamp-1">{contract.room?.house?.address}</p>
+                             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            <p className="truncate">{contract.room?.house?.address}</p>
                         </div>
                     </div>
                     
-                    <div className="mt-auto">
-                        <div className="flex justify-between items-end items-center">
-                             <div className="flex items-center gap-4 text-xs font-semibold text-gray-500">
-                                <div className="flex items-center gap-1.5 bg-white border border-gray-100 px-2.5 py-1.5 rounded-xl shadow-sm group-hover:border-emerald-100 transition-all">
-                                    <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                    <span className="max-w-[80px] truncate">{contract.renterRequest?.name || '---'}</span>
-                                </div>
-                            </div>
-                            {/* Price tag changed to emerald theme */}
-                            <span className="text-emerald-700 font-extrabold text-sm bg-emerald-50/80 px-3 py-1.5 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
-                                {formatCurrency(contract.monthly_rent)}
-                            </span>
+                    <div className="mt-auto pt-2 border-t border-gray-50 flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg text-xs font-semibold text-gray-600 max-w-[130px] truncate">
+                            <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                            <span className="truncate">{contract.renterRequest?.name || '---'}</span>
                         </div>
+                        <span className="text-emerald-700 font-extrabold text-xs sm:text-sm bg-emerald-50/80 px-2.5 py-1 rounded-lg group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
+                            {formatCurrency(contract.monthly_rent)}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -214,25 +207,24 @@ export default function Dashboard() {
                 <div className="fixed top-[-10%] left-[-10%] w-[700px] h-[700px] bg-emerald-400 opacity-[0.04] rounded-full blur-[130px] pointer-events-none mix-blend-multiply"></div>
                 <div className="fixed bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-teal-400 opacity-[0.05] rounded-full blur-[120px] pointer-events-none mix-blend-multiply"></div>
 
-                <div className="relative max-w-[1800px] mx-auto px-4 md:px-8 pt-10">
+                <div className="relative max-w-[1800px] mx-auto px-3 sm:px-6 md:px-8 pt-4 sm:pt-8">
                     
                     {/* Header - Dark Teal text */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-3 sm:gap-4">
                         <div>
-                            <p className="text-emerald-700/70 font-semibold text-xs uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <p className="text-emerald-700/70 font-semibold text-xs uppercase tracking-widest mb-1.5 flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                                 Tổng quan hệ thống
                             </p>
-                            <h1 className="text-4xl font-extrabold text-teal-900 tracking-tight">Dashboard</h1>
+                            <h1 className="text-2xl sm:text-4xl font-extrabold text-teal-900 tracking-tight">Dashboard</h1>
                         </div>
-                     
                     </div>
 
                     {/* BENTO GRID LAYOUT */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
                         
                         {/* 1. Main Stats (Col 1) - Primary Green Card */}
-                        <div className="lg:col-span-1 h-52 lg:h-auto">
+                        <div className="sm:col-span-2 lg:col-span-1 min-h-[12rem] lg:h-auto">
                             <BentoStatCard 
                                 type="primary"
                                 title="Doanh thu tháng này"
@@ -253,7 +245,6 @@ export default function Dashboard() {
                             type="secondary"
                             title="Chưa thanh toán"
                             value={formatCurrency(stats?.pendingAmount || 0)}
-                         
                             subValue={<span className="text-red-600 font-bold flex items-center gap-1"><span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>Cần thu gấp</span>}
                             icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                             href={route('landlord.bills.index')}
@@ -278,108 +269,106 @@ export default function Dashboard() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 h-full">
                         {/* CHART SECTION */}
-                        <div className="lg:col-span-2 bg-white rounded-[24px] p-8 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] border border-gray-100/80 flex flex-col h-full">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                        <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-[24px] p-5 sm:p-8 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] border border-gray-100/80 flex flex-col h-full">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
                                 <div>
-                                    <h3 className="text-xl font-extrabold text-teal-900">Biểu đồ doanh thu</h3>
+                                    <h3 className="text-lg sm:text-xl font-extrabold text-teal-900">Biểu đồ doanh thu</h3>
                                     <p className="text-[11px] text-gray-400 font-medium mt-0.5">Tổng thu tiền phòng và dịch vụ hàng tháng</p>
                                 </div>
                                 
-                                <div className="flex items-center gap-3">
-                                    {/* Months Selector Pills (Giống Admin) */}
+                                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                    {/* Months Selector Pills */}
                                     <div className="flex bg-slate-100/80 p-1 rounded-xl shrink-0">
                                         {[3, 6, 12].map((m) => (
                                             <button
                                                 key={m}
                                                 onClick={() => setMonthsLimit(m)}
-                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wide uppercase transition-all ${
+                                                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] font-black tracking-wide uppercase transition-all ${
                                                     monthsLimit === m
                                                         ? 'bg-white text-emerald-700 shadow-sm border-0'
                                                         : 'text-slate-500 hover:text-slate-800 border-0 bg-transparent'
                                                 }`}
                                             >
-                                                {m} Tháng
+                                                {m}T
                                             </button>
                                         ))}
                                     </div>
 
                                     <Link 
                                         href={route('landlord.bills.index')}
-                                        className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm shrink-0"
+                                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm shrink-0"
                                     >
                                         Xem chi tiết
                                     </Link>
                                 </div>
                             </div>
                             
-                            {/* Stylized Chart Bars - Green Gradient */}
-                            <div className="relative flex-grow w-full flex items-end justify-between px-2 gap-3 sm:gap-4 h-64">
-                                {(filteredRevenueChart || []).map((data, idx) => {
-                                    const h = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
-                                    
-                                    return (
-                                        <div key={idx} className="flex-1 flex flex-col justify-end items-center group h-full cursor-pointer relative">
-                                            <div className="mb-3 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-teal-900 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg absolute -mt-10 whitespace-nowrap z-20 shadow-lg transform group-hover:-translate-y-1">
-                                                {formatCurrency(data.revenue)}
+                            {/* Stylized Chart Bars - Green Gradient with smooth overflow */}
+                            <div className="overflow-x-auto pb-2 scrollbar-thin">
+                                <div className="relative flex-grow w-full flex items-end justify-between px-2 gap-2 sm:gap-4 h-56 sm:h-64 min-w-[280px]">
+                                    {(filteredRevenueChart || []).map((data, idx) => {
+                                        const h = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
+                                        
+                                        return (
+                                            <div key={idx} className="flex-1 flex flex-col justify-end items-center group h-full cursor-pointer relative min-w-[28px]">
+                                                <div className="mb-3 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-teal-900 text-white text-[11px] font-bold py-1 px-2 rounded-lg absolute -mt-10 whitespace-nowrap z-20 shadow-lg transform group-hover:-translate-y-1 pointer-events-none">
+                                                    {formatCurrency(data.revenue)}
+                                                </div>
+                                                
+                                                <div className="w-full max-w-[48px] bg-gray-50 rounded-lg sm:rounded-[14px] relative overflow-hidden transition-all duration-300 group-hover:scale-105 group-hover:shadow-md border border-gray-100" style={{height: `${Math.max(h, 4)}%`}}>
+                                                    <div className="absolute bottom-0 w-full bg-gradient-to-t from-emerald-500 via-teal-400 to-teal-300 rounded-lg sm:rounded-[14px] transition-all duration-1000 ease-out opacity-90 group-hover:opacity-100" style={{height: '100%'}}></div>
+                                                </div>
+                                                <span className="text-[11px] sm:text-xs text-gray-400 font-bold mt-3 sm:mt-4 group-hover:text-emerald-600 transition-colors whitespace-nowrap">{data.month}</span>
                                             </div>
-                                            
-                                            <div className="w-full max-w-[48px] bg-gray-50 rounded-[14px] relative overflow-hidden transition-all duration-300 group-hover:scale-105 group-hover:shadow-md border border-gray-100" style={{height: `${Math.max(h, 4)}%`}}>
-                                                {/* Bar gradient updated to emerald/teal */}
-                                                <div className="absolute bottom-0 w-full bg-gradient-to-t from-emerald-500 via-teal-400 to-teal-300 rounded-[14px] transition-all duration-1000 ease-out opacity-90 group-hover:opacity-100" style={{height: '100%'}}></div>
-                                            </div>
-                                            <span className="text-xs text-gray-400 font-bold mt-4 group-hover:text-emerald-600 transition-colors whitespace-nowrap">{data.month}</span>
-                                        </div>
-                                    )
-                                })}
+                                        )
+                                    })}
+                                </div>
                             </div>
                         </div>
 
                         {/* STATS WHEEL SECTION (Donut Charts) */}
-                        <div className="bg-white rounded-[24px] p-8 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] border border-gray-100/80 flex flex-col justify-center">
-                            <h3 className="text-xl font-extrabold text-teal-900 mb-8">Trạng thái phòng</h3>
+                        <div className="bg-white rounded-2xl sm:rounded-[24px] p-5 sm:p-8 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] border border-gray-100/80 flex flex-col justify-center">
+                            <h3 className="text-lg sm:text-xl font-extrabold text-teal-900 mb-6 sm:mb-8">Trạng thái phòng</h3>
                             <div className="flex-grow flex flex-col justify-center space-y-3">
                                 <CircleProgress 
                                     label="Hiệu suất lấp đầy" 
                                     value={stats?.occupiedRooms || 0}
                                     percentage={stats?.totalRooms ? Math.round((stats.occupiedRooms/stats.totalRooms)*100) : 0} 
-                                    // Default is emerald
                                 />
                                 <CircleProgress 
                                     label="Phòng Trống" 
                                     value={stats?.vacantRooms || 0}
                                     percentage={stats?.totalRooms ? Math.round((stats.vacantRooms/stats.totalRooms)*100) : 0} 
-                                    colorClass="text-amber-400" // Accent color for vacant
+                                    colorClass="text-amber-400"
                                 />
                                 <CircleProgress 
                                     label="Hóa đơn nợ" 
                                     value={stats?.unpaidBills || 0}
                                     percentage={stats?.activeContracts ? Math.round((stats.unpaidBills/stats.activeContracts)*100) : 0} 
-                                    colorClass="text-rose-500" // Accent color for debt
+                                    colorClass="text-rose-500"
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* LIST SECTION */}
-                    <div className="bg-white/80 backdrop-blur-xl rounded-[24px] p-8 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.05)] border border-white/60">
-                        <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                            <h2 className="text-2xl font-extrabold text-teal-900">Danh sách phòng</h2>
-                            <div className="flex w-full md:w-auto gap-3">
+                    <div className="bg-white/80 backdrop-blur-xl rounded-2xl sm:rounded-[24px] p-5 sm:p-8 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.05)] border border-white/60">
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-6 sm:mb-8 gap-4">
+                            <h2 className="text-xl sm:text-2xl font-extrabold text-teal-900">Danh sách phòng</h2>
+                            <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
                                 <div className="relative flex-grow">
-                                    {/* Input focus ring changed to emerald */}
                                     <input 
                                         type="text" 
                                         placeholder="Tìm kiếm nhanh..." 
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="bg-white border-gray-100 shadow-sm rounded-full px-5 py-3 w-full md:w-72 text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder-gray-400 font-medium text-gray-700"
+                                        className="bg-white border-gray-200 shadow-sm rounded-full px-4 sm:px-5 py-2.5 sm:py-3 w-full sm:w-72 text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder-gray-400 font-medium text-gray-700"
                                     />
-                                    <svg className="w-5 h-5 text-gray-400 absolute right-4 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    <svg className="w-5 h-5 text-gray-400 absolute right-4 top-3 sm:top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                 </div>
                                 <Link 
                                     href={route('landlord.houses.index')}
-                                    // Button gradient changed to emerald/teal
-                                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-6 py-3 rounded-full font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-2 whitespace-nowrap hover:-translate-y-0.5"
+                                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-full font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 whitespace-nowrap hover:-translate-y-0.5"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                     Thêm mới
@@ -388,42 +377,41 @@ export default function Dashboard() {
                         </div>
 
                         {filteredContracts.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                                 {filteredContracts.map(contract => (
                                     <ModernUnitCard key={contract.id} contract={contract} />
                                 ))}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-24 bg-gray-50/50 rounded-[24px] border-2 border-dashed border-gray-200">
-                                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm">
-                                    <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                            <div className="flex flex-col items-center justify-center py-16 sm:py-24 bg-gray-50/50 rounded-2xl sm:rounded-[24px] border-2 border-dashed border-gray-200 px-4 text-center">
+                                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
+                                    <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                                 </div>
-                                <h4 className="text-lg font-bold text-gray-700 mb-2">Chưa có dữ liệu</h4>
-                                <p className="text-gray-500 font-medium">Không tìm thấy phòng nào phù hợp với tiêu chí của bạn.</p>
+                                <h4 className="text-base sm:text-lg font-bold text-gray-700 mb-1">Chưa có dữ liệu</h4>
+                                <p className="text-xs sm:text-sm text-gray-500 font-medium">Không tìm thấy phòng nào phù hợp với tiêu chí của bạn.</p>
                             </div>
                         )}
 
                         {hasMore && (
-                            <div ref={observerRef} className="mt-10 flex justify-center pb-6">
-                                {/* Spinner color changed to emerald */}
-                                {loading && <div className="w-12 h-12 border-[5px] border-emerald-500 border-t-transparent rounded-full animate-spin shadow-sm"></div>}
+                            <div ref={observerRef} className="mt-8 sm:mt-10 flex justify-center pb-6">
+                                {loading && <div className="w-10 h-10 border-[4px] border-emerald-500 border-t-transparent rounded-full animate-spin shadow-sm"></div>}
                             </div>
                         )}
                     </div>
 
                     {/* SECTION: RECENT PENDING TENANT REQUESTS (Sự cố cần sửa chữa) */}
                     {stats?.recentTenantRequests && stats.recentTenantRequests.length > 0 && (
-                        <div className="mt-8 bg-white/80 backdrop-blur-xl rounded-[24px] p-8 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.05)] border border-amber-100">
-                            <div className="flex justify-between items-center mb-6">
+                        <div className="mt-6 sm:mt-8 bg-white/80 backdrop-blur-xl rounded-2xl sm:rounded-[24px] p-5 sm:p-8 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.05)] border border-amber-100">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
                                 <div>
                                     <span className="px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider">
                                         🛠️ Cần hỗ trợ gấp
                                     </span>
-                                    <h3 className="text-2xl font-extrabold text-teal-900 mt-2">Sự cố báo hỏng từ khách thuê</h3>
+                                    <h3 className="text-xl sm:text-2xl font-extrabold text-teal-900 mt-2">Sự cố báo hỏng từ khách thuê</h3>
                                 </div>
                                 <Link
                                     href={route('landlord.tenant-requests.index')}
-                                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors whitespace-nowrap"
                                 >
                                     Xem tất cả sự cố ({stats.pendingTenantRequests}) →
                                 </Link>
@@ -434,25 +422,25 @@ export default function Dashboard() {
                                     <Link
                                         key={req.id}
                                         href={route('landlord.tenant-requests.show', req.id)}
-                                        className="p-5 bg-white border border-gray-100 hover:border-amber-300 rounded-2xl shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+                                        className="p-4 sm:p-5 bg-white border border-gray-100 hover:border-amber-300 rounded-2xl shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
                                     >
                                         <div>
-                                            <div className="flex items-center justify-between gap-2 mb-2">
-                                                <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[11px] font-bold">
+                                            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                                                <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[11px] font-bold truncate max-w-[180px]">
                                                     Phòng {req.room?.name} ({req.room?.house?.name})
                                                 </span>
                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${req.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
                                                     {req.status === 'pending' ? '⏳ Chờ xử lý' : '🛠️ Đang sửa'}
                                                 </span>
                                             </div>
-                                            <h4 className="font-extrabold text-teal-950 text-base group-hover:text-emerald-600 transition-colors line-clamp-1">
+                                            <h4 className="font-extrabold text-teal-950 text-sm sm:text-base group-hover:text-emerald-600 transition-colors line-clamp-1">
                                                 {req.title}
                                             </h4>
                                             <p className="text-xs text-slate-400 mt-1 line-clamp-2">{req.description}</p>
                                         </div>
                                         <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400 font-medium">
-                                            <span>Báo bởi: {req.tenant?.name || 'Khách thuê'}</span>
-                                            <span>{new Date(req.created_at).toLocaleDateString('vi-VN')}</span>
+                                            <span className="truncate max-w-[120px]">Báo bởi: {req.tenant?.name || 'Khách thuê'}</span>
+                                            <span className="shrink-0">{new Date(req.created_at).toLocaleDateString('vi-VN')}</span>
                                         </div>
                                     </Link>
                                 ))}

@@ -22,16 +22,16 @@ export default function GuestLayout({ children }) {
             </div>
 
             {/* Logo Section */}
-            <div className="w-full sm:max-w-md mt-6 px-6 z-10 flex flex-col items-center mb-6">
+            <div className="w-full sm:max-w-md mt-6 px-4 sm:px-6 z-10 flex flex-col items-center mb-6">
                 <Link href="/" className="flex items-center gap-3 group transition-transform hover:scale-105">
-                    <div className="p-2.5 bg-white rounded-2xl shadow-lg shadow-emerald-500/10 border border-emerald-100 flex items-center justify-center min-w-[4.5rem] min-h-[4.5rem]">
-                        <ApplicationLogo className="h-14 w-14 fill-current text-emerald-600 rounded-xl" />
+                    <div className="p-2 bg-white rounded-2xl shadow-lg shadow-emerald-500/10 border border-emerald-100 flex items-center justify-center min-w-[3.75rem] min-h-[3.75rem] sm:min-w-[4.5rem] sm:min-h-[4.5rem]">
+                        <ApplicationLogo className="h-10 w-10 sm:h-14 sm:w-14 fill-current text-emerald-600 rounded-xl" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-2xl font-extrabold text-teal-900 tracking-tight leading-none">
+                        <span className="text-xl sm:text-2xl font-extrabold text-teal-900 tracking-tight leading-none">
                             {systemSettings?.app_name || 'DreamHouse'}
                         </span>
-                        <span className="text-[10px] font-bold text-emerald-500 tracking-[0.2em] uppercase mt-1">
+                        <span className="text-[9px] sm:text-[10px] font-bold text-emerald-500 tracking-[0.2em] uppercase mt-1">
                             Thuê trọ Online
                         </span>
                     </div>
@@ -39,8 +39,7 @@ export default function GuestLayout({ children }) {
             </div>
 
             {/* Content Container */}
-            {/* Lưu ý: Đã bỏ bg-white và shadow ở đây vì các trang con (Login/Register) đã tự có card riêng */}
-            <div className="w-full sm:max-w-md px-6 z-10">
+            <div className="w-full sm:max-w-md px-4 sm:px-6 z-10">
                 {children}
             </div>
 

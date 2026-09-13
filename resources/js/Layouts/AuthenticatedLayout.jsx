@@ -25,6 +25,7 @@ export default function AuthenticatedLayout({ header, children }) {
         if (user.role !== 'landlord' && user.role !== 'staff') return;
 
         const fetchPendingCount = async () => {
+            if (document.hidden) return;
             try {
                 const response = await fetch('/landlord/reminders/pending-count');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -36,8 +37,19 @@ export default function AuthenticatedLayout({ header, children }) {
         };
 
         fetchPendingCount();
-        const interval = setInterval(fetchPendingCount, 60000);
-        return () => clearInterval(interval);
+        const interval = setInterval(fetchPendingCount, 5 * 60 * 1000); // 5 minutes
+
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                fetchPendingCount();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, [user.role]);
 
     // Fetch pending renter-requests count (only for landlord and staff)
@@ -53,6 +65,7 @@ export default function AuthenticatedLayout({ header, children }) {
         } catch (e) { /* ignore */ }
 
         const fetchRenterRequestsCount = async () => {
+            if (document.hidden) return;
             try {
                 const res = await fetch('/landlord/renter-requests/pending-count');
                 if (!res.ok) return; // endpoint may not exist in some envs
@@ -64,8 +77,19 @@ export default function AuthenticatedLayout({ header, children }) {
         };
 
         fetchRenterRequestsCount();
-        const interval = setInterval(fetchRenterRequestsCount, 60000);
-        return () => clearInterval(interval);
+        const interval = setInterval(fetchRenterRequestsCount, 5 * 60 * 1000); // 5 minutes
+
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                fetchRenterRequestsCount();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, [user.role]);
 
     // Debug: Log flash messages

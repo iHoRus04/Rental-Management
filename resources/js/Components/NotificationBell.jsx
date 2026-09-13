@@ -18,23 +18,34 @@ export default function NotificationBell() {
     const [showDropdown, setShowDropdown] = useState(false);
 
     useEffect(() => {
+        const fetchPendingCount = () => {
+            if (document.hidden) return;
+            fetch(route('landlord.reminders.pendingCount'))
+                .then(res => res.json())
+                .then(data => {
+                    setPendingCount(data.count);
+                    setNotifications(data.notifications || []);
+                })
+                .catch(err => console.error('Error fetching reminders:', err));
+        };
+
         fetchPendingCount();
         
         // Refresh every 5 minutes
         const interval = setInterval(fetchPendingCount, 5 * 60 * 1000);
-        
-        return () => clearInterval(interval);
-    }, []);
 
-    const fetchPendingCount = () => {
-        fetch(route('landlord.reminders.pendingCount'))
-            .then(res => res.json())
-            .then(data => {
-                setPendingCount(data.count);
-                setNotifications(data.notifications || []);
-            })
-            .catch(err => console.error('Error fetching reminders:', err));
-    };
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                fetchPendingCount();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
 
     return (
         <div className="relative">

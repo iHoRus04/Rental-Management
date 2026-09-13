@@ -403,7 +403,6 @@ export default function RenterRequestServices({ auth, renterRequest, renterReque
                         </div>
                     </div>
                 )}
-                )}
 
                 <ConfirmModal
                     show={confirmDelete.show}

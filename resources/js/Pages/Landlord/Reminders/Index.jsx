@@ -14,12 +14,27 @@ export default function Index() {
     const [selectedStatus, setSelectedStatus] = useState(filters?.status || 'all');
     const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
 
-    // Auto-refresh logic remains the same
+    // Auto-refresh reminders list (5 minutes and only when tab is active)
     useEffect(() => {
-        const interval = setInterval(() => {
-            router.reload({ only: ['reminders'], preserveScroll: true });
-        }, 60000);
-        return () => clearInterval(interval);
+        const refreshReminders = () => {
+            if (!document.hidden) {
+                router.reload({ only: ['reminders'], preserveScroll: true });
+            }
+        };
+
+        const interval = setInterval(refreshReminders, 5 * 60 * 1000); // 5 minutes
+
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                refreshReminders();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     const handleFilterChange = (type, status, houseId) => {

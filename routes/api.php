@@ -62,3 +62,10 @@ Route::middleware(['web'])->get('/authenticated', function (Request $request) {
         ] : null,
     ]);
 });
+
+Route::get("/health", function() {
+    return response()->json([
+        "status" => "ok",
+        "time" => now()
+    ]);
+});

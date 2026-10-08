@@ -47,6 +47,15 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:6,1')
         ->name('verification.send');
 
+    Route::post('email/bypass-verification', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        if ($user && ! $user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+            event(new \Illuminate\Auth\Events\Verified($user));
+        }
+        return redirect()->intended(route('home', absolute: false).'?verified=1');
+    })->name('verification.bypass');
+
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
         ->name('password.confirm');
 

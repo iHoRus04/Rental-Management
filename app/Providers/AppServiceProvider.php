@@ -13,7 +13,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Đăng ký Brevo mail transport (HTTP API, không bị chặn port trên Render)
+        $this->app->afterResolving(\Illuminate\Mail\MailManager::class, function (\Illuminate\Mail\MailManager $mailManager) {
+            $mailManager->extend('brevo', function () {
+                return new \Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoApiTransport(
+                    config('services.brevo.key')
+                );
+            });
+        });
     }
 
     /**
